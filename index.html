@@ -83,55 +83,57 @@
   </div>
 </div>
 
-<!-- How to play -->
-<div id="howPanel" class="panel">
-  <div class="wrap">
-    <div class="panel-head"><h2>How to play</h2><button id="howBack" class="ghost">Back</button></div>
-    <div class="how-grid">
-      <div class="card">
-        <h3>Controls</h3>
-        <ul>
-          <li><b>Mouse:</b> the rocket follows it, up, down, left and right.</li>
-          <li><b>Keyboard:</b> W/A/S/D or the arrow keys. The rocket stays put when you let go.</li>
-          <li><b>Touch:</b> drag to fly in any direction.</li>
-          <li><b>Start:</b> click, tap or press Space.</li>
-          <li><b>After a crash:</b> PLAY AGAIN, or Space / R, restarts right away. Esc goes Home.</li>
-          <li><b>Full screen:</b> press F or the full-screen button. Esc or F again to leave.</li>
-          <li><b>Laser Eyes:</b> E or the LASER button (Chogs with that trait only).</li>
-        </ul>
+<!-- How to play: five short swipeable pages with visuals, like a game tutorial -->
+<div id="howPanel" class="panel how">
+  <div class="how-wrap">
+    <div class="how-head">
+      <button id="howBack" class="ghost">Back</button>
+      <h2>HOW TO PLAY</h2>
+      <span id="howStep" class="how-step">1 / 5</span>
+    </div>
+    <div id="howViewport" class="how-viewport">
+      <div id="howTrack" class="how-track">
+        <section class="how-page">
+          <div class="how-kicker">1 · FLY</div>
+          <div id="howControls" class="how-visual"></div>
+          <ul id="howControlsText" class="how-points"></ul>
+        </section>
+        <section class="how-page">
+          <div class="how-kicker">2 · SURVIVE</div>
+          <div class="how-visual">
+            <svg class="how-scene" viewBox="0 0 320 150" aria-hidden="true">
+              <path d="M30 120 C 90 120, 110 40, 170 50 S 250 110, 300 40" fill="none" stroke="#4fd1c5" stroke-width="3" stroke-dasharray="6 7" stroke-linecap="round"/>
+              <g fill="#7f7b8c" stroke="#1b2230" stroke-width="2"><path d="M95 60 l18 -10 16 8 4 18 -14 12 -20 -2 -8 -14z"/><path d="M200 105 l14 -8 13 6 3 14 -11 9 -16 -2 -6 -11z"/><path d="M250 30 l10 -6 9 4 2 10 -8 7 -11 -1 -4 -8z"/><path d="M140 115 l9 -5 8 3 2 9 -7 6 -10 -1 -3 -7z"/></g>
+              <g transform="translate(286 40) rotate(-35)"><rect x="-6" y="-16" width="12" height="28" rx="6" fill="#e9e4d8" stroke="#1b2230" stroke-width="2"/><path d="M-6 -12 L0 -24 L6 -12z" fill="#ff7a2f"/><path d="M-3 12 L0 22 L3 12z" fill="#ffb84d"/></g>
+            </svg>
+          </div>
+          <ul class="how-points">
+            <li><b>Dodge</b> asteroids and space debris. One hit ends the run.</li>
+            <li><b>Speed keeps rising</b> the further you fly. There is no boost.</li>
+            <li><b>Stardust:</b> every 100 gives an extra life (up to 3). A life saves you from one crash.</li>
+            <li><b>Near misses</b> flash on screen when you scrape past.</li>
+          </ul>
+        </section>
+        <section class="how-page">
+          <div class="how-kicker">3 · PICKUPS</div>
+          <div id="howPickups" class="how-pickups"></div>
+          <p class="how-note">Pickups start after 10 seconds. Grab a power-up that is already running and it lasts longer.</p>
+        </section>
+        <section class="how-page">
+          <div class="how-kicker">4 · ZONES</div>
+          <div id="howZones" class="how-zones"></div>
+          <p class="how-note">Fly through the warp gate into each new zone. After the Milky Way the loop starts again, and every zone lasts longer than the last.</p>
+        </section>
+        <section class="how-page">
+          <div class="how-kicker">5 · CHOG NFT OR PRACTICE</div>
+          <div id="howModes" class="how-modes"></div>
+        </section>
       </div>
-      <div class="card">
-        <h3>Zones</h3>
-        <ul>
-          <li><b>Outer Space</b> 2 min</li>
-          <li><b>Asteroid Belt</b> 4 min</li>
-          <li><b>Galactic Drift</b> 8 min</li>
-          <li><b>Deep Cosmic Zone</b> 14 min</li>
-          <li><b>Milky Way</b> 22 min, then the loop starts again, each zone longer than the last.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>Pickups</h3>
-        <ul>
-          <li><b>Stardust:</b> every 100 gives an extra life (hold up to 3). A crash with a life continues the run.</li>
-          <li><b>Golden Horn:</b> rare, worth 50 Stardust.</li>
-          <li><b>Dash:</b> speed burst that smashes through anything for 3 s.</li>
-          <li><b>Magnet:</b> pulls in Stardust and Horns for 10 s.</li>
-          <li><b>Slow-Mo:</b> slows everything for 6 s.</li>
-          <li><b>Nova:</b> clears every small obstacle on screen.</li>
-          <li><b>Radar:</b> outlines obstacles for 12 s (Deep Cosmic Zone only).</li>
-          <li><b>Mystery Box:</b> a random power-up.</li>
-          <li>Grabbing a power-up that is already running adds its time.</li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3>Modes</h3>
-        <ul>
-          <li><b>Practice:</b> fly as Rookie, the practice pilot. No wallet. Best distance saved on this device only, never ranked.</li>
-          <li><b>Chog NFT:</b> ride a Chog Genesis NFT you own. Abilities and tier multiplier come from its traits. Validated runs go on the leaderboard.</li>
-          <li id="formulaNote"></li>
-        </ul>
-      </div>
+    </div>
+    <div class="how-nav">
+      <button id="howPrev" class="ghost">Prev</button>
+      <div id="howDots" class="how-dots" role="tablist"></div>
+      <button id="howNext">Next</button>
     </div>
   </div>
 </div>

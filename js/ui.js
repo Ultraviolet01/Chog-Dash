@@ -77,14 +77,12 @@
   // ---------- Start ----------
   function start() {
     game = root.ChogGame.init({ onReady, onStart, onEnd, onRetry: playAgain });
-    $("formulaNote").innerHTML = "<b>Total distance:</b> " + esc(cfg.scoreFormula) +
-      ". Tier multipliers are a Chog Dash game-design choice, not an official Chog Genesis rule.";
     $("modePractice").onclick = () => setHomeMode("practice");
     $("modeNft").onclick = () => setHomeMode("nft");
     $("playBtn").onclick = play;
     $("walletChip").onclick = openNft;
     $("lbBtn").onclick = openLeaderboard;
-    $("howBtn").onclick = () => show("howPanel");
+    $("howBtn").onclick = openHow;
     $("nftBack").onclick = () => show("menuPanel");
     $("lbBack").onclick = () => show("menuPanel");
     $("howBack").onclick = () => show("menuPanel");
@@ -124,6 +122,99 @@
       if (e.key !== "Escape") return;
       if ($("cardPanel").classList.contains("show")) closeCard();
       else if (game.state === "dead" && !document.querySelector(".panel.show")) backToMenu();
+    });
+  }
+
+  // ---------- How to play: five swipeable pages ----------
+  let howPage = 0, howBuilt = false;
+  const HOW_PAGES = 5;
+  function openHow() {
+    if (!howBuilt) { buildHow(); howBuilt = true; }
+    // Page 5 shows your own Chog once you've picked one
+    const face = document.querySelector("#howModes .md-chog");
+    if (face) face.innerHTML = S.chog && S.chog.imageUrl ? '<img alt="" src="' + esc(S.chog.imageUrl) + '">' : "CHOG";
+    goHow(0, true);
+    show("howPanel");
+  }
+  function goHow(i, instant) {
+    howPage = Math.max(0, Math.min(HOW_PAGES - 1, i));
+    const track = $("howTrack");
+    track.style.transition = instant ? "none" : "";
+    track.style.transform = "translateX(" + (-howPage * 100) + "%)";
+    $("howStep").textContent = (howPage + 1) + " / " + HOW_PAGES;
+    [...$("howDots").children].forEach((d, k) => { d.classList.toggle("on", k === howPage); d.setAttribute("aria-selected", k === howPage); });
+    $("howPrev").style.visibility = howPage ? "visible" : "hidden";
+    const last = howPage === HOW_PAGES - 1;
+    $("howNext").textContent = last ? "PLAY" : "Next";
+    $("howNext").classList.toggle("how-play", last);
+    [...track.children].forEach((pg, k) => pg.setAttribute("aria-hidden", k !== howPage));
+  }
+  const canvasImg = (c, cls) => '<img class="' + cls + '" alt="" src="' + c.toDataURL() + '">';
+  function keycap(k, wide) { return '<span class="keycap' + (wide ? " wide" : "") + '">' + k + "</span>"; }
+  function buildHow() {
+    // Page 1: the player's own controls (touch or keyboard and mouse)
+    const mouseSvg = '<svg class="how-mouse" viewBox="0 0 40 60" aria-hidden="true"><rect x="3" y="3" width="34" height="54" rx="17"/><path d="M20 3v18M3 21h34"/><rect x="17" y="10" width="6" height="8" rx="3" class="wheel"/></svg>';
+    const fingerSvg = '<svg class="how-finger" viewBox="0 0 120 120" aria-hidden="true"><path class="trail" d="M30 90 C 50 70, 70 80, 92 40"/><path class="arrow" d="M84 36 L94 38 L92 48"/><circle class="touch" cx="30" cy="90" r="14"/><circle class="touch-dot" cx="30" cy="90" r="5"/></svg>';
+    if (isTouch) {
+      $("howControls").innerHTML = '<div class="ctl-touch">' + fingerSvg + "</div>";
+      $("howControlsText").innerHTML = "<li><b>Drag anywhere</b> to fly up, down, left and right. Your finger never covers the rocket.</li>" +
+        "<li><b>Tap</b> to start a run.</li><li><b>LASER</b> button fires Laser Eyes (Chogs with that trait).</li><li>Turn your phone sideways for a bigger view.</li>";
+    } else {
+      $("howControls").innerHTML = '<div class="ctl-row"><div class="ctl-keys"><div>' + keycap("W") + '</div><div>' + keycap("A") + keycap("S") + keycap("D") +
+        '</div></div><span class="ctl-or">or</span><div class="ctl-keys"><div>' + keycap("&uarr;") + '</div><div>' + keycap("&larr;") + keycap("&darr;") + keycap("&rarr;") +
+        '</div></div><span class="ctl-or">or</span>' + mouseSvg + "</div>";
+      $("howControlsText").innerHTML = "<li><b>Mouse:</b> the rocket follows it. <b>Keys:</b> it stays where you leave it.</li>" +
+        "<li>" + keycap("Space", true) + " or click to start. " + keycap("R") + " to play again after a crash.</li>" +
+        "<li>" + keycap("E") + " fires Laser Eyes (Chogs with that trait). " + keycap("F") + " full screen.</li>";
+    }
+    // Page 3: the real in-game pickup icons
+    const I = root.ChogPickups.icons, P = cfg.game.pickups, TYPES = root.ChogPickups.TYPES;
+    const bubble = type => { const c = document.createElement("canvas"); c.width = c.height = 128; const g = c.getContext("2d");
+      g.drawImage(I.bubbleCanvas(false), 0, 0, 128, 128); g.drawImage(I.iconCanvas(type, true), 22, 22, 84, 84); g.drawImage(I.bubbleCanvas(true), 0, 0, 128, 128); return c; };
+    const items = [
+      [canvasImg(I.stardustCanvas(), "pk-ic"), "Stardust", "Every " + P.stardustPerLife + " = an extra life (max " + P.maxLives + ")."],
+      [canvasImg(I.hornCanvas(), "pk-ic"), "Golden Horn", "Rare. Worth " + P.hornStardust + " Stardust."],
+      [canvasImg(bubble("dash"), "pk-ic"), TYPES.dash.name, "x" + P.dashSpeedMult + " speed and smash through anything for " + P.dashSeconds + " s."],
+      [canvasImg(bubble("magnet"), "pk-ic"), TYPES.magnet.name, "Pulls in Stardust and Horns for " + P.magnetSeconds + " s."],
+      [canvasImg(bubble("slow"), "pk-ic"), TYPES.slow.name, "Slows everything down for " + P.slowSeconds + " s."],
+      [canvasImg(bubble("nova"), "pk-ic"), TYPES.nova.name, "Clears every small obstacle on screen."],
+      [canvasImg(bubble("radar"), "pk-ic"), TYPES.radar.name, "Outlines obstacles for " + P.radarSeconds + " s. Deep Cosmic Zone only."],
+      [canvasImg(bubble("mystery"), "pk-ic"), TYPES.mystery.name, "A random power-up."],
+    ];
+    $("howPickups").innerHTML = items.map(([ic, n, d]) => '<div class="pk">' + ic + '<div><div class="pk-n">' + esc(n) + '</div><div class="pk-d">' + esc(d) + "</div></div></div>").join("");
+    // Page 4: the zones as a path, with their real lengths
+    const ZC = { outer: "#7a8cff", belt: "#d8a46a", drift: "#3ad0ff", deep: "#b04cff", milky: "#ffd27a" };
+    const ZD = { outer: "Open space. A balanced mix to warm up.", belt: "A packed asteroid field, with big rocks.", drift: "Debris that drifts hard sideways.",
+      deep: "Darker, and you see less far ahead.", milky: "The finale: everything moves." };
+    $("howZones").innerHTML = cfg.game.zones.map((z, k) => '<div class="zn" style="--zc:' + ZC[z.id] + '"><div class="zn-dot">' + (k + 1) + '</div><div class="zn-body"><div class="zn-n">' +
+      esc(z.name) + ' <span class="zn-t">' + T.zoneMinutes(k) + ' min</span></div><div class="zn-d">' + esc(ZD[z.id] || "") + "</div></div></div>").join("");
+    // Page 5: the two modes side by side
+    const tiers = Object.entries(cfg.tiers.multipliers).map(([k, v]) => '<span class="tier-chip t-' + k + '">' + k.charAt(0).toUpperCase() + k.slice(1) + " x" + Number(v).toFixed(2) + "</span>").join("");
+    $("howModes").innerHTML =
+      '<div class="md md-practice">' + canvasImg(Art.rookieCanvas(), "md-face") + '<div class="md-n">PRACTICE</div><ul>' +
+        "<li>Fly as Rookie, the practice pilot</li><li>No wallet needed</li><li>Best distance saved on this device</li><li>Never on the leaderboard</li></ul></div>" +
+      '<div class="md md-nft"><div class="md-face md-chog">CHOG</div><div class="md-n">CHOG NFT</div><ul>' +
+        "<li>Connect your wallet, sign, and pick a Chog you own</li>" +
+        "<li><b>Laser Eyes</b> (laser Eyes trait): " + cfg.abilities.laserEyes.charges + " shots that destroy what's in your path</li>" +
+        "<li><b>Total distance</b> = distance flown x tier:</li></ul><div class='tiers'>" + tiers + "</div>" +
+        "<ul><li>Your Chog's traits style the rocket and its aura trail</li><li>Ranked on the leaderboard under your username</li></ul></div>";
+    // Dots, buttons, keys and swipe
+    $("howDots").innerHTML = Array.from({ length: HOW_PAGES }, (_, k) => '<button class="how-dot" role="tab" aria-label="Page ' + (k + 1) + '"></button>').join("");
+    [...$("howDots").children].forEach((d, k) => { d.onclick = () => goHow(k); });
+    $("howPrev").onclick = () => goHow(howPage - 1);
+    $("howNext").onclick = () => { if (howPage < HOW_PAGES - 1) goHow(howPage + 1); else { show("menuPanel"); play(); } };
+    window.addEventListener("keydown", e => {
+      if (!$("howPanel").classList.contains("show")) return;
+      if (e.key === "ArrowRight") goHow(howPage + 1);
+      else if (e.key === "ArrowLeft") goHow(howPage - 1);
+      else if (e.key === "Escape") show("menuPanel");
+    });
+    let sx = null;
+    $("howViewport").addEventListener("pointerdown", e => { sx = e.clientX; });
+    $("howViewport").addEventListener("pointerup", e => {
+      if (sx == null) return;
+      const dx = e.clientX - sx; sx = null;
+      if (Math.abs(dx) > 50) goHow(howPage + (dx < 0 ? 1 : -1));
     });
   }
 

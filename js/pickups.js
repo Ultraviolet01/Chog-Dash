@@ -391,5 +391,5 @@
     };
   }
 
-  root.ChogPickups = { create, TYPES, allowedTypes, pickType };
+  root.ChogPickups = { create, TYPES, allowedTypes, pickType, icons: { iconCanvas, bubbleCanvas, stardustCanvas, hornCanvas } };
 })(window);
