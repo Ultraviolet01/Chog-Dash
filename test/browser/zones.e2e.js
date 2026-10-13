@@ -39,6 +39,8 @@ const R = path.join(__dirname, '../../');
     await p.waitForFunction(src => new RegExp(src).test(document.getElementById('zoneBanner').textContent), re.source, { timeout: 15000 }).catch(() => {});
     assert.match(await p.textContent('#zoneBanner'), re);
     assert.strictEqual(await p.textContent('#zoneLabel'), label);
+    // A zone's mix fades in over its first 800 m (ZONE_RAMP_M in js/game.js), so sample the settled mix after it
+    await p.evaluate(m => { const d = ChogUI._game()._debug; d.obstacles().forEach(o => { o.mesh.position.z = 60; }); d.setMeters(m + 1000); }, m);
     await p.waitForTimeout(3500);
     seen[label] = await rockShare();
   }
