@@ -63,7 +63,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
   - `js/config.js`: collection details, ability mapping, tier multipliers, shared tuning.
   - `js/traits.js`: trait normalisation, ability mapping, scoring (shared with the server).
   - `js/chain.js`, `js/metadata.js`: wallet, contract reads, IPFS gateway fallback.
-  - `js/art.js`, `js/game.js`, `js/ui.js`: rider art, game, menus.
+  - `js/art.js`, `js/scenery.js`, `js/game.js`, `js/ui.js`: rider art, space scenery, game, menus.
 - `api/`, `lib/`: leaderboard server (Vercel functions).
 - `server/dev.js`: local server for the game plus API.
 - `scripts/`: contract and metadata audits.

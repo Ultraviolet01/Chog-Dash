@@ -46,8 +46,8 @@
     document.body.insertBefore(renderer.domElement, document.body.firstChild);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x05070d);
-    scene.fog = new THREE.Fog(0x05070d, 90, 250);
+    scene.background = new THREE.Color(0x04050f);
+    scene.fog = new THREE.Fog(0x05061a, 90, 250);
     const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 1200);
     let baseCamZ = 7;
 
@@ -61,40 +61,22 @@
     window.addEventListener("resize", resize);
     resize();
 
-    scene.add(new THREE.AmbientLight(0x8090b0, 0.6));
-    const sun = new THREE.DirectionalLight(0xfff0dd, 1.1);
+    // Cool key light with blue and violet fills, to match the nebula
+    scene.add(new THREE.AmbientLight(0x6070b0, 0.55));
+    const sun = new THREE.DirectionalLight(0xe6ebff, 1.0);
     sun.position.set(5, 8, 6);
     scene.add(sun);
-    const rim = new THREE.DirectionalLight(0x4fd1c5, 0.5);
+    const rim = new THREE.DirectionalLight(0x8a5cff, 0.9);
     rim.position.set(-4, -2, -10);
     scene.add(rim);
+    const fill = new THREE.DirectionalLight(0x3b7bff, 0.5);
+    fill.position.set(-8, 2, 2);
+    scene.add(fill);
 
     const dotTex = new THREE.CanvasTexture(root.ChogArt.dotCanvas());
 
-    // ---------- Background ----------
-    const STAR_COUNT = 1500;
-    const starPos = new Float32Array(STAR_COUNT * 3);
-    for (let i = 0; i < STAR_COUNT; i++) {
-      starPos[i * 3] = rand(-120, 120);
-      starPos[i * 3 + 1] = rand(-80, 80);
-      starPos[i * 3 + 2] = rand(-400, 20);
-    }
-    const starGeo = new THREE.BufferGeometry();
-    starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
-    scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({
-      color: 0xffffff, size: 0.5, sizeAttenuation: true, fog: false, transparent: true, opacity: 0.9,
-      map: dotTex, depthWrite: false,
-    })));
-
-    const planet = new THREE.Mesh(new THREE.SphereGeometry(60, 48, 32),
-      new THREE.MeshStandardMaterial({ color: 0xc0703a, roughness: 0.9, fog: false }));
-    planet.position.set(-300, 170, -700);
-    scene.add(planet);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(80, 105, 64),
-      new THREE.MeshBasicMaterial({ color: 0xe0b27a, side: THREE.DoubleSide, transparent: true, opacity: 0.35, fog: false }));
-    ring.position.copy(planet.position);
-    ring.rotation.set(1.2, 0.3, 0.2);
-    scene.add(ring);
+    // ---------- Background: nebula backdrop, black hole, stars, warp streaks (js/scenery.js) ----------
+    const scenery = root.ChogScenery.create(scene, dotTex);
 
     // ---------- Player: rocket with a rider on top ----------
     const player = new THREE.Group();
@@ -194,7 +176,7 @@
       return g;
     }
     const rockGeos = [makeRockGeo(), makeRockGeo(), makeRockGeo(), makeRockGeo()];
-    const rockMat = new THREE.MeshStandardMaterial({ color: 0x8a7f78, roughness: 0.95, flatShading: true });
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x7f7b8c, roughness: 0.95, flatShading: true });
     const debris = {
       plate: { geo: new THREE.BoxGeometry(1.6, 1.6, 0.2), mat: new THREE.MeshStandardMaterial({ color: 0x7d8a99, metalness: 0.6, roughness: 0.4 }), r: 0.9 },
       tube: { geo: new THREE.CylinderGeometry(0.35, 0.35, 2.4, 12), mat: new THREE.MeshStandardMaterial({ color: 0xb07040, metalness: 0.4, roughness: 0.5 }), r: 1.0 },
@@ -307,6 +289,7 @@
     function start() {
       state = "playing";
       runStartedAt = performance.now();
+      scenery.warp();
       for (let z = -90; z > SPAWN_Z; z -= START_SPACING) spawnGroup(z);
       if (hooks.onStart) hooks.onStart();
     }
@@ -459,14 +442,7 @@
 
       const speed = state === "dead" ? 0 : (playing ? baseSpeed() : G.baseSpeed * 0.3);
 
-      // Stars stream past
-      const sp = starGeo.attributes.position.array;
-      for (let i = 0; i < STAR_COUNT; i++) {
-        sp[i * 3 + 2] += speed * dt;
-        if (sp[i * 3 + 2] > 20) { sp[i * 3 + 2] -= 420; sp[i * 3] = rand(-120, 120); sp[i * 3 + 1] = rand(-80, 80); }
-      }
-      starGeo.attributes.position.needsUpdate = true;
-      planet.rotation.y += dt * 0.02;
+      scenery.update(dt, speed, G.maxSpeed);
 
       // Debris bits from crashes and laser hits
       bits = bits.filter(b => {

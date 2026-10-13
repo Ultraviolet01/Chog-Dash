@@ -20,3 +20,16 @@
 - Built in 3D: hull, nose cone, fins, nozzle and a saddle for the rider.
 - Responds to input: a bigger flame and more exhaust while rising, banking into turns and pitching while climbing.
 - The hitbox is a sphere (radius 0.6) around the rocket and the lower rider, smaller than the visible artwork.
+
+## Scenery
+
+- Everything is drawn in code (`js/scenery.js`): no image or video files, so there are no licensing questions and it stays sharp at any screen size.
+- Art direction comes from the reference images supplied for the project (deep navy space, blue and violet nebula, a black hole, rocks lit blue and violet). Nothing is copied from them.
+- The reference videos were TikTok downloads with watermarks and an outro, owned by someone else, so they are used only as mood reference.
+- Layers, back to front:
+  - Far backdrop: nebula bands at the edges, a dark clear centre so obstacles stay readable, faint star dust and a few bright glinting stars.
+  - A slowly spinning black hole in the upper left.
+  - Nebula clouds drifting past at the edges.
+  - Occasional meteors with trails, far away (decoration only, never obstacles).
+  - Streaming stars, and warp streaks that grow with speed and burst when a run starts.
+- Lighting: cool white key light with violet rim and blue fill lights, so asteroids pick up the nebula colours.
