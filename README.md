@@ -103,7 +103,9 @@ The run passes through five zones that repeat in order. Each zone lasts longer t
   - `npm install`
   - `npm run dev`, then open http://localhost:3000
   - Wallets can't connect to a page opened as a file, so NFT mode needs a server.
-- Deploy: the repo is ready for Vercel (static files plus the `api/` functions). Set the variables in `.env.example`.
+- Deploy: the repo is ready for Vercel (static files plus the `api/` functions).
+  1. Create a Supabase project and run `supabase/schema.sql` in its SQL editor.
+  2. Set the variables in `.env.example` on Vercel: `SESSION_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (and optionally `MONAD_RPC_URL`).
 
 ## Checks and tests
 

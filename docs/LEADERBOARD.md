@@ -34,5 +34,13 @@
 
 ## Storage
 
-- Production: Upstash Redis via `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
-- Without them the server keeps data in memory, which is lost on restart (fine for local testing only).
+- Production: Supabase (Postgres).
+  - Run `supabase/schema.sql` once in the Supabase SQL editor. It creates three tables and the functions the server uses:
+    - `chog_leaderboard`: one row per player (wallet) with their best total distance and the run that set it.
+    - `chog_runs`: every submitted run, validated or rejected, with the reason.
+    - `chog_kv`: short-lived records (sign-in nonces, run sessions, cached metadata) and usernames.
+  - Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` on the server (see `.env.example`).
+  - Browsers never reach the database: row level security is on with no policies, and only the service role can run the functions.
+  - Tested by `test/supabase.test.js`, which runs the schema on a real Postgres engine (PGlite) through the same calls the server makes.
+- In production the server refuses to start without the Supabase settings, so data is never silently lost.
+- Local development without them uses in-memory storage, which is lost on restart.

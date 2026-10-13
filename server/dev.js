@@ -1,7 +1,7 @@
 /*
  * Local development server: serves the game and the /api routes on one port.
  *   npm run dev            -> http://localhost:3000
- * Uses in-memory storage unless the Upstash variables are set.
+ * Uses in-memory storage unless SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.
  */
 const http = require("http");
 const fs = require("fs");
