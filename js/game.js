@@ -207,38 +207,40 @@
     // ---------- Input ----------
     const keys = {};
     let steerMode = "keys";
-    const pointerTarget = { x: 0 };
-    let pointerHeld = false, lastTouch = null;
+    const pointerTarget = { x: 0, y: 0 };
+    let lastTouch = null;
 
     window.addEventListener("keydown", e => {
       if (state === "menu" || e.target.tagName === "INPUT") return;
       keys[e.code] = true;
-      if (["ArrowLeft", "ArrowRight", "KeyA", "KeyD"].includes(e.code)) steerMode = "keys";
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "KeyA", "KeyD", "KeyW", "Space"].includes(e.code)) steerMode = "keys";
       if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
       if ((e.code === "Space" || e.code === "Enter") && !e.repeat) onPress();
       if ((e.code === "KeyE" || e.code === "KeyL") && !e.repeat) fireLaser();
     });
     window.addEventListener("keyup", e => { keys[e.code] = false; });
-    window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; pointerHeld = false; });
+    window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
 
     renderer.domElement.addEventListener("pointerdown", e => {
       if (state === "menu") return;
-      pointerHeld = true;
-      if (e.pointerType !== "mouse") lastTouch = { x: e.clientX };
+      if (e.pointerType !== "mouse") lastTouch = { x: e.clientX, y: e.clientY };
       onPress();
     });
     window.addEventListener("pointermove", e => {
+      // The rocket follows the mouse: left/right and up/down
       if (e.pointerType === "mouse") {
         steerMode = "pointer";
         pointerTarget.x = (e.clientX / window.innerWidth * 2 - 1) * BOUND_X;
+        pointerTarget.y = -(e.clientY / window.innerHeight * 2 - 1) * BOUND_Y;
       } else if (lastTouch) {
-        // Touch steers by dragging, so the finger doesn't cover the rider
+        // Touch steers by dragging (in any direction), so the finger doesn't cover the rider
         steerMode = "pointer";
         pointerTarget.x = clamp(pointerTarget.x + (e.clientX - lastTouch.x) / window.innerWidth * BOUND_X * 3, -BOUND_X, BOUND_X);
-        lastTouch = { x: e.clientX };
+        pointerTarget.y = clamp(pointerTarget.y - (e.clientY - lastTouch.y) / window.innerHeight * BOUND_Y * 3, -BOUND_Y, BOUND_Y);
+        lastTouch = { x: e.clientX, y: e.clientY };
       }
     });
-    const release = () => { pointerHeld = false; lastTouch = null; };
+    const release = () => { lastTouch = null; };
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
 
@@ -267,7 +269,7 @@
     function toReady() {
       clearField();
       distance = 0; sinceSpawn = 0; nextSpacing = START_SPACING;
-      vel.x = vel.y = 0; safe.x = safe.y = 0; pointerTarget.x = 0;
+      vel.x = vel.y = 0; safe.x = safe.y = 0; pointerTarget.x = pointerTarget.y = 0;
       laserCharges = setup.laserCharges; laserUsed = 0; nearMisses = 0;
       player.position.set(0, 0, 0);
       player.visible = true;
@@ -431,7 +433,9 @@
     function update(dt) {
       const now = performance.now();
       const playing = state === "playing";
-      const thrusting = playing && (keys.Space || keys.ArrowUp || keys.KeyW || pointerHeld);
+      const holdingUp = keys.Space || keys.ArrowUp || keys.KeyW;
+      // Bigger flame while the rocket climbs (keyboard: holding rise; mouse/touch: moving up)
+      const thrusting = playing && (steerMode === "keys" ? holdingUp : vel.y > 1);
 
       const speed = state === "dead" ? 0 : (playing ? baseSpeed() : G.baseSpeed * 0.3);
 
@@ -489,17 +493,19 @@
       }
 
       if (playing) {
-        // Sideways steering
-        let tx;
-        if (steerMode === "keys") {
-          tx = ((keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0)) * STEER_SPEED;
-        } else {
-          tx = clamp((pointerTarget.x - player.position.x) * 6, -STEER_SPEED, STEER_SPEED);
-        }
         const step = STEER_ACCEL * dt;
-        vel.x += clamp(tx - vel.x, -step, step);
-        // Hold to rise, release to fall
-        vel.y = clamp(vel.y + (thrusting ? THRUST : -GRAVITY) * dt, -MAX_DOWN, MAX_UP);
+        if (steerMode === "keys") {
+          // Keyboard: steer sideways, hold to rise, release to fall
+          const tx = ((keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0)) * STEER_SPEED;
+          vel.x += clamp(tx - vel.x, -step, step);
+          vel.y = clamp(vel.y + (holdingUp ? THRUST : -GRAVITY) * dt, -MAX_DOWN, MAX_UP);
+        } else {
+          // Mouse/touch: fly toward the pointer, at the same top speeds as the keyboard
+          const tx = clamp((pointerTarget.x - player.position.x) * 6, -STEER_SPEED, STEER_SPEED);
+          const ty = clamp((pointerTarget.y - player.position.y) * 6, -MAX_DOWN, MAX_UP);
+          vel.x += clamp(tx - vel.x, -step, step);
+          vel.y += clamp(ty - vel.y, -step, step);
+        }
         player.position.x += vel.x * dt;
         player.position.y += vel.y * dt;
         if (Math.abs(player.position.x) > BOUND_X) { player.position.x = Math.sign(player.position.x) * BOUND_X; vel.x = 0; }

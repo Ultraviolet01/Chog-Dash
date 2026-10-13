@@ -42,8 +42,8 @@
   }
   function controlsText(laser) {
     const base = isTouch
-      ? "Hold to rise, release to fall. Drag to steer."
-      : "Hold Space, W or the mouse button to rise, release to fall. Steer with A/D, arrows or mouse.";
+      ? "Drag to fly the rocket up, down, left and right."
+      : "Move the mouse to fly the rocket. Or use the keyboard: hold Space or W to rise, release to fall, A/D or arrows to steer.";
     return base + (laser ? (isTouch ? " LASER button fires Laser Eyes." : " E fires Laser Eyes.") : "");
   }
   const startText = () => (isTouch ? "Tap to start" : "Press Space or click to start");

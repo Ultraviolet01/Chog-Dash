@@ -16,10 +16,11 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 
 ## Controls
 
-- Rise: hold Space, W, Up or the mouse button. Release to fall.
-- Steer: A/D, Left/Right, or move the mouse.
+- Mouse: move the mouse and the rocket follows it, up, down, left and right. Clicking only starts a run.
+- Keyboard: hold Space, W or Up to rise, release to fall. Steer with A/D or Left/Right.
+- Whichever you used last (mouse or keyboard) is in control.
 - Laser Eyes: E (only for Chogs with that trait).
-- Touch screens: hold to rise, drag to steer, on-screen LASER button.
+- Touch screens: drag to fly the rocket in any direction, on-screen LASER button.
 - There is no boost. Speed rises on its own as you travel further.
 
 ## Gameplay rules
@@ -46,7 +47,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 
 ## Checks and tests
 
-- `npm run test:browser`: headless browser tests of the laser rules and the full NFT flow, against a mock wallet, contract and IPFS.
+- `npm run test:browser`: headless browser tests of mouse control, the laser rules and the full NFT flow, against a mock wallet, contract and IPFS.
 - `npm test`: unit and API tests (trait mapping, tier scoring, contract decoding, gateway fallback, sign-in, run validation, leaderboard).
 - `npm run verify-contract`: reads the live contract (chain ID, interfaces, supply, token ID range, tokenURI). Writes `data/contract-report.json`.
 - `npm run audit-metadata`: loads every token's metadata, lists every trait type and value, and reports what the gameplay mapping does with each. Writes `data/collection-audit.json` and `docs/TRAIT-AUDIT.md`.
