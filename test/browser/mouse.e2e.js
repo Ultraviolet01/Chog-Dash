@@ -60,6 +60,12 @@ const R = path.join(__dirname, '../../');
   assert.ok(left.x < -5 && right.x > 5, 'mouse left/right steers');
   assert.ok(held.y < -3, 'holding the mouse button does not make it rise');
   assert.strictEqual(await p.evaluate(() => ChogUI._game().state), 'playing');
+  // The rider is fixed in the cockpit: mid-turn it tilts exactly with the rocket (no swinging against it)
+  await p.keyboard.down('KeyA'); await p.waitForTimeout(250);
+  const bank = await p.evaluate(() => { const d = ChogUI._game()._debug; return [d.player.rotation.z, d.rider.material.rotation]; });
+  await p.keyboard.up('KeyA');
+  assert.ok(Math.abs(bank[0]) > 0.2, 'rocket banks in a turn (' + bank[0].toFixed(2) + ')');
+  assert.ok(Math.abs(bank[0] - bank[1]) < 1e-6, 'rider tilts exactly with the rocket (' + bank.map(v => v.toFixed(3)) + ')');
   assert.deepStrictEqual(errs, []);
   console.log('PASS mouse control');
   await b.close();

@@ -847,12 +847,15 @@
         if (Math.abs(player.position.y) > BOUND_Y) { player.position.y = Math.sign(player.position.y) * BOUND_Y; vel.y = 0; }
         player.rotation.z = -vel.x * 0.04;            // bank into turns
         player.rotation.x = vel.y * 0.035;            // nose up while climbing
-        riderMat.rotation = -player.rotation.z * 0.5;
 
         distance += speed * dt;
         sinceSpawn += speed * dt;
         if (sinceSpawn >= nextSpacing) { sinceSpawn = 0; spawnGroup(spawnZ()); }
       }
+      // The rider sits fixed in the cockpit: it moves with the rocket (it's in the same group) and, being a
+      // flat sprite that always faces the camera, is turned to the rocket's exact roll every frame so it
+      // tilts with the hull instead of staying upright and swinging against it.
+      riderMat.rotation = player.rotation.z;
       if (playing || state === "ready") updateHud(speed);
 
       // Near-miss text fade
@@ -979,7 +982,7 @@
       setHeroScreenY(f) { heroScreenY = f; },
       get state() { return state; },
       // Test hooks, used by the automated browser tests only
-      _debug: { camera, look: () => look, trailLive: () => Array.from(trailLife).filter(l => l > 0).length, extras, gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, pickups, runTime: () => runTime,
+      _debug: { camera, rider, look: () => look, trailLive: () => Array.from(trailLife).filter(l => l > 0).length, extras, gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, pickups, runTime: () => runTime,
         speed: () => (state === "playing" ? baseSpeed() * pickups.speedFactor() : 0),
         setMeters(m) { distance = m * G.unitsPerMeter; }, spawnAt(x, y, z, huge) {
         const o = makeObstacle(); o.vx = o.vy = 0; o.huge = !!huge; o.mesh.position.set(x, y, z); scene.add(o.mesh); obstacles.push(o); return o;
