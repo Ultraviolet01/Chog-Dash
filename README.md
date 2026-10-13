@@ -18,9 +18,9 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 
 - Rise: hold Space, W, Up or the mouse button. Release to fall.
 - Steer: A/D, Left/Right, or move the mouse.
-- Boost: hold Shift. The meter drains while boosting and refills when released.
 - Laser Eyes: E (only for Chogs with that trait).
-- Touch screens: hold to rise, drag to steer, on-screen BOOST and LASER buttons.
+- Touch screens: hold to rise, drag to steer, on-screen LASER button.
+- There is no boost. Speed rises on its own as you travel further.
 
 ## Gameplay rules
 

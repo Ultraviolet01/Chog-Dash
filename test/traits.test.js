@@ -74,8 +74,8 @@ test("distance bound grows with time and stays within top speed", () => {
   for (const s of [1, 10, 30, 60, 300]) {
     const m = T.maxPossibleMeters(s);
     assert.ok(m > prev);
-    assert.ok(m <= (g.maxSpeed * g.boostMult * s) / g.unitsPerMeter);
-    assert.ok(m >= (g.baseSpeed * s) / g.unitsPerMeter, "a run with no boost must always be allowed");
+    assert.ok(m <= (g.maxSpeed * 1.02 * s) / g.unitsPerMeter);
+    assert.ok(m >= (g.baseSpeed * s) / g.unitsPerMeter, "a genuine run at base speed must always be allowed");
     prev = m;
   }
 });

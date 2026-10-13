@@ -79,22 +79,17 @@
     return Math.floor(Math.max(0, meters) * multiplier);
   }
 
-  // Upper bound on distance (meters) reachable in `seconds`, assuming the player boosts
-  // whenever the meter allows. Mirrors the speed and boost logic in js/game.js.
+  // Upper bound on distance (meters) reachable in `seconds`. Speed depends only on distance
+  // travelled (see js/game.js); 2% is added for frame-timing differences.
   function maxPossibleMeters(seconds, cfg) {
     const g = (cfg || config).game;
-    const dt = 0.05;
-    let units = 0, meter = 1, locked = false;
+    const dt = 0.01;
+    let units = 0;
     for (let t = 0; t < seconds; t += dt) {
       const m = Math.floor(units / g.unitsPerMeter);
-      const base = Math.min(g.baseSpeed + m * g.speedPerMeter, g.maxSpeed);
-      if (meter <= 0) locked = true;
-      if (locked && meter > g.boostRelockAt) locked = false;
-      const boosting = !locked;
-      meter = Math.min(1, Math.max(0, meter + (boosting ? -g.boostDrain : g.boostRefill) * dt));
-      units += base * (boosting ? g.boostMult : 1) * dt;   // instant boost: an over-estimate, on purpose
+      units += Math.min(g.baseSpeed + m * g.speedPerMeter, g.maxSpeed) * dt;
     }
-    return Math.floor(units / g.unitsPerMeter);
+    return Math.floor((units * 1.02) / g.unitsPerMeter);
   }
 
   return { normalizeAttributes, resolveGameplay, computeScore, maxPossibleMeters, matchesRule };

@@ -18,5 +18,5 @@
 ## Rocket
 
 - Built in 3D: hull, nose cone, fins, nozzle and a saddle for the rider.
-- Responds to input: a bigger flame and more exhaust while rising, a teal flame while boosting, banking into turns and pitching while climbing.
+- Responds to input: a bigger flame and more exhaust while rising, banking into turns and pitching while climbing.
 - The hitbox is a sphere (radius 0.6) around the rocket and the lower rider, smaller than the visible artwork.

@@ -31,8 +31,8 @@
     const $ = id => document.getElementById(id);
     const hud = {
       root: $("hud"), dist: $("dist"), score: $("score"), speed: $("speed"), mode: $("modeBadge"),
-      boost: $("boostBar"), laser: $("laserCount"), laserBox: $("laserBox"), near: $("nearMiss"),
-      laserBtn: $("laserBtn"), boostBtn: $("boostBtn"),
+      laser: $("laserCount"), laserBox: $("laserBox"), near: $("nearMiss"),
+      laserBtn: $("laserBtn"),
     };
 
     // ---------- Renderer, scene, camera ----------
@@ -152,14 +152,13 @@
       exhaust.push({ s, life: 0, max: 1, v: new THREE.Vector3() });
     }
     let exhaustIdx = 0, emitAcc = 0;
-    function emitExhaust(boosting, thrusting) {
+    function emitExhaust(thrusting) {
       const p = exhaust[exhaustIdx];
       exhaustIdx = (exhaustIdx + 1) % exhaust.length;
       const nozzleWorld = new THREE.Vector3(0, 0, 1.45).applyMatrix4(rocket.matrixWorld);
       p.s.position.copy(nozzleWorld);
       p.v.set(rand(-0.6, 0.6), rand(-0.6, 0.6) - (thrusting ? 1.2 : 0), rand(9, 13));
-      p.max = p.life = boosting ? rand(0.3, 0.4) : rand(0.18, 0.28);
-      p.s.material.color.setHex(boosting ? 0x4fd1c5 : 0xffb84d);
+      p.max = p.life = rand(0.18, 0.28);
       p.s.visible = true;
     }
 
@@ -209,7 +208,7 @@
     const keys = {};
     let steerMode = "keys";
     const pointerTarget = { x: 0 };
-    let pointerHeld = false, lastTouch = null, boostButtonDown = false;
+    let pointerHeld = false, lastTouch = null;
 
     window.addEventListener("keydown", e => {
       if (state === "menu" || e.target.tagName === "INPUT") return;
@@ -243,10 +242,7 @@
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
 
-    hud.boostBtn.addEventListener("pointerdown", e => { e.stopPropagation(); boostButtonDown = true; });
-    ["pointerup", "pointerleave", "pointercancel"].forEach(n => hud.boostBtn.addEventListener(n, () => { boostButtonDown = false; }));
     hud.laserBtn.addEventListener("pointerdown", e => { e.stopPropagation(); fireLaser(); });
-    if (isTouch) hud.boostBtn.style.display = "block";
 
     // ---------- Run state ----------
     let state = "menu", deadAt = 0, runStartedAt = 0;
@@ -254,13 +250,12 @@
     let obstacles = [], bits = [];
     const vel = { x: 0, y: 0 };
     const safe = { x: 0, y: 0 };
-    let boostMeter = 1, boostAmt = 0, boostLocked = false, shake = 0;
+    let shake = 0;
     let laserCharges = 0, laserUsed = 0, nearMisses = 0, nearTimer = 0;
     let setup = { laserCharges: 0, multiplier: 1, modeLabel: "", showScore: false };
 
     const meters = () => Math.floor(distance / G.unitsPerMeter);
     const baseSpeed = () => Math.min(G.baseSpeed + meters() * G.speedPerMeter, G.maxSpeed);
-    const currentSpeed = () => baseSpeed() * (1 + (G.boostMult - 1) * boostAmt);
     const currentSpacing = () => Math.max(START_SPACING - meters() * SPACING_SHRINK, MIN_SPACING);
 
     function clearField() {
@@ -273,7 +268,6 @@
       clearField();
       distance = 0; sinceSpawn = 0; nextSpacing = START_SPACING;
       vel.x = vel.y = 0; safe.x = safe.y = 0; pointerTarget.x = 0;
-      boostMeter = 1; boostAmt = 0; boostLocked = false;
       laserCharges = setup.laserCharges; laserUsed = 0; nearMisses = 0;
       player.position.set(0, 0, 0);
       player.visible = true;
@@ -427,8 +421,6 @@
       hud.score.style.display = setup.showScore ? "block" : "none";
       hud.score.textContent = "Score " + root.ChogTraits.computeScore(m, setup.multiplier) +
         "  (" + m + " m x" + setup.multiplier.toFixed(2) + ")";
-      hud.boost.style.width = (boostMeter * 100) + "%";
-      hud.boost.style.opacity = boostLocked ? 0.4 : 1;
       updateLaserHud();
     }
 
@@ -441,15 +433,7 @@
       const playing = state === "playing";
       const thrusting = playing && (keys.Space || keys.ArrowUp || keys.KeyW || pointerHeld);
 
-      // Boost
-      const wantBoost = playing && (keys.ShiftLeft || keys.ShiftRight || boostButtonDown);
-      if (boostMeter <= 0) boostLocked = true;
-      if (boostLocked && boostMeter > G.boostRelockAt) boostLocked = false;
-      const boosting = wantBoost && !boostLocked;
-      boostMeter = clamp(boostMeter + (boosting ? -G.boostDrain : G.boostRefill) * dt, 0, 1);
-      boostAmt += ((boosting ? 1 : 0) - boostAmt) * Math.min(1, dt * 5);
-
-      const speed = state === "dead" ? 0 : (playing ? currentSpeed() : G.baseSpeed * 0.3);
+      const speed = state === "dead" ? 0 : (playing ? baseSpeed() : G.baseSpeed * 0.3);
 
       // Stars stream past
       const sp = starGeo.attributes.position.array;
@@ -470,17 +454,16 @@
         return true;
       });
 
-      // Flame and exhaust: bigger while thrusting, teal while boosting
-      const power = state === "dead" ? 0 : (playing ? 0.55 + (thrusting ? 0.45 : 0) + boostAmt * 0.6 : 0.5);
+      // Flame and exhaust: bigger while thrusting
+      const power = state === "dead" ? 0 : (playing ? 0.55 + (thrusting ? 0.45 : 0) : 0.5);
       const flameLen = power * rand(0.85, 1.15);
       flame.scale.set(0.7 + power * 0.4, flameLen * 1.4, 0.7 + power * 0.4);
       flame.position.z = 1.42 + 0.35 * flameLen * 1.4;
       flame.visible = state !== "dead";
-      flameMat.color.setHex(boostAmt > 0.5 ? 0x4fd1c5 : 0xffb84d);
       if (state !== "dead") {
         player.updateMatrixWorld();
-        emitAcc += dt * (playing ? 45 + (thrusting ? 35 : 0) + boostAmt * 50 : 25);
-        while (emitAcc >= 1) { emitAcc -= 1; emitExhaust(boostAmt > 0.5, thrusting); }
+        emitAcc += dt * (playing ? 45 + (thrusting ? 35 : 0) : 25);
+        while (emitAcc >= 1) { emitAcc -= 1; emitExhaust(thrusting); }
       }
       exhaust.forEach(p => {
         if (!p.s.visible) return;
@@ -580,7 +563,7 @@
       lookAt.set(player.position.x * 0.8, player.position.y * 0.8, -10);
       camera.lookAt(lookAt);
       const speedRatio = playing ? (baseSpeed() - G.baseSpeed) / (G.maxSpeed - G.baseSpeed) : 0;
-      const fov = 70 + speedRatio * 12 + boostAmt * 8;
+      const fov = 70 + speedRatio * 12;
       if (Math.abs(camera.fov - fov) > 0.01) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix(); }
     }
 

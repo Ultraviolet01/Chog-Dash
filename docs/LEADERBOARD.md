@@ -13,7 +13,7 @@
 3. Run finish: the client sends distance, run time and laser shots. The server:
    - accepts each run only once, from the same wallet;
    - rejects a run time longer than the session has existed;
-   - rejects a distance faster than the game allows (top speed with constant boosting);
+   - rejects a distance faster than the game allows (speed depends only on distance, so the maximum distance for a run time is known);
    - rejects more laser shots than the Chog's charges;
    - re-checks ownership on-chain;
    - computes the score with its own multiplier, ignoring anything the client claims.

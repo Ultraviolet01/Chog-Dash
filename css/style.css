@@ -32,12 +32,8 @@ input { font: 15px Arial, sans-serif; padding: 9px 10px; border-radius: 8px; bor
   border: 1px solid var(--line); }
 #modeBadge.practice { color: var(--accent); }
 #modeBadge.nft { color: var(--accent2); }
-#laserBox { position: absolute; left: 16px; bottom: 56px; font-size: 16px; font-weight: bold; color: #ff8a8a;
+#laserBox { position: absolute; left: 16px; bottom: 16px; font-size: 16px; font-weight: bold; color: #ff8a8a;
   text-shadow: 0 2px 4px #000; display: none; }
-#boostLabel { position: absolute; left: 16px; bottom: 32px; font-size: 12px; letter-spacing: 1px; opacity: 0.8; }
-#boostWrap { position: absolute; left: 16px; bottom: 16px; width: 160px; height: 10px;
-  border: 1px solid rgba(255,255,255,0.4); border-radius: 5px; overflow: hidden; }
-#boostBar { height: 100%; width: 100%; background: var(--accent2); }
 #nearMiss { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); font-size: 22px; font-weight: bold;
   color: var(--accent2); opacity: 0; text-shadow: 0 2px 6px #000; }
 #msg { position: absolute; top: 27%; left: 50%; transform: translate(-50%, -50%); text-align: center;
@@ -47,10 +43,9 @@ input { font: 15px Arial, sans-serif; padding: 9px 10px; border-radius: 8px; bor
 #msg .warn { color: var(--danger); }
 #msg .good { color: var(--ok); }
 #hudMenuBtn { position: absolute; left: 16px; top: 52px; pointer-events: auto; padding: 6px 12px; font-size: 13px; }
-#laserBtn, #boostBtn { position: fixed; bottom: 16px; width: 84px; height: 84px; border-radius: 50%;
+#laserBtn { position: fixed; bottom: 16px; width: 84px; height: 84px; border-radius: 50%;
   font: bold 14px Arial, sans-serif; display: none; color: var(--ink); }
-#boostBtn { right: 16px; border: 2px solid var(--accent2); background: rgba(79,209,197,0.15); }
-#laserBtn { right: 112px; border: 2px solid #ff6b6b; background: rgba(255,107,107,0.15); }
+#laserBtn { right: 16px; border: 2px solid #ff6b6b; background: rgba(255,107,107,0.15); }
 
 /* ---------- Panels ---------- */
 .panel { position: fixed; inset: 0; display: none; overflow-y: auto; touch-action: pan-y;
