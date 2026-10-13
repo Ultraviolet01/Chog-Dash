@@ -393,7 +393,7 @@
     let lastTouch = null;
 
     window.addEventListener("keydown", e => {
-      if (state === "menu" || e.target.tagName === "INPUT") return;
+      if (state === "menu" || e.target.tagName === "INPUT" || document.querySelector(".panel.show")) return;
       keys[e.code] = true;
       if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyA", "KeyD", "KeyW", "KeyS"].includes(e.code)) steerMode = "keys";
       if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();

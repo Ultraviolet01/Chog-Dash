@@ -18,6 +18,7 @@
     runId: null, activeRunId: null, runStatus: { text: "", kind: "" }, sessionReq: 0, runCounter: 0,
     selectReq: 0, holdingsReq: 0, signReq: 0, metaCache: {},
     username: null,
+    lastRun: null,          // the finished run, for the run card
   };
 
   // ---------- Helpers ----------
@@ -103,6 +104,11 @@
     $("pilotSave").onclick = savePilot;
     $("pilotInput").addEventListener("keydown", e => { if (e.key === "Enter") savePilot(); });
     $("rideBtn").onclick = rideChog;
+    $("cardBtn").onclick = openCard;
+    $("cardClose").onclick = closeCard;
+    $("cardSave").onclick = saveCard;
+    $("cardShare").onclick = shareCard;
+    window.addEventListener("keydown", e => { if (e.key === "Escape" && $("cardPanel").classList.contains("show")) closeCard(); });
   }
 
   // ---------- Full screen (button, HUD button, F key) ----------
@@ -173,6 +179,8 @@
   }
 
   function backToMenu() {
+    $("cardBtn").style.display = "none";
+    closeCard();
     S.sessionReq++;
     S.mode = null;
     setFlying(false);
@@ -202,6 +210,8 @@
   }
 
   function onReady() {
+    $("cardBtn").style.display = "none";
+    closeCard();
     setFlying(false);
     if (S.mode === "practice") {
       setMsg("PRACTICE MODE", [
@@ -219,6 +229,8 @@
 
   function onStart() {
     setFlying(true);
+    $("cardBtn").style.display = "none";
+    S.lastRun = null;
     $("msg").style.display = "none";
     S.runCounter++;
     S.activeRunId = S.runId;
@@ -227,6 +239,7 @@
 
   function onEnd(result) {
     setFlying(false);
+    rememberRun(result);
     if (S.mode === "practice") {
       const best = Math.max(readNum(PRACTICE_BEST), result.meters);
       writeNum(PRACTICE_BEST, best);
@@ -259,6 +272,7 @@
     apiCall("/run/finish", { runId: S.activeRunId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed }, S.auth && S.auth.token)
       .then(r => {
         if (run !== S.runCounter || game.state !== "dead") return;
+        if (r.status === "validated" && S.lastRun) { S.lastRun.rank = r.rank || null; S.lastRun.total = r.finalScore; }
         const st = r.status === "validated"
           ? ["Validated. Total distance " + r.finalScore + " m (x" + r.multiplier + ")" + (r.rank ? ", rank " + r.rank : ""), "good"]
           : ["Not validated: " + (r.reason || r.status), "warn"];
@@ -268,6 +282,64 @@
         if (run !== S.runCounter || game.state !== "dead") return;
         setMsg("CRASHED", lines(["Not submitted: " + e.message, "warn"]));
       });
+  }
+
+  // ---------- Run card ----------
+  function rememberRun(result) {
+    const nft = S.mode === "nft" && S.chog;
+    const z = T.zoneAt(result.meters);
+    S.lastRun = {
+      practice: !nft,
+      portrait: nft ? S.chog.img : Art.rookieCanvas(),
+      username: S.username || (nft ? short(S.account) : "Practice pilot"),
+      chogName: nft ? S.chog.name : null,
+      tier: nft ? S.chog.gameplay.tier : null,
+      multiplier: nft ? S.chog.gameplay.multiplier : 1,
+      meters: result.meters, total: result.score,
+      zoneName: z.zone.name + (z.loop > 1 ? " (loop " + z.loop + ")" : ""),
+      lookName: nft && S.chog.look ? S.chog.look.name : null,
+      rank: null,
+    };
+    $("cardBtn").style.display = result.meters > 0 ? "block" : "none";
+  }
+
+  let cardCanvas = null;
+  async function openCard() {
+    if (!S.lastRun) return;
+    await root.ChogCard.ready();
+    cardCanvas = root.ChogCard.render(S.lastRun);
+    $("cardImg").src = cardCanvas.toDataURL("image/png");
+    const canShareFiles = !!(navigator.canShare && navigator.share);
+    $("cardShare").style.display = canShareFiles ? "" : "none";
+    setStatus($("cardStatus"), "");
+    $("cardPanel").classList.add("show");
+  }
+  function closeCard() { $("cardPanel").classList.remove("show"); }
+
+  const cardName = () => "chog-dash-" + (S.lastRun.practice ? "practice" : "run") + "-" + (S.lastRun.practice ? S.lastRun.meters : S.lastRun.total) + "m.png";
+  const cardText = () => S.lastRun.practice
+    ? "I flew " + S.lastRun.meters.toLocaleString() + " m in Chog Dash practice. Can you fly further?"
+    : "I flew " + S.lastRun.total.toLocaleString() + " m total in Chog Dash with " + S.lastRun.chogName + (S.lastRun.rank ? ", rank #" + S.lastRun.rank : "") + ". Can you fly further?";
+  function cardBlob() { return new Promise(res => cardCanvas.toBlob(res, "image/png")); }
+
+  async function saveCard() {
+    if (!cardCanvas) return;
+    const url = URL.createObjectURL(await cardBlob());
+    const a = document.createElement("a");
+    a.href = url; a.download = cardName();
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    setStatus($("cardStatus"), "Saved " + cardName(), "ok");
+  }
+  async function shareCard() {
+    if (!cardCanvas) return;
+    const file = new File([await cardBlob()], cardName(), { type: "image/png" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], text: cardText() });
+      else await navigator.share({ text: cardText() });
+    } catch (e) {
+      if (e && e.name !== "AbortError") setStatus($("cardStatus"), "Couldn't open sharing here. Use Save image instead.", "err");
+    }
   }
 
   // ---------- NFT mode: run eligibility ----------
@@ -567,7 +639,7 @@
       };
       // Rocket paint, glow and aura trail from the traits (looks only, see js/looks.js)
       const look = root.ChogLooks.rocketLook(gp.attributes, meta, Art.samplePalette(art.img).bg);
-      S.chog = { tokenId: idStr, name, metadata: meta, gameplay: gp, imageUrl: art.url, riderCanvas: canvas, riderPoses, look };
+      S.chog = { tokenId: idStr, name, metadata: meta, gameplay: gp, imageUrl: art.url, img: art.img, riderCanvas: canvas, riderPoses, look };
       setStatus(info, lines.concat(lookLines(look)).join("\n"));
       $("rideBtn").disabled = false;
     } catch (e) {

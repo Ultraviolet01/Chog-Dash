@@ -34,6 +34,7 @@
 <div id="flash"></div>
 <div id="zoneFlash"></div>
 <button id="laserBtn">LASER</button>
+<button id="cardBtn">SHARE RUN</button>
 
 <!-- Home screen -->
 <div id="menuPanel" class="home show">
@@ -188,6 +189,19 @@
   <div id="lbMe" class="lb-me"></div>
 </div>
 
+<!-- Run card -->
+<div id="cardPanel" class="panel card-panel">
+  <div class="card-wrap">
+    <img id="cardImg" alt="Run card">
+    <div class="card-actions">
+      <button id="cardShare">Share</button>
+      <button id="cardSave">Save image</button>
+      <button id="cardClose" class="ghost">Close</button>
+    </div>
+    <div id="cardStatus" class="status"></div>
+  </div>
+</div>
+
 <div id="err"></div>
 <script>
 function showError(msg) {
@@ -208,7 +222,7 @@ function loadAll(list, done) {
   loadScript(list[0], function () { loadAll(list.slice(1), done); }, function () { showError("Could not load " + list[0]); });
 }
 function boot() {
-  loadAll(["js/config.js", "js/traits.js", "js/chain.js", "js/metadata.js", "js/art.js", "js/looks.js", "js/scenery.js", "js/pickups.js", "js/game.js", "js/ui.js"], function () {
+  loadAll(["js/config.js", "js/traits.js", "js/chain.js", "js/metadata.js", "js/art.js", "js/looks.js", "js/card.js", "js/scenery.js", "js/pickups.js", "js/game.js", "js/ui.js"], function () {
     try { ChogUI.start(); } catch (e) { showError("Game failed to start: " + e.message); }
   });
 }

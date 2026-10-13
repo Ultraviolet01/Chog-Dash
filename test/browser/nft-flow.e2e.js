@@ -115,6 +115,20 @@ const chain = {
   assert.match(end, /Validated\. Total distance \d+ m \(x1\.15\), rank 1/);
   const flown = Number(end.match(/Distance: (\d+) m/)[1]), total = Math.floor(flown * 1.15);
   await shot('end');
+  // Run card
+  assert.ok(await p.isVisible('#cardBtn'), 'share button shown after a run');
+  await p.click('#cardBtn');
+  await p.waitForFunction(() => document.getElementById('cardPanel').classList.contains('show') && document.getElementById('cardImg').src.startsWith('data:image/png'), null, { timeout: 10000 });
+  const card = await p.evaluate(() => { const i = document.getElementById('cardImg'); return { w: i.naturalWidth, h: i.naturalHeight, rank: ChogUI._state.lastRun.rank, total: ChogUI._state.lastRun.total }; });
+  assert.deepStrictEqual([card.w, card.h, card.rank, card.total], [1080, 1080, 1, total], 'card is 1080x1080 with the validated rank and total');
+  await shot('card');
+  const dl = p.waitForEvent('download');
+  await p.click('#cardSave');
+  assert.strictEqual((await dl).suggestedFilename(), 'chog-dash-run-' + total + 'm.png');
+  await p.keyboard.press('Space'); await p.waitForTimeout(300);
+  assert.strictEqual(await p.evaluate(() => ChogUI._game().state), 'dead', 'Space does not restart the game behind the card');
+  await p.click('#cardClose');
+  assert.ok(!(await p.isVisible('#cardPanel')), 'card closes');
   await p.click('#hudMenuBtn'); await p.click('#lbBtn'); await p.waitForTimeout(600);
   const lb = await p.evaluate(() => [...document.querySelectorAll('#lbPanel .lb-entry')].map(e => ({ rank: (e.querySelector('.medal') || e.querySelector('.rk')).textContent, who: e.querySelector('.who').textContent, chog: e.querySelector('.chog').textContent, total: e.querySelector('.big').textContent, mine: e.classList.contains('mine') })));
   console.log('lb:', JSON.stringify(lb), '| me:', await text('#lbMe'));
