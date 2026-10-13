@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Chog Dash</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@500;600;700&display=swap">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -22,40 +25,71 @@
 </div>
 <button id="laserBtn">LASER</button>
 
-<!-- Main menu -->
-<div id="menuPanel" class="panel show">
-  <div class="wrap">
-    <h1>CHOG DASH</h1>
-    <p class="lead">Ride a rocket through space and dodge asteroids and debris for as long as you can.</p>
-    <div class="cards">
-      <div class="card">
-        <span class="tag practice">PRACTICE MODE</span>
-        <h2>Play as Rookie</h2>
-        <ul>
-          <li>Rookie is the practice pilot, not a Chog NFT.</li>
-          <li>No wallet needed.</li>
-          <li>Your best distance is saved on this device only.</li>
-          <li>Practice runs never go on the NFT leaderboard.</li>
-        </ul>
-        <button id="practiceBtn">Play practice</button>
-      </div>
-      <div class="card">
-        <span class="tag nft">CHOG NFT MODE</span>
-        <h2>Ride your Chog</h2>
-        <ul>
-          <li>Connect a wallet that owns a Chog Genesis NFT on Monad.</li>
-          <li>Ride the rocket as the Chog you pick.</li>
-          <li>Abilities and tier multiplier come from its traits.</li>
-          <li>Validated runs go on the official NFT leaderboard.</li>
-        </ul>
-        <button id="nftBtn">Connect wallet</button>
-      </div>
+<!-- Home screen -->
+<div id="menuPanel" class="home show">
+  <div class="home-top">
+    <div class="chip"><span class="chip-label" id="bestLabel">BEST</span><span id="bestValue">0 m</span></div>
+    <button id="walletChip" class="chip chip-btn"><span class="dot" id="walletDot"></span><span id="walletChipText">Connect wallet</span></button>
+  </div>
+  <div class="home-main">
+    <div class="logo" aria-label="Chog Dash">
+      <span class="logo-1">CHOG</span>
+      <span class="logo-2">DASH</span>
     </div>
-    <div class="row"><button id="lbBtn" class="ghost">Leaderboard</button></div>
-    <div class="foot">
-      <div>Controls: move the mouse and the rocket follows it, up, down, left and right. Or use the keyboard: W/A/S/D or the arrow keys move it, and it stays put when you let go. Click or Space starts a run. E to fire Laser Eyes (only for Chogs with that trait).</div>
-      <div>On touch screens: drag to fly the rocket in any direction, and use the on-screen LASER button (Laser Eyes Chogs only).</div>
-      <div id="formulaNote"></div>
+    <div class="tagline">RIDE &middot; DODGE &middot; SURVIVE</div>
+    <div class="mode-switch">
+      <button id="modePractice" class="mode on">PRACTICE</button>
+      <button id="modeNft" class="mode">CHOG NFT</button>
+    </div>
+    <div id="modeHint" class="mode-hint"></div>
+    <button id="playBtn" class="play">PLAY</button>
+    <div class="key-hint" id="keyHint">Press SPACE to play</div>
+  </div>
+  <div class="home-bottom">
+    <button id="lbBtn" class="icon-btn" title="Leaderboard">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3a5 5 0 0 1-10 0V4z"/><path d="M7 5H4v2a3 3 0 0 0 3 3M17 5h3v2a3 3 0 0 1-3 3M12 12v4M8 20h8M9 16h6v4H9z"/></svg>
+      <span>Ranks</span>
+    </button>
+    <button id="howBtn" class="icon-btn" title="How to play">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.7M12 17h.01"/></svg>
+      <span>How to play</span>
+    </button>
+  </div>
+</div>
+
+<!-- How to play -->
+<div id="howPanel" class="panel">
+  <div class="wrap">
+    <div class="panel-head"><h2>How to play</h2><button id="howBack" class="ghost">Back</button></div>
+    <div class="how-grid">
+      <div class="card">
+        <h3>Controls</h3>
+        <ul>
+          <li><b>Mouse:</b> the rocket follows it, up, down, left and right.</li>
+          <li><b>Keyboard:</b> W/A/S/D or the arrow keys. The rocket stays put when you let go.</li>
+          <li><b>Touch:</b> drag to fly in any direction.</li>
+          <li><b>Start:</b> click, tap or press Space.</li>
+          <li><b>Laser Eyes:</b> E or the LASER button (Chogs with that trait only).</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Zones</h3>
+        <ul>
+          <li><b>Outer Space</b> 2 min</li>
+          <li><b>Asteroid Belt</b> 4 min</li>
+          <li><b>Galactic Drift</b> 8 min</li>
+          <li><b>Deep Cosmic Zone</b> 14 min</li>
+          <li><b>Milky Way</b> 22 min, then the loop starts again, each zone longer than the last.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Modes</h3>
+        <ul>
+          <li><b>Practice:</b> fly as Rookie, the practice pilot. No wallet. Best distance saved on this device only, never ranked.</li>
+          <li><b>Chog NFT:</b> ride a Chog Genesis NFT you own. Abilities and tier multiplier come from its traits. Validated runs go on the leaderboard.</li>
+          <li id="formulaNote"></li>
+        </ul>
+      </div>
     </div>
   </div>
 </div>

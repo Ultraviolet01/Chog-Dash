@@ -73,7 +73,7 @@ const chain = {
 
   await p.goto('http://localhost:3456/');
   await p.waitForTimeout(800);
-  await p.click('#nftBtn'); await p.waitForTimeout(500);
+  await p.click('#modeNft'); await p.click('#playBtn'); await p.waitForTimeout(500);
   await p.click('#walletButtons button'); await p.waitForTimeout(800);
   console.log('wallet:', await text('#walletStatus'));
   console.log('holdings:', await text('#holdingsStatus'));

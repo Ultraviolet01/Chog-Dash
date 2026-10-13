@@ -260,7 +260,7 @@
     let obstacles = [], bits = [];
     const vel = { x: 0, y: 0 };
     const safe = { x: 0, y: 0 };
-    let shake = 0;
+    let shake = 0, idleY = 0;
     let laserCharges = 0, laserUsed = 0, nearMisses = 0, nearTimer = 0;
     let setup = { laserCharges: 0, multiplier: 1, modeLabel: "", showScore: false };
 
@@ -282,7 +282,7 @@
       zoneKey = null; bannerTimer = 0;
       hud.zoneBanner.style.opacity = 0;
       scenery.setZone("outer", true);
-      player.position.set(0, 0, 0);
+      player.position.z = 0;
       player.visible = true;
       state = "ready";
       updateHud(0);
@@ -293,7 +293,7 @@
     function toMenu() {
       clearField();
       state = "menu";
-      player.position.set(0, 0, 0);
+      player.position.z = 0;
       player.visible = true;
       hud.root.style.display = "none";
     }
@@ -513,8 +513,15 @@
       }
 
       if (state === "ready" || state === "menu") {
-        player.position.y = Math.sin(now / 400) * 0.25;
-        player.rotation.set(Math.sin(now / 900) * 0.05, 0, Math.sin(now / 700) * 0.08);
+        // Home screen: the rider poses at the side (or lower down on tall screens), slowly turning to show off.
+        // Ready screen: it glides back to the centre.
+        const showcase = state === "menu", wide = camera.aspect >= 1;
+        const tx = showcase && wide ? 2.6 : 0, ty = showcase ? (wide ? -0.3 : -2.3) : 0;
+        const k = Math.min(1, dt * 3);
+        player.position.x += (tx - player.position.x) * k;
+        idleY += (ty - idleY) * k;
+        player.position.y = idleY + Math.sin(now / 400) * 0.25;
+        player.rotation.set(Math.sin(now / 900) * 0.05, showcase ? Math.sin(now / 1700) * 0.5 - 0.2 : 0, Math.sin(now / 700) * 0.08);
       }
 
       if (playing) {
@@ -583,17 +590,20 @@
         });
       }
 
-      // Camera follows from behind and above; wider view at speed
-      const camX = player.position.x * 0.6, camY = player.position.y * 0.6 + 2.7;
+      // Camera follows from behind and above; closer and lower on the home screen to show off the rider
+      const home = state === "menu";
+      const camX = player.position.x * (home ? 0.3 : 0.6), camY = player.position.y * (home ? 0.3 : 0.6) + (home ? 1.9 : 2.7);
       camera.position.x += (camX - camera.position.x) * Math.min(1, dt * 6);
       camera.position.y += (camY - camera.position.y) * Math.min(1, dt * 6);
-      camera.position.z = baseCamZ;
+      // On the home screen the whole play area doesn't need to fit, so tall screens can come in close too
+      const homeZ = camera.aspect >= 1 ? baseCamZ * 0.72 : 9;
+      camera.position.z += ((home ? homeZ : baseCamZ) - camera.position.z) * Math.min(1, dt * 3);
       if (shake > 0) {
         shake -= dt;
         camera.position.x += rand(-0.3, 0.3) * Math.min(1, shake * 3);
         camera.position.y += rand(-0.3, 0.3) * Math.min(1, shake * 3);
       }
-      lookAt.set(player.position.x * 0.8, player.position.y * 0.8, -10);
+      lookAt.set(player.position.x * (home ? 0.45 : 0.8), player.position.y * (home ? 0.6 : 0.8) + (home ? 0.4 : 0), -10);
       camera.lookAt(lookAt);
       const speedRatio = playing ? (baseSpeed() - G.baseSpeed) / (G.maxSpeed - G.baseSpeed) : 0;
       const fov = 70 + speedRatio * 12;

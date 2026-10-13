@@ -23,7 +23,8 @@
   const short = a => (a ? a.slice(0, 6) + "..." + a.slice(-4) : "");
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function show(panelId) {
-    ["menuPanel", "nftPanel", "lbPanel"].forEach(id => $(id).classList.toggle("show", id === panelId));
+    ["menuPanel", "nftPanel", "lbPanel", "howPanel"].forEach(id => $(id).classList.toggle("show", id === panelId));
+    if (panelId === "menuPanel") refreshHome();
   }
   function setStatus(el, text, kind) { el.textContent = text; el.className = "status" + (kind ? " " + kind : ""); }
   function readNum(key) { try { return Number(localStorage.getItem(key)) || 0; } catch (e) { return 0; } }
@@ -74,18 +75,60 @@
   // ---------- Start ----------
   function start() {
     game = root.ChogGame.init({ onReady, onStart, onEnd });
-    $("formulaNote").textContent = "NFT runs: " + cfg.scoreFormula +
+    $("formulaNote").innerHTML = "<b>Score:</b> " + esc(cfg.scoreFormula) +
       ". Tier multipliers are a Chog Dash game-design choice, not an official Chog Genesis rule.";
-    $("practiceBtn").onclick = startPractice;
-    $("nftBtn").onclick = openNft;
+    $("modePractice").onclick = () => setHomeMode("practice");
+    $("modeNft").onclick = () => setHomeMode("nft");
+    $("playBtn").onclick = play;
+    $("walletChip").onclick = openNft;
     $("lbBtn").onclick = openLeaderboard;
+    $("howBtn").onclick = () => show("howPanel");
     $("nftBack").onclick = () => show("menuPanel");
     $("lbBack").onclick = () => show("menuPanel");
+    $("howBack").onclick = () => show("menuPanel");
+    // Space or Enter on the home screen plays
+    window.addEventListener("keydown", e => {
+      if (!$("menuPanel").classList.contains("show") || e.repeat) return;
+      if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); play(); }
+    });
+    let saved = "practice";
+    try { saved = localStorage.getItem("chogDashMode") || "practice"; } catch (e) {}
+    setHomeMode(saved === "nft" ? "nft" : "practice");
     $("hudMenuBtn").onclick = backToMenu;
     $("switchNet").onclick = switchNetwork;
     $("tokenCheck").onclick = () => selectToken($("tokenInput").value.trim());
     $("tokenInput").addEventListener("keydown", e => { if (e.key === "Enter") selectToken($("tokenInput").value.trim()); });
     $("rideBtn").onclick = rideChog;
+  }
+
+  // ---------- Home screen ----------
+  let homeMode = "practice";
+  function setHomeMode(m) {
+    homeMode = m;
+    try { localStorage.setItem("chogDashMode", m); } catch (e) {}
+    $("modePractice").classList.toggle("on", m === "practice");
+    $("modeNft").classList.toggle("on", m === "nft");
+    refreshHome();
+  }
+  function refreshHome() {
+    const nft = homeMode === "nft";
+    $("modeHint").textContent = nft
+      ? (S.chog ? "Ride " + S.chog.name + ". Abilities from its traits. Ranked." : "Ride a Chog you own. Abilities from its traits. Ranked.")
+      : "Fly as Rookie, the practice pilot. No wallet. Not ranked.";
+    $("playBtn").textContent = nft && !S.chog ? "PICK CHOG" : "PLAY";
+    $("playBtn").style.fontSize = nft && !S.chog ? "30px" : "";
+    $("bestLabel").textContent = nft && S.chog ? "BEST SCORE" : "BEST";
+    $("bestValue").textContent = nft && S.chog
+      ? readNum("chogDashNftBest:" + S.chog.tokenId).toLocaleString()
+      : readNum(PRACTICE_BEST).toLocaleString() + " m";
+    $("walletChipText").textContent = S.account ? short(S.account) : "Connect wallet";
+    $("walletDot").classList.toggle("on", !!S.account && S.chainId === cfg.collection.chainId);
+    $("keyHint").textContent = "Press SPACE to " + (nft && !S.chog ? "pick a Chog" : "play");
+  }
+  function play() {
+    if (homeMode === "practice") startPractice();
+    else if (S.chog) rideChog();
+    else openNft();
   }
 
   function enterGame() {

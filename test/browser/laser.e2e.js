@@ -14,7 +14,7 @@ const R = path.join(__dirname, '../../');
   await p.route('**/three.min.js', r => r.fulfill({ body: three, contentType: 'application/javascript' }));
   await p.goto('file://' + path.join(R, 'index.html') + '?dev=laser');
   await p.waitForTimeout(1000);
-  await p.click('#practiceBtn'); await p.waitForTimeout(300);
+  await p.click('#playBtn'); await p.waitForTimeout(300);
   await p.keyboard.press('Space'); await p.waitForTimeout(100);
   const r = await p.evaluate(() => {
     const g = ChogUI._game(), d = g._debug;

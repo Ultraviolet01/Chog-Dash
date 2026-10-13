@@ -16,7 +16,7 @@ const R = path.join(__dirname, '../../');
   await p.route('**/three.min.js', r => r.fulfill({ body: three, contentType: 'application/javascript' }));
   await p.goto('file://' + path.join(R, 'index.html'));
   await p.waitForTimeout(1000);
-  await p.click('#practiceBtn'); await p.waitForTimeout(300);
+  await p.click('#playBtn'); await p.waitForTimeout(300);
   await p.mouse.click(640, 360);
   // Keep the rocket alive by moving anything about to hit it out of the way
   await p.evaluate(() => setInterval(() => { const d = ChogUI._game()._debug, q = d.player.position;
