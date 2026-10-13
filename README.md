@@ -23,6 +23,11 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 - Touch screens: drag to fly the rocket in any direction, on-screen LASER button.
 - There is no boost. Speed rises on its own as you travel further.
 
+## Performance
+
+- The game lowers its render resolution on its own if the frame rate stays under 45 fps.
+- Add `?fps` to the address (for example `index.html?fps`) to show the frame rate and quality level in the corner.
+
 ## Gameplay rules
 
 - One hit ends the run. Touching the screen edges does not.

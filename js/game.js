@@ -11,8 +11,10 @@
   const BOUND_X = 7, BOUND_Y = 4.2;   // play area half-width and half-height
   const HIT_R = 0.6;                  // player hitbox radius (smaller than the visible rocket + rider)
   const HIT_OFFSET_Y = 0.35;          // hitbox centre, above the rocket's middle
-  const STEER_SPEED = 14;             // max sideways speed
+  const STEER_SPEED = 14;             // max sideways speed (keyboard)
   const STEER_ACCEL = 70;
+  const POINTER_SPEED_X = 20, POINTER_SPEED_Y = 16;   // mouse/touch: faster, so the rocket keeps up with the pointer
+  const POINTER_ACCEL = 140, POINTER_GAIN = 9;
   const THRUST = 34;                  // upward acceleration while holding the ascent control
   const GRAVITY = 24;                 // downward acceleration while released
   const MAX_UP = 10, MAX_DOWN = 11;
@@ -37,7 +39,9 @@
 
     // ---------- Renderer, scene, camera ----------
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    // Start at the screen's pixel density (max 1.5) and lower it if the frame rate drops
+    let pixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
+    renderer.setPixelRatio(pixelRatio);
     renderer.domElement.id = "gameCanvas";
     document.body.insertBefore(renderer.domElement, document.body.firstChild);
 
@@ -142,24 +146,37 @@
       riderMat.needsUpdate = true;
     }
 
-    // ---------- Exhaust particles (pooled) ----------
-    const exhaust = [];
-    for (let i = 0; i < 90; i++) {
-      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: dotTex, color: 0xffb84d, transparent: true,
-        blending: THREE.AdditiveBlending, depthWrite: false }));
-      s.visible = false;
-      scene.add(s);
-      exhaust.push({ s, life: 0, max: 1, v: new THREE.Vector3() });
-    }
+    // ---------- Exhaust particles (one pooled point cloud, drawn in a single call) ----------
+    const EXHAUST = 60;
+    const exPos = new Float32Array(EXHAUST * 3), exCol = new Float32Array(EXHAUST * 3);
+    const exVel = new Float32Array(EXHAUST * 3), exLife = new Float32Array(EXHAUST), exMax = new Float32Array(EXHAUST);
+    const exGeo = new THREE.BufferGeometry();
+    exGeo.setAttribute("position", new THREE.BufferAttribute(exPos, 3));
+    exGeo.setAttribute("color", new THREE.BufferAttribute(exCol, 3));
+    const exPoints = new THREE.Points(exGeo, new THREE.PointsMaterial({ size: 0.35, map: dotTex, vertexColors: true,
+      transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    exPoints.frustumCulled = false;
+    scene.add(exPoints);
+    const nozzleWorld = new THREE.Vector3();
     let exhaustIdx = 0, emitAcc = 0;
     function emitExhaust(thrusting) {
-      const p = exhaust[exhaustIdx];
-      exhaustIdx = (exhaustIdx + 1) % exhaust.length;
-      const nozzleWorld = new THREE.Vector3(0, 0, 1.45).applyMatrix4(rocket.matrixWorld);
-      p.s.position.copy(nozzleWorld);
-      p.v.set(rand(-0.6, 0.6), rand(-0.6, 0.6) - (thrusting ? 1.2 : 0), rand(9, 13));
-      p.max = p.life = rand(0.18, 0.28);
-      p.s.visible = true;
+      const i = exhaustIdx;
+      exhaustIdx = (exhaustIdx + 1) % EXHAUST;
+      nozzleWorld.set(0, 0, 1.45).applyMatrix4(rocket.matrixWorld);
+      exPos[i * 3] = nozzleWorld.x; exPos[i * 3 + 1] = nozzleWorld.y; exPos[i * 3 + 2] = nozzleWorld.z;
+      exVel[i * 3] = rand(-0.6, 0.6); exVel[i * 3 + 1] = rand(-0.6, 0.6) - (thrusting ? 1.2 : 0); exVel[i * 3 + 2] = rand(9, 13);
+      exMax[i] = exLife[i] = rand(0.18, 0.28);
+    }
+    function updateExhaust(dt) {
+      for (let i = 0; i < EXHAUST; i++) {
+        if (exLife[i] <= 0) { exCol[i * 3] = exCol[i * 3 + 1] = exCol[i * 3 + 2] = 0; continue; }
+        exLife[i] -= dt;
+        exPos[i * 3] += exVel[i * 3] * dt; exPos[i * 3 + 1] += exVel[i * 3 + 1] * dt; exPos[i * 3 + 2] += exVel[i * 3 + 2] * dt;
+        const k = Math.max(0, exLife[i] / exMax[i]) * 0.6;   // additive blending: darker = more transparent
+        exCol[i * 3] = k; exCol[i * 3 + 1] = 0.72 * k; exCol[i * 3 + 2] = 0.3 * k;
+      }
+      exGeo.attributes.position.needsUpdate = true;
+      exGeo.attributes.color.needsUpdate = true;
     }
 
     // ---------- Obstacle shapes ----------
@@ -354,10 +371,10 @@
 
     function updateLaserHud() {
       const on = setup.laserCharges > 0;
-      hud.laserBox.style.display = on ? "block" : "none";
-      hud.laserBtn.style.display = on ? "block" : "none";
-      hud.laser.textContent = laserCharges + "/" + setup.laserCharges;
-      hud.laserBtn.disabled = laserCharges <= 0;
+      setDisplay(hud.laserBox, on);
+      setDisplay(hud.laserBtn, on);
+      setText(hud.laser, laserCharges + "/" + setup.laserCharges);
+      if (hud.laserBtn.disabled !== (laserCharges <= 0)) hud.laserBtn.disabled = laserCharges <= 0;
     }
 
     // ---------- Obstacles ----------
@@ -415,14 +432,17 @@
     }
 
     // ---------- HUD ----------
+    // Only touch the page when a value actually changes, to avoid layout work every frame
+    function setText(el, text) { if (el._text !== text) { el._text = text; el.textContent = text; } }
+    function setDisplay(el, on) { const v = on ? "block" : "none"; if (el._display !== v) { el._display = v; el.style.display = v; } }
     function updateHud(speed) {
       const m = meters();
-      hud.dist.textContent = m + " m";
-      hud.speed.textContent = "x" + ((speed || G.baseSpeed) / G.baseSpeed).toFixed(1);
-      hud.mode.textContent = setup.modeLabel;
-      hud.score.style.display = setup.showScore ? "block" : "none";
-      hud.score.textContent = "Score " + root.ChogTraits.computeScore(m, setup.multiplier) +
-        "  (" + m + " m x" + setup.multiplier.toFixed(2) + ")";
+      setText(hud.dist, m + " m");
+      setText(hud.speed, "x" + ((speed || G.baseSpeed) / G.baseSpeed).toFixed(1));
+      setText(hud.mode, setup.modeLabel);
+      setDisplay(hud.score, setup.showScore);
+      setText(hud.score, "Score " + root.ChogTraits.computeScore(m, setup.multiplier) +
+        "  (" + m + " m x" + setup.multiplier.toFixed(2) + ")");
       updateLaserHud();
     }
 
@@ -469,15 +489,7 @@
         emitAcc += dt * (playing ? 45 + (thrusting ? 35 : 0) : 25);
         while (emitAcc >= 1) { emitAcc -= 1; emitExhaust(thrusting); }
       }
-      exhaust.forEach(p => {
-        if (!p.s.visible) return;
-        p.life -= dt;
-        if (p.life <= 0) { p.s.visible = false; return; }
-        p.s.position.addScaledVector(p.v, dt);
-        const k = p.life / p.max;
-        p.s.scale.setScalar(0.06 + 0.22 * k);
-        p.s.material.opacity = 0.6 * k;
-      });
+      updateExhaust(dt);
 
       // Laser beam fade
       if (beamLife > 0) {
@@ -500,11 +512,12 @@
           vel.x += clamp(tx - vel.x, -step, step);
           vel.y = clamp(vel.y + (holdingUp ? THRUST : -GRAVITY) * dt, -MAX_DOWN, MAX_UP);
         } else {
-          // Mouse/touch: fly toward the pointer, at the same top speeds as the keyboard
-          const tx = clamp((pointerTarget.x - player.position.x) * 6, -STEER_SPEED, STEER_SPEED);
-          const ty = clamp((pointerTarget.y - player.position.y) * 6, -MAX_DOWN, MAX_UP);
-          vel.x += clamp(tx - vel.x, -step, step);
-          vel.y += clamp(ty - vel.y, -step, step);
+          // Mouse/touch: fly toward the pointer
+          const tx = clamp((pointerTarget.x - player.position.x) * POINTER_GAIN, -POINTER_SPEED_X, POINTER_SPEED_X);
+          const ty = clamp((pointerTarget.y - player.position.y) * POINTER_GAIN, -POINTER_SPEED_Y, POINTER_SPEED_Y);
+          const pstep = POINTER_ACCEL * dt;
+          vel.x += clamp(tx - vel.x, -pstep, pstep);
+          vel.y += clamp(ty - vel.y, -pstep, pstep);
         }
         player.position.x += vel.x * dt;
         player.position.y += vel.y * dt;
@@ -521,7 +534,7 @@
       if (playing || state === "ready") updateHud(speed);
 
       // Near-miss text fade
-      if (nearTimer > 0) { nearTimer -= dt; hud.near.style.opacity = Math.max(0, nearTimer / 0.6); }
+      if (nearTimer > 0) { nearTimer -= dt; hud.near.style.opacity = Math.max(0, nearTimer / 0.6).toFixed(2); }
 
       // Move obstacles, collide, detect near misses, clean up
       if (state !== "dead") {
@@ -573,13 +586,44 @@
       if (Math.abs(camera.fov - fov) > 0.01) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix(); }
     }
 
+    // Adaptive quality: if the frame rate stays low, render fewer pixels (never goes back up)
+    let perfTime = 0, perfFrames = 0;
+    const fpsBox = /[?&]fps\b/.test(location.search) ? document.body.appendChild(document.createElement("div")) : null;
+    if (fpsBox) fpsBox.style.cssText = "position:fixed;right:8px;bottom:8px;font:12px monospace;color:#9fe;z-index:50;pointer-events:none";
+    function trackPerformance(raw) {
+      if (raw > 0.25) return;                      // tab was hidden or the page paused
+      perfTime += raw; perfFrames++;
+      if (perfTime < 2) return;
+      const fps = perfFrames / perfTime;
+      if (fps < 45 && pixelRatio > 0.75) {
+        pixelRatio = Math.max(0.75, pixelRatio - 0.25);
+        renderer.setPixelRatio(pixelRatio);
+      }
+      if (fpsBox) fpsBox.textContent = fps.toFixed(0) + " fps, quality " + pixelRatio.toFixed(2);
+      perfTime = perfFrames = 0;
+    }
+
+    // Prepare every material once now, so the first crash, laser or debris doesn't freeze the game
+    function warmUp() {
+      const temp = [new THREE.Mesh(rockGeos[0], rockMat)].concat(Object.values(debris).map(d => new THREE.Mesh(d.geo, d.mat)));
+      temp.forEach((m, i) => { m.position.set(i * 3 - 3, 0, -40); scene.add(m); });
+      beams.visible = true;
+      renderer.compile(scene, camera);
+      renderer.render(scene, camera);
+      temp.forEach(m => scene.remove(m));
+      beams.visible = false;
+    }
+
     function frame() {
       requestAnimationFrame(frame);
-      update(Math.min(clock.getDelta(), 0.05));
+      const raw = clock.getDelta();
+      trackPerformance(raw);
+      update(Math.min(raw, 0.05));
       renderer.render(scene, camera);
     }
     camera.position.set(0, 2.7, baseCamZ);
     hud.root.style.display = "none";
+    warmUp();
     frame();
 
     return {
