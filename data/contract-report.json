@@ -1,0 +1,70 @@
+{
+  "checkedAt": "2026-10-13T19:40:37.894Z",
+  "rpc": "https://rpc.monad.xyz",
+  "contract": "0xc96d31f8626c6d03fae5dcd3d61e3fb9f4a73763",
+  "checks": {
+    "chainId": 143,
+    "hasContractCode": true,
+    "name": {
+      "ok": true,
+      "value": "Chog Genesis"
+    },
+    "symbol": {
+      "ok": true,
+      "value": "CHOG"
+    },
+    "totalSupply": {
+      "ok": true,
+      "value": "1969"
+    },
+    "supports.erc721": {
+      "ok": true,
+      "value": true
+    },
+    "supports.erc721Metadata": {
+      "ok": true,
+      "value": true
+    },
+    "supports.erc721Enumerable": {
+      "ok": true,
+      "value": false
+    },
+    "tokenProbes": [
+      {
+        "id": 0,
+        "exists": false,
+        "tokenURI": "The contract function \"tokenURI\" reverted with the following signature:\n0x7e273289"
+      },
+      {
+        "id": 1,
+        "exists": true,
+        "tokenURI": "ipfs://bafybeid4ybujnscdipkno7ps5utqelp5ry5ryreqhay3zhgk3a6x4jruqu/1462.json"
+      },
+      {
+        "id": 1968,
+        "exists": true,
+        "tokenURI": "ipfs://bafybeid4ybujnscdipkno7ps5utqelp5ry5ryreqhay3zhgk3a6x4jruqu/1460.json"
+      },
+      {
+        "id": 1969,
+        "exists": true,
+        "tokenURI": "ipfs://bafybeid4ybujnscdipkno7ps5utqelp5ry5ryreqhay3zhgk3a6x4jruqu/1461.json"
+      },
+      {
+        "id": 1970,
+        "exists": false,
+        "tokenURI": "The contract function \"tokenURI\" reverted with the following signature:\n0x7e273289"
+      }
+    ],
+    "tokenIdRange (inferred)": {
+      "first": 1,
+      "last": 1969
+    },
+    "tokenURI uses metadata CID": true
+  },
+  "problems": [],
+  "tokenIdRange": {
+    "first": 1,
+    "last": 1969
+  }
+}

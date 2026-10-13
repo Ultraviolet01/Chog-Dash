@@ -27,11 +27,14 @@
     },
 
     // Tried in order when an ipfs:// link fails to load
+    // Order checked against the live collection: filebase is fast and allows cross-site image use;
+    // ipfs.io and the w3s/nftstorage subdomain gateways rate-limit heavily, so they come last.
     ipfsGateways: [
+      "https://ipfs.filebase.io/ipfs/",
+      "https://gateway.pinata.cloud/ipfs/",
       "https://ipfs.io/ipfs/",
       "https://w3s.link/ipfs/",
       "https://nftstorage.link/ipfs/",
-      "https://gateway.pinata.cloud/ipfs/",
     ],
     fetchTimeoutMs: 12000,
 
