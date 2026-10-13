@@ -7,7 +7,7 @@
   const $ = id => document.getElementById(id);
   const dev = new URLSearchParams(location.search).get("dev") || "";
   const PRACTICE_BEST = "chogDashPracticeBest";
-  const DUST_TOTAL = "chogDashStardustTotal";
+  const LAST_RUN = "chogDashLastM";
   const isTouch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
 
   let game;
@@ -153,7 +153,7 @@
     $("playBtn").textContent = nft && !S.chog ? "PICK CHOG" : "PLAY";
     $("playBtn").style.fontSize = nft && !S.chog ? "30px" : "";
     $("bestLabel").textContent = nft && S.chog ? "BEST SCORE" : "BEST";
-    $("dustTotal").textContent = readNum(DUST_TOTAL).toLocaleString();
+    $("lastValue").textContent = readNum(LAST_RUN).toLocaleString() + " m";
     $("bestValue").textContent = nft && S.chog
       ? readNum("chogDashNftBest:" + S.chog.tokenId).toLocaleString()
       : readNum(PRACTICE_BEST).toLocaleString() + " m";
@@ -226,7 +226,7 @@
 
   function onEnd(result) {
     setFlying(false);
-    writeNum(DUST_TOTAL, readNum(DUST_TOTAL) + (result.stardust || 0));
+    writeNum(LAST_RUN, result.meters);
     if (S.mode === "practice") {
       const best = Math.max(readNum(PRACTICE_BEST), result.meters);
       writeNum(PRACTICE_BEST, best);

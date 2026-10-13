@@ -5,7 +5,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 ## Home screen
 
 - Live 3D scene with the rider on its rocket as the hero, a big PLAY button and a Practice / Chog NFT switch.
-- Top: your best distance (or the selected Chog's best score) and a wallet chip.
+- Top: your best distance (or the selected Chog's best score), your last run's distance, and a wallet chip.
 - Bottom: Ranks (leaderboard) and How to play. Space or Enter also plays.
 
 ## Two ways to play
@@ -42,7 +42,7 @@ Nothing spawns in the first 10 seconds of a run. Pickups can appear anywhere, ri
 
 | Pickup | What it does |
 |---|---|
-| Stardust | Every 100 gives an extra life (hold up to 3). A crash with a life continues the run with 2 s of protection. Resets each run; a lifetime total shows on the home screen. |
+| Stardust | Every 100 gives an extra life (hold up to 3). A crash with a life continues the run with 2 s of protection. Resets each run. |
 | Golden Horn | Rare, worth 50 Stardust. |
 | Dash | Speed burst (x1.8) that smashes through anything in its path, huge asteroids included, for 3 s. |
 | Magnet | Pulls in Stardust and Golden Horns nearby for 10 s. |
