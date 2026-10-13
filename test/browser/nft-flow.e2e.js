@@ -112,14 +112,15 @@ const chain = {
   await p.waitForFunction(() => !document.getElementById('msg').textContent.includes('Submitting'), null, { timeout: 15000 });
   const end = await text('#msg');
   console.log('end:', end);
-  assert.match(end, /Validated\. Server score \d+ \(x1\.15\), rank 1/);
+  assert.match(end, /Validated\. Total distance \d+ m \(x1\.15\), rank 1/);
+  const flown = Number(end.match(/Distance: (\d+) m/)[1]), total = Math.floor(flown * 1.15);
   await shot('end');
   await p.click('#hudMenuBtn'); await p.click('#lbBtn'); await p.waitForTimeout(600);
   console.log('lb:', await p.$$eval('#lbRows tr', r => r.map(x => x.textContent)));
   await shot('lb');
   const lb = await p.$$eval('#lbRows tr', r => r.map(x => x.textContent));
   assert.strictEqual(lb.length, 1, 'one leaderboard entry');
-  assert.match(lb[0], /^1Test_Pilot[\d,]+ m$/, 'leaderboard shows the username and distance');
+  assert.strictEqual(lb[0], '1Test_Pilot' + total.toLocaleString() + ' m', 'leaderboard shows the username and total distance');
   assert.deepStrictEqual(errs, [], 'no page errors');
   console.log('PASS nft flow');
   await b.close(); server.close();

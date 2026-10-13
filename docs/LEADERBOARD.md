@@ -2,15 +2,15 @@
 
 ## Ranking
 
-- One entry per player: each username's longest validated distance, flying any Chog they own.
-- The leaderboard shows rank, username and distance. The Chog used for the best run is still stored and returned by the API.
+- One entry per player: each username's best total distance, flying any Chog they own.
 - Pilot names:
   - Set after signing in (`POST /api/profile`, signed in). One name per wallet.
   - 3 to 16 letters, numbers or underscores, starting with a letter, so a name can't look like a wallet address.
   - Unique regardless of letter case. Changing your name frees the old one.
   - The leaderboard looks names up when it's shown, so a rename applies to past entries too.
   - A pilot name is required before a ranked run (the server refuses to start one without it).
-- The leaderboard shows distance only. Tier multipliers and the score (distance x multiplier) are still computed and stored, but are on hold until the NFT integration is verified.
+- Ranked by total distance: distance flown x the Chog's tier multiplier (Common 1.00, Uncommon 1.05, Rare 1.15, Epic 1.25, Legendary 1.40), rounded down. Computed on the server.
+- The table shows rank, username and total distance. The distance actually flown and the Chog used are stored and returned by the API.
 - Practice runs are never submitted.
 
 ## Flow
@@ -24,8 +24,8 @@
    - rejects a distance faster than the game allows (speed depends only on distance, so the maximum distance for a run time is known);
    - rejects more laser shots than the Chog's charges;
    - re-checks ownership on-chain;
-   - computes the score with its own multiplier, ignoring anything the client claims.
-4. Every submission is stored with wallet, token ID, raw distance, final score, tier, multiplier and validation status (validated or rejected, with the reason).
+   - computes the total distance with its own multiplier, ignoring anything the client claims.
+4. Every submission is stored with wallet, token ID, raw distance, total distance, tier, multiplier and validation status (validated or rejected, with the reason).
 
 ## Limits (honest)
 

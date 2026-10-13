@@ -98,12 +98,12 @@
 
     leaderboard: {
       apiBase: "/api",
-      // Ranking rule: one entry per NFT (its best validated score). The wallet is shown alongside.
-      rankBy: "token",
+      // Ranking rule: one entry per player (username), by best total distance (distance x tier multiplier)
+      rankBy: "player",
       size: 50,
     },
 
-    // Score = floor(raw distance in meters x tier multiplier)
-    scoreFormula: "Score = distance (m) x tier multiplier, rounded down",
+    // Total distance = floor(raw distance in meters x tier multiplier). This is what the leaderboard ranks.
+    scoreFormula: "Total distance = distance flown (m) x tier multiplier, rounded down. The leaderboard ranks this",
   };
 });

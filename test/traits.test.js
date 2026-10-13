@@ -63,8 +63,8 @@ test("tier never changes laser charges", () => {
   }
 });
 
-test("score keeps raw distance separate and rounds down", () => {
-  assert.strictEqual(T.computeScore(100, 1.15), 114);
+test("total distance keeps raw distance separate and rounds down", () => {
+  assert.strictEqual(T.computeScore(100, 1.15), 115);
   assert.strictEqual(T.computeScore(99, 1.4), 138);
   assert.strictEqual(T.computeScore(0, 1.4), 0);
   assert.strictEqual(T.computeScore(-5, 1), 0);
@@ -136,4 +136,11 @@ test("speed keeps rising with distance, more slowly further on", () => {
   assert.ok(v(20000) - v(10000) > v(30000) - v(20000));
   // Zone 5 is much faster than the early ramp's top
   assert.ok(v(T.zoneStartMeters(4)) > g.rampSpeed * 2);
+});
+
+test("total distance is not rounded down by floating-point error", () => {
+  assert.strictEqual(T.computeScore(650, 1.4), 910);
+  assert.strictEqual(T.computeScore(100, 1.15), 115);
+  assert.strictEqual(T.computeScore(7, 1.05), 7);
+  assert.strictEqual(T.computeScore(173, 1.15), 198);
 });

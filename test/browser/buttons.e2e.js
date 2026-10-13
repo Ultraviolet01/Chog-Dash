@@ -174,7 +174,7 @@ function ok(name, cond, detail) {
   // ---------- Back home with a Chog chosen ----------
   await p.click('#hudMenuBtn'); await p.waitForTimeout(300);
   ok('home in NFT mode shows PLAY once a Chog is chosen', (await text('#playBtn')) === 'PLAY' && /Test Chog One/.test(await text('#modeHint')));
-  ok('best chip shows the Chog best score', (await text('#bestLabel')) === 'BEST SCORE');
+  ok('best chip shows the Chog best total distance', (await text('#bestLabel')) === 'BEST TOTAL' && / m$/.test(await text('#bestValue')));
   ok('wallet chip shows pilot name with green dot', (await text('#walletChipText')) === 'Rocket_Chog' && await p.evaluate(() => document.getElementById('walletDot').classList.contains('on')));
   await p.click('#playBtn');
   await p.waitForFunction(() => ChogUI._game().state === 'ready', null, { timeout: 15000 });

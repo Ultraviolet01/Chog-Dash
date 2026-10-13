@@ -75,8 +75,10 @@
     return { attributes, abilities, tier, tierStatus, multiplier, problems, notes };
   }
 
+  // Total distance = distance x tier multiplier, rounded down. The tiny epsilon stops floating-point
+  // error rounding exact products down (650 x 1.4 is 909.9999... in floating point, but should be 910).
   function computeScore(meters, multiplier) {
-    return Math.floor(Math.max(0, meters) * multiplier);
+    return Math.floor(Math.max(0, meters) * multiplier + 1e-9);
   }
 
   // World speed (units/s) at a distance (m): a quick ramp, then a slower climb that never stops.

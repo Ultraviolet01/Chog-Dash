@@ -65,7 +65,7 @@ test("the server's tier is used, whatever the client sends", async () => {
   assert.strictEqual(fin.finalScore, 420);
 });
 
-test("one entry per player: their best distance with any of their Chogs", async () => {
+test("one entry per player, ranked by total distance (distance x tier) with any of their Chogs", async () => {
   const { h, alice, bob, signIn, advance } = setup();
   const token = await signIn(alice, "Alice");
   for (const [tokenId, meters] of [["1", 500], ["2", 650], ["1", 200]]) {
@@ -76,9 +76,11 @@ test("one entry per player: their best distance with any of their Chogs", async 
   const tb = await signIn(bob, "Bob");
   const s = await h.runStart({ body: { tokenId: "3" }, token: tb });
   advance(30000);
-  await h.runFinish({ body: { runId: s.runId, meters: 600, durationMs: 29000 }, token: tb });
+  await h.runFinish({ body: { runId: s.runId, meters: 700, durationMs: 29000 }, token: tb });
+  // Alice: 650 m on a Legendary (x1.4) = 910 beats her 500 m Rare run (575) and Bob's 700 m Common run (700)
   const lb = await h.leaderboard();
-  assert.deepStrictEqual(lb.entries.map(e => [e.rank, e.username, e.meters, e.tokenId]), [[1, "Alice", 650, "2"], [2, "Bob", 600, "3"]]);
+  assert.deepStrictEqual(lb.entries.map(e => [e.rank, e.username, e.totalMeters, e.meters, e.tokenId]),
+    [[1, "Alice", 910, 650, "2"], [2, "Bob", 700, 700, "3"]]);
 });
 
 test("a ranked run needs a pilot name", async () => {

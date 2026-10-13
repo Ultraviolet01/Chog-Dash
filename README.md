@@ -5,7 +5,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 ## Home screen
 
 - Live 3D scene with the rider on its rocket as the hero, a big PLAY button and a Practice / Chog NFT switch.
-- Top: your best distance (or the selected Chog's best score) and a wallet chip.
+- Top: your best distance (or the selected Chog's best total distance) and a wallet chip.
 - Bottom: Ranks (leaderboard) and How to play. Space or Enter also plays.
 
 ## Two ways to play
@@ -20,7 +20,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
     - The contract can't list a wallet's tokens, so the game checks the owner of all 1,969 tokens in a few batched reads (Multicall3). This takes about a second.
   - Choose a username (pilot name). The leaderboard shows usernames and distances, one entry per player (their best run with any of their Chogs).
   - Ownership is checked on-chain again when a run starts and when it's submitted. The Chog's own artwork is used as the rider.
-  - Abilities and the tier score multiplier come from the token's real metadata.
+  - Abilities and the tier distance multiplier come from the token's real metadata.
   - Validated runs go on the official NFT leaderboard.
 
 ## Controls
@@ -87,13 +87,13 @@ The run passes through five zones that repeat in order. Each zone lasts longer t
 - To keep it fair at high speed, obstacles appear further ahead (about 2.4 s of warning), steering gets faster, and obstacle groups never come closer together in time than at x2.8.
 - Obstacles get denser with distance (groups of 1, then 2, then 3).
 - Every obstacle group leaves a reachable safe path.
-- Near misses flash on screen. They are feedback only and do not change the score.
+- Near misses flash on screen. They are feedback only and do not change the distance.
 - **Laser Eyes** (Chogs whose Eyes trait maps to it):
   - Exactly 10 charges per run, no recharge, reset only when a new run starts.
   - One charge per shot. A shot destroys every eligible obstacle in the beam path.
   - Huge asteroids are not eligible: they block the beam, protecting anything behind them.
   - Tier never changes the number of charges.
-- **Score (NFT mode)**: score = distance (m) x tier multiplier, rounded down. Raw distance is always shown separately.
+- **Total distance (NFT mode)**: distance flown (m) x tier multiplier, rounded down. The leaderboard ranks total distance. The distance actually flown is always shown too.
 
 ## Running it
 

@@ -570,8 +570,8 @@
       setText(hud.mode, setup.modeLabel);
       setText(hud.zoneLabel, zoneText(root.ChogTraits.zoneAt(m)));
       setDisplay(hud.score, setup.showScore);
-      setText(hud.score, "Score " + root.ChogTraits.computeScore(m, setup.multiplier) +
-        "  (" + m + " m x" + setup.multiplier.toFixed(2) + ")");
+      setText(hud.score, "Total " + root.ChogTraits.computeScore(m, setup.multiplier) +
+        " m  (" + m + " m x" + setup.multiplier.toFixed(2) + ")");
       updateLaserHud();
     }
 

@@ -76,7 +76,7 @@
   // ---------- Start ----------
   function start() {
     game = root.ChogGame.init({ onReady, onStart, onEnd });
-    $("formulaNote").innerHTML = "<b>Score:</b> " + esc(cfg.scoreFormula) +
+    $("formulaNote").innerHTML = "<b>Total distance:</b> " + esc(cfg.scoreFormula) +
       ". Tier multipliers are a Chog Dash game-design choice, not an official Chog Genesis rule.";
     $("modePractice").onclick = () => setHomeMode("practice");
     $("modeNft").onclick = () => setHomeMode("nft");
@@ -154,10 +154,8 @@
       : "Fly as Rookie, the practice pilot. No wallet. Not ranked.";
     $("playBtn").textContent = nft && !S.chog ? "PICK CHOG" : "PLAY";
     $("playBtn").style.fontSize = nft && !S.chog ? "30px" : "";
-    $("bestLabel").textContent = nft && S.chog ? "BEST SCORE" : "BEST";
-    $("bestValue").textContent = nft && S.chog
-      ? readNum("chogDashNftBest:" + S.chog.tokenId).toLocaleString()
-      : readNum(PRACTICE_BEST).toLocaleString() + " m";
+    $("bestLabel").textContent = nft && S.chog ? "BEST TOTAL" : "BEST";
+    $("bestValue").textContent = (nft && S.chog ? readNum("chogDashNftBest:" + S.chog.tokenId) : readNum(PRACTICE_BEST)).toLocaleString() + " m";
     $("walletChipText").textContent = S.account ? (S.username || short(S.account)) : "Connect wallet";
     $("walletDot").classList.toggle("on", !!S.account && S.chainId === cfg.collection.chainId);
     $("keyHint").textContent = "Press SPACE to " + (nft && !S.chog ? "pick a Chog" : "play") + "  ·  F for full screen";
@@ -248,8 +246,8 @@
     const run = S.runCounter;
     const lines = status => [
       "Distance: " + result.meters + " m",
-      "Score: " + result.meters + " m x " + g.multiplier.toFixed(2) + " (Tier " + (g.tier || "unknown") + ") = " + result.score,
-      "Best score for this Chog on this device: " + best,
+      "Total distance: " + result.meters + " m x " + g.multiplier.toFixed(2) + " (Tier " + (g.tier || "unknown") + ") = " + result.score + " m",
+      "Best total distance for this Chog on this device: " + best + " m",
       status,
       retryText(),
     ];
@@ -262,7 +260,7 @@
       .then(r => {
         if (run !== S.runCounter || game.state !== "dead") return;
         const st = r.status === "validated"
-          ? ["Validated. Server score " + r.finalScore + " (x" + r.multiplier + ")" + (r.rank ? ", rank " + r.rank : ""), "good"]
+          ? ["Validated. Total distance " + r.finalScore + " m (x" + r.multiplier + ")" + (r.rank ? ", rank " + r.rank : ""), "good"]
           : ["Not validated: " + (r.reason || r.status), "warn"];
         setMsg("CRASHED", lines(st));
       })
@@ -278,7 +276,7 @@
     const laser = g.abilities.find(a => a.id === "laserEyes");
     setMsg("CHOG NFT MODE", [
       c.name + " (token " + c.tokenId + ")",
-      "Tier " + (g.tier || "unknown") + ": score multiplier x" + g.multiplier.toFixed(2),
+      "Tier " + (g.tier || "unknown") + ": distance multiplier x" + g.multiplier.toFixed(2),
       laser ? "Laser Eyes: " + laser.charges + " charges this run" : "No ability from this Chog's traits",
       S.runStatus.text ? [S.runStatus.text, S.runStatus.kind] : "",
       controlsText(!!laser),
@@ -547,7 +545,7 @@
     const laser = gp.abilities.find(a => a.id === "laserEyes");
     const lines = [
       "Owned by this wallet (checked on-chain).",
-      "Tier: " + (gp.tier || "missing") + " -> score multiplier x" + gp.multiplier.toFixed(2) + (gp.tierStatus === "mapped" ? "" : " (default)"),
+      "Tier: " + (gp.tier || "missing") + " -> distance multiplier x" + gp.multiplier.toFixed(2) + (gp.tierStatus === "mapped" ? "" : " (default)"),
       laser ? "Ability: Laser Eyes, " + laser.charges + " charges per run (from " + laser.fromTrait + ": " + laser.fromValue + ")"
         : "Ability: none. This Chog's Eyes trait has no ability mapped.",
     ].concat(gp.problems.map(p => "Metadata problem: " + p), gp.notes.map(n => "Note: " + n));
@@ -625,7 +623,7 @@
   // ---------- Leaderboard view ----------
   async function openLeaderboard() {
     show("lbPanel");
-    $("lbRule").textContent = "Ranking: each player's longest validated distance, flying any Chog they own. Only validated Chog NFT runs appear here; practice runs never do.";
+    $("lbRule").textContent = "Ranking: each player's best total distance (distance x the Chog's tier multiplier), flying any Chog they own. Only validated Chog NFT runs appear here; practice runs never do.";
     const st = $("lbStatus"), rows = $("lbRows");
     rows.innerHTML = "";
     setStatus(st, "Loading...");
@@ -634,7 +632,7 @@
       if (!r.entries.length) setStatus(st, "No validated runs yet.");
       else setStatus(st, "");
       rows.innerHTML = r.entries.map(e => "<tr><td>" + e.rank + "</td><td>" + esc(e.username || short(e.wallet)) + "</td><td>" +
-        Number(e.meters).toLocaleString() + " m</td></tr>").join("");
+        Number(e.totalMeters).toLocaleString() + " m</td></tr>").join("");
     } catch (e) {
       setStatus(st, e.offline ? "The leaderboard server isn't reachable from here. It runs on the deployed site (see README)." : e.message, "err");
     }
