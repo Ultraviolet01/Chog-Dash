@@ -186,7 +186,7 @@
     S.mode = "practice";
     const laser = dev.includes("laser") ? cfg.abilities.laserEyes.charges : 0;   // dev testing only
     game.configure({
-      riderCanvas: Art.rookieCanvas(), riderPoses: { side: Art.rookieSideCanvas(), back: Art.rookieBackCanvas() },
+      riderCanvas: Art.rookieCanvas(), riderPoses: { side: Art.rookieThreeQuarterCanvas(), back: Art.rookieBackCanvas() },
       laserCharges: laser, multiplier: 1, showScore: false,
       modeLabel: "PRACTICE · Rookie" + (laser ? " · DEV LASER" : ""),
     });

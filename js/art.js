@@ -132,36 +132,39 @@
     };
   }
 
-  // Rookie in side profile, facing left (the way the rocket points on the home screen)
-  function rookieSideCanvas() {
+  // Rookie from behind, turned a little to the left: used on the home screen, where the rocket points
+  // away into the screen and up-left. The cap brim pokes out on the left and one cheek and eye just show.
+  function rookieThreeQuarterCanvas() {
     const c = newCanvas(), g = c.getContext("2d"), pen = rookiePen(g), INK = pen.INK;
-    // Tracksuit
-    pen.shape("#22a597", () => { g.moveTo(58, 256); g.quadraticCurveTo(62, 210, 110, 196); g.lineTo(176, 198); g.quadraticCurveTo(216, 212, 222, 256); g.closePath(); });
+    // Tracksuit back
+    pen.shape("#22a597", () => { g.moveTo(26, 256); g.quadraticCurveTo(34, 206, 84, 196); g.lineTo(176, 196); g.quadraticCurveTo(226, 206, 232, 256); g.closePath(); });
     g.strokeStyle = "#f4f4f4"; g.lineWidth = 5;
-    [[150, 204, 192, 256], [162, 202, 206, 256]].forEach(([a, b, x, y]) => { g.beginPath(); g.moveTo(a, b); g.lineTo(x, y); g.stroke(); });
-    pen.shape("#1b8c80", () => { g.moveTo(96, 194); g.lineTo(112, 210); g.lineTo(170, 200); g.lineTo(166, 188); g.lineTo(104, 186); g.closePath(); });
-    // Head
-    pen.shape("#f3e7cf", () => { g.ellipse(136, 150, 82, 66, 0, 0, Math.PI * 2); });
-    g.fillStyle = "#e2547e";
-    g.beginPath(); g.arc(84, 174, 16, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.moveTo(54, 150); g.quadraticCurveTo(46, 160, 58, 166); g.quadraticCurveTo(66, 158, 54, 150); g.fill();
-    // One big glossy eye, looking ahead (left)
-    pen.shape("#ffffff", () => { g.ellipse(92, 142, 21, 20, 0, 0, Math.PI * 2); });
-    g.fillStyle = INK; g.beginPath(); g.arc(82, 143, 14, 0, Math.PI * 2); g.fill();
-    g.fillStyle = "#ffffff";
-    g.beginPath(); g.arc(78, 137, 5, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.arc(85, 150, 2.5, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = INK; g.lineWidth = 5;
-    g.beginPath(); g.moveTo(62, 190); g.lineTo(76, 188); g.stroke();
-    // Cap with the brim pointing ahead (left)
-    pen.shape("#ff9a3c", () => { g.moveTo(56, 116); g.quadraticCurveTo(62, 22, 142, 20); g.quadraticCurveTo(218, 24, 222, 108); g.quadraticCurveTo(140, 94, 56, 116); g.closePath(); });
+    [[70, 204, 44, 256], [82, 202, 58, 256], [190, 204, 216, 256], [178, 202, 202, 256]].forEach(([a, b, x, y]) => { g.beginPath(); g.moveTo(a, b); g.lineTo(x, y); g.stroke(); });
+    pen.shape("#1b8c80", () => { g.moveTo(92, 194); g.lineTo(162, 194); g.lineTo(158, 206); g.lineTo(96, 206); g.closePath(); });
+    g.fillStyle = "#f4f4f4"; g.font = "bold 20px Arial, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("ROOKIE", 138, 232);
+    // Head, with the left cheek and the edge of the left eye just in view
+    pen.shape("#f3e7cf", () => { g.ellipse(130, 150, 84, 66, 0, 0, Math.PI * 2); });
+    g.save();
+    g.beginPath(); g.ellipse(130, 150, 81, 63, 0, 0, Math.PI * 2); g.clip();
+    g.fillStyle = "#e2547e"; g.beginPath(); g.arc(56, 178, 16, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#ffffff"; g.beginPath(); g.ellipse(52, 144, 14, 16, 0, 0, Math.PI * 2); g.fill();
+    g.lineWidth = 5; g.strokeStyle = INK; g.stroke();
+    g.fillStyle = INK; g.beginPath(); g.arc(46, 145, 10, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#ffffff"; g.beginPath(); g.arc(44, 140, 3.5, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#e2547e"; g.beginPath(); g.arc(206, 178, 9, 0, Math.PI * 2); g.fill();
+    g.restore();
+    // Brim on the far side, pointing up and to the left (drawn first so the dome overlaps it)
+    pen.shape("#d9681c", () => { g.moveTo(70, 100); g.quadraticCurveTo(26, 84, 2, 96); g.quadraticCurveTo(18, 116, 66, 120); g.closePath(); });
+    // Cap dome from behind-left, seams, snapback opening and strap
+    pen.shape("#ff9a3c", () => { g.moveTo(44, 128); g.quadraticCurveTo(44, 22, 124, 18); g.quadraticCurveTo(212, 20, 216, 130); g.quadraticCurveTo(130, 112, 44, 128); g.closePath(); });
     g.strokeStyle = "rgba(21,21,21,0.55)"; g.lineWidth = 3;
-    g.beginPath(); g.moveTo(142, 22); g.quadraticCurveTo(170, 60, 178, 100); g.stroke();
-    pen.shape("#d9681c", () => { g.moveTo(126, 104); g.quadraticCurveTo(52, 88, 4, 110); g.quadraticCurveTo(44, 126, 130, 116); g.closePath(); });
-    // Side patch so the cap still reads as Rookie's
-    pen.shape("#ffffff", () => { g.arc(160, 62, 17, 0, Math.PI * 2); });
-    g.fillStyle = "#1b8c80"; g.font = "bold 20px Arial, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
-    g.fillText("R", 160, 63);
+    [[96, 122], [196, 124]].forEach(([x, y]) => { g.beginPath(); g.moveTo(124, 22); g.quadraticCurveTo((124 + x) / 2 + 6, 60, x, y); g.stroke(); });
+    pen.shape("#f3e7cf", () => { g.moveTo(124, 126); g.quadraticCurveTo(124, 94, 150, 92); g.quadraticCurveTo(176, 94, 176, 126); g.closePath(); });
+    pen.shape("#d9681c", () => { g.rect(118, 112, 64, 10); });
+    g.fillStyle = INK;
+    [132, 144, 156, 168].forEach(x => { g.beginPath(); g.arc(x, 117, 1.8, 0, Math.PI * 2); g.fill(); });
+    pen.shape("#d9681c", () => { g.arc(124, 20, 7, 0, Math.PI * 2); });
     pen.grain();
     return c;
   }
@@ -226,5 +229,5 @@
     return c;
   }
 
-  root.ChogArt = { rookieCanvas, rookieSideCanvas, rookieBackCanvas, nftRiderCanvas, dotCanvas };
+  root.ChogArt = { rookieCanvas, rookieThreeQuarterCanvas, rookieBackCanvas, nftRiderCanvas, dotCanvas };
 })(window);

@@ -130,10 +130,10 @@
     rider.position.set(0, 0.98, 0.15);
     player.add(rocket, rider);
     scene.add(player);
-    setRiderCanvas(root.ChogArt.rookieCanvas(), { side: root.ChogArt.rookieSideCanvas(), back: root.ChogArt.rookieBackCanvas() });
+    setRiderCanvas(root.ChogArt.rookieCanvas(), { side: root.ChogArt.rookieThreeQuarterCanvas(), back: root.ChogArt.rookieBackCanvas() });
     useRiderPose("side");
 
-    // Rider views: front (portrait), side (home screen, rocket turned nose-left) and back (flying away
+    // Rider views: front (portrait), side (home screen: three-quarter back view, rocket angled up-left) and back (flying away
     // from the camera, looking where the rocket goes). Riders without side/back art (NFT portraits) use front.
     function setRiderCanvas(canvas, poses) {
       Object.values(riderTex).forEach(t => t.dispose());
@@ -583,8 +583,8 @@
         player.position.x += (tx - player.position.x) * k;
         idleY += (ty - idleY) * k;
         player.position.y = idleY + Math.sin(now / 400) * 0.25;
-        // Home screen: rocket turned side-on, nose pointing left, with a gentle sway
-        player.rotation.set(Math.sin(now / 900) * 0.05, showcase ? 1.25 + Math.sin(now / 1700) * 0.15 : 0, Math.sin(now / 700) * 0.08);
+        // Home screen: rocket angled away into the screen, nose up and to the left, with a gentle sway
+        player.rotation.set(Math.sin(now / 900) * 0.05 + (showcase ? 0.12 : 0), showcase ? 0.35 + Math.sin(now / 1700) * 0.12 : 0, Math.sin(now / 700) * 0.08);
       }
 
       if (playing) {
