@@ -106,6 +106,60 @@
     return { balance, enumerable: true, tokenIds };
   }
 
+  // ---------- Finding a wallet's Chogs without ERC-721 enumeration ----------
+  // The contract can't list a wallet's tokens, so we ask ownerOf for every token ID through
+  // Multicall3 (one eth_call per batch) and keep the ones owned by this wallet.
+  const MULTICALL3 = "0xca11bde05977b3631167028862be2a173976ca11";
+  const AGGREGATE3 = "0x82ad56cb";   // aggregate3((address,bool,bytes)[])
+
+  function encodeAggregate3(target, calls) {
+    // Each call is a static-size tuple tail: target, allowFailure, bytes offset, bytes length, 64 bytes of data
+    const n = calls.length, parts = [pad32("20"), encUint(n)];
+    for (let i = 0; i < n; i++) parts.push(encUint(n * 32 + i * 192));
+    for (const data of calls) {
+      const d = data.replace(/^0x/, "");
+      if (d.length > 128) throw new Error("Call data too long for this encoder");
+      parts.push(encAddr(target), encUint(1), encUint(0x60), encUint(d.length / 2), d.padEnd(128, "0"));
+    }
+    return AGGREGATE3 + parts.join("");
+  }
+
+  // Returns [{ success, data }] from an aggregate3 result
+  function decodeAggregate3(result) {
+    const h = (result || "").replace(/^0x/, "");
+    const word = at => BigInt("0x" + h.slice(at * 2, at * 2 + 64));
+    const arr = Number(word(0)), n = Number(word(arr)), base = arr + 32, out = [];
+    for (let i = 0; i < n; i++) {
+      const el = base + Number(word(base + i * 32));
+      const success = word(el) !== 0n;
+      const off = el + Number(word(el + 32)), len = Number(word(off));
+      out.push({ success, data: "0x" + h.slice((off + 32) * 2, (off + 32 + len) * 2) });
+    }
+    return out;
+  }
+
+  // Scans token IDs [first..last] and returns the ones `owner` holds.
+  // Stops early once it has found `balanceOf(owner)` tokens.
+  async function findOwnedTokens(provider, owner, opts) {
+    const o = opts || {};
+    const me = owner.toLowerCase();
+    const balance = Number(await reads.balanceOf(provider, owner));
+    if (balance === 0) return { balance, tokenIds: [], complete: true };
+    const first = o.first || C.firstTokenId || 1;
+    const last = o.last || Number(await reads.totalSupply(provider)) + first - 1;
+    const batch = o.batchSize || 400;
+    const found = [];
+    for (let start = first; start <= last && found.length < balance; start += batch) {
+      const ids = [];
+      for (let id = start; id <= Math.min(last, start + batch - 1); id++) ids.push(id);
+      const data = encodeAggregate3(C.contract, ids.map(id => SEL.ownerOf + encUint(id)));
+      const res = decodeAggregate3(await provider.request({ method: "eth_call", params: [{ to: MULTICALL3, data }, "latest"] }));
+      res.forEach((r, i) => { if (r.success && r.data.length >= 66 && decodeAddress(r.data) === me) found.push(String(ids[i])); });
+      if (o.onProgress) o.onProgress(Math.min(last, start + batch - 1) - first + 1, last - first + 1, found.length);
+    }
+    return { balance, tokenIds: found, complete: found.length === balance };
+  }
+
   async function verifyOwnership(provider, tokenId, owner) {
     let actual;
     try { actual = await reads.ownerOf(provider, tokenId); }
@@ -115,6 +169,7 @@
       : { owned: false, owner: actual, reason: "This wallet does not own token " + tokenId };
   }
 
-  return { SEL, IFACE, reads, listWallets, connect, switchToMonad, listOwnedTokens, verifyOwnership,
+  return { SEL, IFACE, MULTICALL3, reads, listWallets, connect, switchToMonad, listOwnedTokens, findOwnedTokens,
+    encodeAggregate3, decodeAggregate3, verifyOwnership,
     decodeString, decodeAddress, decodeUint };
 });

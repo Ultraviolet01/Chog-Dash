@@ -15,8 +15,11 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
   - Same movement, obstacles, collisions and restarts as NFT mode.
   - Best distance is saved on your device only. Practice runs never go on the NFT leaderboard.
 - **Chog NFT mode (holders)**
-  - Connect a wallet on Monad, pick a Chog you own, and ride the rocket as that Chog.
-  - Ownership is checked on-chain. The Chog's own artwork is used as the rider.
+  - Connect a wallet on Monad and sign the sign-in message (free, no transaction).
+  - The game then finds every Chog Genesis NFT the wallet holds and shows them. Pick one and ride the rocket as that Chog.
+    - The contract can't list a wallet's tokens, so the game checks the owner of all 1,969 tokens in a few batched reads (Multicall3). This takes about a second.
+  - Choose a pilot name. It's shown on the leaderboard instead of your wallet address.
+  - Ownership is checked on-chain again when a run starts and when it's submitted. The Chog's own artwork is used as the rider.
   - Abilities and the tier score multiplier come from the token's real metadata.
   - Validated runs go on the official NFT leaderboard.
 

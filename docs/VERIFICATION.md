@@ -13,7 +13,8 @@ Checked with `npm run verify-contract` (`data/contract-report.json`), `npm run a
 - **Supply:** totalSupply is 1,969.
 - **Interfaces:** ERC-721 and ERC-721 Metadata are supported.
   - ERC-721 Enumerable is **not** supported, so a wallet's tokens cannot be listed from the contract.
-  - Players enter their token ID instead, and the game checks `ownerOf`.
+  - Instead, after sign-in the game scans `ownerOf` for every token through Multicall3 (`0xcA11bde05977b3631167028862bE2a173976CA11`, deployed on Monad) and lists the wallet's Chogs.
+  - Tested against the real chain: a wallet with 7 Chogs had all 7 found (matching `balanceOf`) in about 2 seconds, with real artwork, in the browser.
 - **Token IDs:** run from 1 to 1969. Token 0 and token 1970 revert.
 - **Token ID and name number are different.** Metadata files are shuffled against token IDs.
   - Token 1 has `tokenURI` `.../1462.json`, named "CHOG #1462".
@@ -36,7 +37,7 @@ Checked with `npm run verify-contract` (`data/contract-report.json`), `npm run a
 ## Still not verified
 
 - **Wallets:** real wallets (MetaMask, Rabby and others) connecting to Monad, including the "add network" request. The explorer URL in `js/config.js` has not been checked.
-- **Real ownership:** sign-in, ownership check and leaderboard with a real wallet that owns a Chog.
+- **Real ownership:** signing in and submitting a ranked run with a real wallet that owns a Chog (the scan itself was tested on the real chain, read-only).
 - **Server deployment:** Vercel deployment and Upstash storage.
 - **Mobile:** real mobile devices.
 

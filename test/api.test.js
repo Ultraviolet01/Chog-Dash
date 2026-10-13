@@ -143,3 +143,26 @@ test("sign-in rejects wrong signatures, reused nonces and expired tokens", async
   advance(13 * 3600e3);
   assert.strictEqual(await status(h.runStart({ body: { tokenId: "1" }, token })), 401);
 });
+
+test("pilot names: set, unique per wallet, shown on the leaderboard", async () => {
+  const { h, alice, bob, signIn, advance } = setup();
+  const ta = await signIn(alice), tb = await signIn(bob);
+  assert.strictEqual(await status(h.profileSet({ body: { username: "Ace_1" } })), 401);
+  for (const bad of ["ab", "1ace", "0xabc", "has space", "x".repeat(17), "", null])
+    assert.strictEqual(await status(h.profileSet({ body: { username: bad }, token: ta })), 400, String(bad));
+  assert.deepStrictEqual(await h.profileSet({ body: { username: "Ace_1" }, token: ta }), { username: "Ace_1" });
+  assert.strictEqual(await status(h.profileSet({ body: { username: "ACE_1" }, token: tb })), 409, "case-insensitive");
+  assert.deepStrictEqual(await h.profileSet({ body: { username: "ace_1" }, token: ta }), { username: "ace_1" }, "owner can change case");
+  await h.profileSet({ body: { username: "Rocket" }, token: ta });
+  assert.deepStrictEqual(await h.profileSet({ body: { username: "Ace_1" }, token: tb }), { username: "Ace_1" }, "old name is freed");
+
+  // Sign-in returns the saved name
+  const { message } = await h.authNonce({ body: { wallet: alice.address } });
+  const v = await h.authVerify({ body: { wallet: alice.address, message, signature: await alice.signMessage({ message }) } });
+  assert.strictEqual(v.username, "Rocket");
+
+  const start = await h.runStart({ body: { tokenId: "1" }, token: ta });
+  advance(30000);
+  await h.runFinish({ body: { runId: start.runId, meters: 500, durationMs: 29000 }, token: ta });
+  assert.strictEqual((await h.leaderboard()).entries[0].username, "Rocket");
+});

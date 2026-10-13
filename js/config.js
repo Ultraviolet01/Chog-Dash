@@ -17,6 +17,7 @@
       chainId: 143,
       chainName: "Monad",
       contract: "0xc96d31f8626c6d03fae5dcd3d61e3fb9f4a73763",
+      firstTokenId: 1,                 // verified: token IDs run 1..1969 (token 0 reverts)
       expectedSupply: 1969,
       metadataCid: "bafybeid4ybujnscdipkno7ps5utqelp5ry5ryreqhay3zhgk3a6x4jruqu",
       imageCid: "bafybeihau2egcccbdxymeckmmbrqytbfor5gkt3en6d5fsbueymdbq7g6e",

@@ -2,7 +2,7 @@
  * Clicks every button in the game and checks each does what it should.
  * Runs against the real dev server, with a MOCK wallet (starting on the wrong network),
  * MOCK contract and MOCK IPFS. Static buttons: hudMenuBtn, laserBtn, walletChip, modePractice,
- * modeNft, playBtn, lbBtn, howBtn, howBack, nftBack, switchNet, tokenCheck, rideBtn, lbBack.
+ * modeNft, playBtn, lbBtn, howBtn, howBack, nftBack, switchNet, signInBtn (via auto sign-in), pilotSave, rideBtn, lbBack.
  * Dynamic buttons: wallet connect buttons and Chog tiles.
  */
 const { chromium } = require('playwright-core');
@@ -15,7 +15,7 @@ const R = path.join(__dirname, '../../') + '/';
 const { startServer } = require(R + 'server/dev.js');
 const { createHandlers } = require(R + 'lib/handlers.js');
 const { memoryStore } = require(R + 'lib/store.js');
-const Chain = require(R + 'js/chain.js');
+const { mockContract } = require('./mock-chain.js');
 
 const acct = privateKeyToAccount('0x' + '11'.repeat(32));
 const ME = acct.address.toLowerCase();
@@ -25,17 +25,7 @@ const metas = {
   2: { name: 'Test Chog Two', image: 'ipfs://imgcid/2.svg', attributes: [{ trait_type: 'Eyes', value: 'Happy' }, { trait_type: 'Tier', value: 'Legendary' }] },
 };
 const svg = c => `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="${c}"/><circle cx="100" cy="110" r="60" fill="#f5ead2"/></svg>`;
-const enc = (t, v) => viem.encodeAbiParameters(t.map(x => ({ type: x })), v);
-function rpc(data) {
-  const sel = data.slice(0, 10), arg = data.slice(10);
-  const u = i => BigInt('0x' + arg.slice(i * 64, i * 64 + 64)), a = i => '0x' + arg.slice(i * 64 + 24, i * 64 + 64);
-  if (sel === Chain.SEL.ownerOf) { const o = owners[u(0)]; if (!o) throw new Error('revert'); return enc(['address'], [o]); }
-  if (sel === Chain.SEL.balanceOf) return enc(['uint256'], [BigInt(Object.values(owners).filter(o => o === a(0)).length)]);
-  if (sel === Chain.SEL.supportsInterface) return enc(['bool'], [arg.startsWith('780e9d63')]);
-  if (sel === Chain.SEL.tokenOfOwnerByIndex) return enc(['uint256'], [BigInt(Object.keys(owners).filter(i => owners[i] === a(0))[Number(u(1))])]);
-  if (sel === Chain.SEL.tokenURI) return enc(['string'], ['ipfs://metacid/' + u(0)]);
-  throw new Error('unexpected ' + sel);
-}
+const rpc = mockContract(owners);
 const chain = {
   ownerOf: async id => { if (!owners[id]) throw new Error('revert'); return owners[id]; },
   tokenURI: async id => 'ipfs://metacid/' + id,
@@ -62,7 +52,7 @@ function ok(name, cond, detail) {
     const id = u.split('/').pop();
     return metas[id] ? r.fulfill({ body: JSON.stringify(metas[id]), contentType: 'application/json', headers: { 'access-control-allow-origin': '*' } }) : r.fulfill({ status: 404 });
   });
-  await p.exposeFunction('nodeRpc', d => rpc(d));
+  await p.exposeFunction('nodeRpc', c => rpc(c));
   await p.exposeFunction('nodeSign', hex => acct.signMessage({ message: { raw: hex } }));
   await p.addInitScript(addr => {
     let chainId = '0x1';   // start on the wrong network
@@ -73,7 +63,7 @@ function ok(name, cond, detail) {
         if (method === 'eth_requestAccounts') return [addr];
         if (method === 'eth_chainId') return chainId;
         if (method === 'wallet_switchEthereumChain') { chainId = params[0].chainId; (listeners.chainChanged || []).forEach(f => f(chainId)); return null; }
-        if (method === 'eth_call') return window.nodeRpc(params[0].data);
+        if (method === 'eth_call') return window.nodeRpc(params[0]);
         if (method === 'personal_sign') return window.nodeSign(params[0]);
         throw new Error('unsupported ' + method);
       },
@@ -140,7 +130,9 @@ function ok(name, cond, detail) {
   ok('wallet connect button connects', /Connected/.test(await text('#walletStatus')), await text('#walletStatus'));
   ok('wrong network detected, switchNet shown', await visible('#switchNet') && /chain 1/.test(await text('#walletStatus')));
   await p.click('#switchNet'); await p.waitForTimeout(800);
-  ok('switchNet switches to Monad', /on Monad/.test(await text('#walletStatus')) && !(await visible('#switchNet')));
+  await p.waitForFunction(() => /Signed in/.test(document.getElementById('walletStatus').textContent), null, { timeout: 10000 });
+  ok('switchNet switches to Monad, then signing in runs automatically', /on Monad/.test(await text('#walletStatus')) && !(await visible('#switchNet')), await text('#walletStatus'));
+  ok('pilot name card shown after sign-in', await visible('#pilotCard'));
   await p.waitForFunction(() => document.querySelectorAll('.tok').length >= 2, null, { timeout: 10000 });
   await p.waitForTimeout(1500);   // let any second load finish, then make sure nothing is duplicated
   const tiles = await p.$$eval('.tok', t => t.map(x => x.textContent));
@@ -148,19 +140,20 @@ function ok(name, cond, detail) {
   await p.click('.tok >> nth=1');
   await p.waitForFunction(() => !document.getElementById('rideBtn').disabled, null, { timeout: 15000 });
   ok('tile click selects that Chog', (await text('#chosenName')) === 'Test Chog Two' && /Legendary/.test(await text('#chosenInfo')));
-  // Token entry: not owned, then owned
-  await p.evaluate(() => { document.getElementById('manualEntry').style.display = 'flex'; });
-  await p.fill('#tokenInput', '5'); await p.click('#tokenCheck'); await p.waitForTimeout(700);
-  ok('tokenCheck rejects a Chog the wallet does not own', /does not own token 5/.test(await text('#chosenInfo')));
-  ok('rideBtn disabled for a Chog you do not own', await p.isDisabled('#rideBtn'));
-  await p.fill('#tokenInput', 'abc'); await p.press('#tokenInput', 'Enter'); await p.waitForTimeout(300);
-  ok('Enter in token box validates input', /whole-number/.test(await text('#chosenInfo')));
-  await p.fill('#tokenInput', '1'); await p.press('#tokenInput', 'Enter');
+  ok('token 5 (another wallet) is not listed', !tiles.some(t => /token 5\)/.test(t)));
+  await p.click('.tok >> nth=0');
   await p.waitForFunction(() => !document.getElementById('rideBtn').disabled, null, { timeout: 15000 });
-  ok('tokenCheck accepts an owned Chog', /Laser Eyes, 10 charges/.test(await text('#chosenInfo')));
+  ok('first tile selects the Laser Eyes Chog', /Laser Eyes, 10 charges/.test(await text('#chosenInfo')));
+  await p.click('#rideBtn'); await p.waitForTimeout(400);
+  ok('rideBtn asks for a pilot name first', /pilot name/.test(await text('#rideStatus')) && (await state()) === 'menu');
+  await p.fill('#pilotInput', 'x'); await p.click('#pilotSave'); await p.waitForTimeout(200);
+  ok('pilotSave rejects a short name', /3 to 16/.test(await text('#pilotStatus')));
+  await p.fill('#pilotInput', 'Rocket_Chog'); await p.press('#pilotInput', 'Enter');
+  await p.waitForFunction(() => /Saved/.test(document.getElementById('pilotStatus').textContent), null, { timeout: 5000 });
+  ok('Enter in pilot box saves the name', /Rocket_Chog/.test(await text('#walletStatus')));
   await p.click('#rideBtn');
   await p.waitForFunction(() => /Eligible/.test(document.getElementById('msg').textContent), null, { timeout: 15000 });
-  ok('rideBtn signs in and opens an eligible NFT run', /CHOG NFT MODE/.test(await text('#msg')));
+  ok('rideBtn opens an eligible NFT run', /CHOG NFT MODE/.test(await text('#msg')));
   ok('LASER button shown for a Laser Eyes Chog', await visible('#laserBtn'));
 
   await p.click('#gameCanvas'); await p.waitForTimeout(300);
@@ -182,14 +175,14 @@ function ok(name, cond, detail) {
   await p.click('#hudMenuBtn'); await p.waitForTimeout(300);
   ok('home in NFT mode shows PLAY once a Chog is chosen', (await text('#playBtn')) === 'PLAY' && /Test Chog One/.test(await text('#modeHint')));
   ok('best chip shows the Chog best score', (await text('#bestLabel')) === 'BEST SCORE');
-  ok('wallet chip shows address with green dot', /0x19e7/.test(await text('#walletChipText')) && await p.evaluate(() => document.getElementById('walletDot').classList.contains('on')));
+  ok('wallet chip shows pilot name with green dot', (await text('#walletChipText')) === 'Rocket_Chog' && await p.evaluate(() => document.getElementById('walletDot').classList.contains('on')));
   await p.click('#playBtn');
   await p.waitForFunction(() => ChogUI._game().state === 'ready', null, { timeout: 15000 });
   ok('PLAY rides the chosen Chog directly', /Test Chog One/.test(await text('#msg')));
   await p.click('#hudMenuBtn'); await p.waitForTimeout(300);
   await p.click('#lbBtn'); await p.waitForTimeout(800);
   const rows = await p.$$eval('#lbRows tr', r => r.map(x => x.textContent));
-  ok('leaderboard lists the validated run', rows.length === 1 && /Test Chog One/.test(rows[0]), rows[0]);
+  ok('leaderboard lists the validated run under the pilot name', rows.length === 1 && /Rocket_Chog/.test(rows[0]) && /Test Chog One/.test(rows[0]), rows[0]);
   await p.click('#lbBack');
 
   ok('no page errors', errs.length === 0, errs.join(' | '));

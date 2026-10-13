@@ -58,3 +58,48 @@ test("holdings are listed only when the contract is enumerable", async () => {
   assert.strictEqual(ne.balance, 2n);
   assert.deepStrictEqual(ne.tokenIds, []);
 });
+
+test("aggregate3 encoding matches viem, and decoding reads mixed results", () => {
+  const viem = require("viem");
+  const abi = viem.parseAbi(["function aggregate3((address target, bool allowFailure, bytes callData)[] calls) payable returns ((bool success, bytes returnData)[])"]);
+  const target = "0xc96d31f8626c6d03fae5dcd3d61e3fb9f4a73763";
+  const calls = [1, 2, 1969].map(id => Chain.SEL.ownerOf + id.toString(16).padStart(64, "0"));
+  const expected = viem.encodeFunctionData({ abi, functionName: "aggregate3",
+    args: [calls.map(c => ({ target, allowFailure: true, callData: c }))] });
+  assert.strictEqual(Chain.encodeAggregate3(target, calls), expected);
+
+  const owner = "0x" + "ab".repeat(20);
+  const ret = viem.encodeFunctionResult({ abi, functionName: "aggregate3", result: [[
+    { success: true, returnData: viem.encodeAbiParameters([{ type: "address" }], [owner]) },
+    { success: false, returnData: "0x7e273289" },
+    { success: true, returnData: "0x" },
+  ]] });
+  const out = Chain.decodeAggregate3(ret);
+  assert.strictEqual(out.length, 3);
+  assert.deepStrictEqual([out[0].success, Chain.decodeAddress(out[0].data)], [true, owner]);
+  assert.deepStrictEqual(out[1], { success: false, data: "0x7e273289" });
+  assert.deepStrictEqual(out[2], { success: true, data: "0x" });
+});
+
+test("findOwnedTokens scans every token and stops once the balance is found", async () => {
+  const viem = require("viem");
+  const abi = viem.parseAbi(["function aggregate3((address target, bool allowFailure, bytes callData)[] calls) payable returns ((bool success, bytes returnData)[])"]);
+  const me = "0x" + "11".repeat(20), other = "0x" + "22".repeat(20);
+  const mine = new Set([3, 450, 900]);
+  let batches = 0;
+  const provider = { async request({ params }) {
+    const { to, data } = params[0];
+    if (data.startsWith(Chain.SEL.balanceOf)) return viem.encodeAbiParameters([{ type: "uint256" }], [3n]);
+    if (data.startsWith(Chain.SEL.totalSupply)) return viem.encodeAbiParameters([{ type: "uint256" }], [1969n]);
+    assert.strictEqual(to, Chain.MULTICALL3);
+    batches++;
+    const { args } = viem.decodeFunctionData({ abi, data });
+    return viem.encodeFunctionResult({ abi, functionName: "aggregate3", result: [args[0].map(c => {
+      const id = Number(BigInt("0x" + c.callData.slice(10)));
+      return { success: true, returnData: viem.encodeAbiParameters([{ type: "address" }], [mine.has(id) ? me : other]) };
+    })] });
+  } };
+  const r = await Chain.findOwnedTokens(provider, me.toUpperCase().replace("0X", "0x"), { batchSize: 400 });
+  assert.deepStrictEqual(r, { balance: 3, tokenIds: ["3", "450", "900"], complete: true });
+  assert.strictEqual(batches, 3, "stopped after the batch holding the last owned token");
+});

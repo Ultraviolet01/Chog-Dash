@@ -45,10 +45,10 @@ const R = path.join(__dirname, '../../');
   await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 5000 });
   assert.notStrictEqual(await p.evaluate(() => getComputedStyle(document.getElementById('gameCanvas')).cursor), 'none', 'cursor back after a crash');
   assert.ok(await p.isVisible('#hudFsBtn'), 'in-game button back after a crash');
-  // F typed into the token box must not toggle full screen
+  // F typed into the pilot name box must not toggle full screen
   await p.click('#hudMenuBtn'); await p.click('#walletChip'); await p.waitForTimeout(300);
-  await p.evaluate(() => { document.getElementById('holdingsCard').style.display = 'block'; document.getElementById('manualEntry').style.display = 'flex'; });
-  await p.focus('#tokenInput'); await p.keyboard.press('KeyF'); await p.waitForTimeout(300);
+  await p.evaluate(() => { document.getElementById('pilotCard').style.display = 'block'; });
+  await p.focus('#pilotInput'); await p.keyboard.press('KeyF'); await p.waitForTimeout(300);
   assert.ok(!(await full()), 'typing F in a text box does not toggle full screen');
   assert.deepStrictEqual(errs, []);
   console.log('PASS full screen');

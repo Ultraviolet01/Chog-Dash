@@ -16,7 +16,8 @@
     chog: null,             // { tokenId, name, metadata, gameplay, imageUrl, riderCanvas }
     auth: null, authError: "",
     runId: null, activeRunId: null, runStatus: { text: "", kind: "" }, sessionReq: 0, runCounter: 0,
-    selectReq: 0, holdingsReq: 0, metaCache: {},
+    selectReq: 0, holdingsReq: 0, signReq: 0, metaCache: {},
+    username: null,
   };
 
   // ---------- Helpers ----------
@@ -97,8 +98,10 @@
     setHomeMode(saved === "nft" ? "nft" : "practice");
     $("hudMenuBtn").onclick = backToMenu;
     $("switchNet").onclick = switchNetwork;
-    $("tokenCheck").onclick = () => selectToken($("tokenInput").value.trim());
-    $("tokenInput").addEventListener("keydown", e => { if (e.key === "Enter") selectToken($("tokenInput").value.trim()); });
+    $("signInBtn").onclick = signInAndScan;
+    $("holdingsRetry").onclick = loadHoldings;
+    $("pilotSave").onclick = savePilot;
+    $("pilotInput").addEventListener("keydown", e => { if (e.key === "Enter") savePilot(); });
     $("rideBtn").onclick = rideChog;
   }
 
@@ -155,7 +158,7 @@
     $("bestValue").textContent = nft && S.chog
       ? readNum("chogDashNftBest:" + S.chog.tokenId).toLocaleString()
       : readNum(PRACTICE_BEST).toLocaleString() + " m";
-    $("walletChipText").textContent = S.account ? short(S.account) : "Connect wallet";
+    $("walletChipText").textContent = S.account ? (S.username || short(S.account)) : "Connect wallet";
     $("walletDot").classList.toggle("on", !!S.account && S.chainId === cfg.collection.chainId);
     $("keyHint").textContent = "Press SPACE to " + (nft && !S.chog ? "pick a Chog" : "play") + "  ·  F for full screen";
   }
@@ -356,7 +359,7 @@
 
   function onAccountChange(acc) {
     S.account = acc ? acc.toLowerCase() : null;
-    S.chog = null; S.auth = null; S.authError = "";
+    S.chog = null; S.auth = null; S.authError = ""; S.username = null;
     if (S.mode === "nft" && game.state !== "menu") {
       game.toMenu();
       S.mode = null;
@@ -364,7 +367,10 @@
     }
     $("chosenCard").style.display = "none";
     if (S.account) afterConnect();
-    else { setStatus($("walletStatus"), "Wallet disconnected."); $("holdingsCard").style.display = "none"; }
+    else {
+      setStatus($("walletStatus"), "Wallet disconnected.");
+      ["holdingsCard", "pilotCard", "signInBtn"].forEach(id => { $(id).style.display = "none"; });
+    }
   }
 
   function afterConnect() {
@@ -375,12 +381,77 @@
     if (!right) {
       setStatus(st, "Connected " + short(S.account) + ", but the wallet is on chain " + S.chainId +
         ". Chog Genesis is on " + cfg.collection.chainName + " (chain " + cfg.collection.chainId + ").", "err");
-      $("holdingsCard").style.display = "none";
-      $("chosenCard").style.display = "none";
+      ["holdingsCard", "chosenCard", "pilotCard", "signInBtn"].forEach(id => { $(id).style.display = "none"; });
       return;
     }
-    setStatus(st, "Connected " + short(S.account) + " on " + cfg.collection.chainName + ".", "ok");
+    if (authValid()) { renderSignedIn(); return; }
+    signInAndScan();
+  }
+
+  const authValid = () => !!S.auth && S.auth.account === S.account && S.auth.expiresAt > Date.now();
+
+  // ---------- NFT mode: sign in, then find the wallet's Chogs ----------
+  // Signing proves control of the wallet (free, no transaction). The server then trusts this
+  // wallet for ownership checks; the Chogs themselves are found by scanning the contract.
+  async function signInAndScan() {
+    const st = $("walletStatus");
+    const req = ++S.signReq;
+    $("signInBtn").style.display = "none";
+    $("holdingsCard").style.display = "none";
+    setStatus(st, "Connected " + short(S.account) + ". Sign the message in your wallet to check your Chogs. It's free and sends no transaction.");
+    try {
+      await signIn();
+      if (req !== S.signReq) return;
+      S.authError = "";
+      renderSignedIn();
+    } catch (e) {
+      if (req !== S.signReq) return;
+      S.auth = null;
+      if (e && e.offline) {
+        // No leaderboard server (local file or offline): still show the Chogs, runs just aren't ranked
+        S.authError = "the leaderboard server isn't reachable";
+        setStatus(st, "Connected " + short(S.account) + ". The leaderboard server isn't reachable, so runs won't be ranked. Your Chogs are still checked on-chain.", "err");
+        loadHoldings();
+        return;
+      }
+      S.authError = e && e.code === 4001 ? "you declined to sign in" : (e.message || String(e));
+      setStatus(st, (e && e.code === 4001 ? "Sign-in was declined." : "Sign-in failed: " + S.authError) +
+        " Sign in to check your Chogs.", "err");
+      $("signInBtn").style.display = "inline-block";
+    }
+  }
+
+  function renderSignedIn() {
+    setStatus($("walletStatus"), "Signed in as " + (S.username || short(S.account)) + " on " + cfg.collection.chainName + ".", "ok");
+    $("signInBtn").style.display = "none";
+    $("pilotCard").style.display = "block";
+    $("pilotInput").value = S.username || "";
+    setStatus($("pilotStatus"), S.username ? "" : "Choose a pilot name to enter the leaderboard.", S.username ? "" : "warn");
+    refreshHome();
     loadHoldings();
+  }
+
+  async function savePilot() {
+    const ps = $("pilotStatus"), name = $("pilotInput").value.trim();
+    if (!/^[A-Za-z][A-Za-z0-9_]{2,15}$/.test(name)) {
+      setStatus(ps, "Use 3 to 16 letters, numbers or underscores, starting with a letter.", "err");
+      return;
+    }
+    if (!authValid()) { setStatus(ps, "Sign in first.", "err"); return; }
+    $("pilotSave").disabled = true;
+    setStatus(ps, "Saving...");
+    try {
+      const r = await apiCall("/profile", { username: name }, S.auth.token);
+      S.username = r.username;
+      setStatus(ps, "Saved. You'll show up as " + r.username + ".", "ok");
+      setStatus($("walletStatus"), "Signed in as " + r.username + " on " + cfg.collection.chainName + ".", "ok");
+      setStatus($("rideStatus"), "");
+      refreshHome();
+    } catch (e) {
+      if (e.status === 401) S.auth = null;
+      setStatus(ps, e.message, "err");
+    }
+    $("pilotSave").disabled = false;
   }
 
   async function switchNetwork() {
@@ -393,36 +464,35 @@
     $("holdingsCard").style.display = "block";
     const st = $("holdingsStatus"), grid = $("holdings");
     grid.innerHTML = "";
-    $("manualEntry").style.display = "none";
-    setStatus(st, "Checking which Chogs this wallet owns...");
+    $("holdingsRetry").style.display = "none";
+    setStatus(st, "Checking the Chog Genesis contract for your Chogs...");
     // Only the latest load may update the list (a network switch can trigger two loads at once)
     const req = ++S.holdingsReq;
     try {
-      const r = await Chain.listOwnedTokens(S.provider, S.account, 30);
+      const r = await Chain.findOwnedTokens(S.provider, S.account, {
+        onProgress: (done, total) => { if (req === S.holdingsReq) setStatus(st, "Checking the Chog Genesis contract for your Chogs... " + done + " / " + total); },
+      });
       if (req !== S.holdingsReq) return;
-      if (r.balance === 0n) {
+      if (r.balance === 0) {
         setStatus(st, "This wallet holds no Chog Genesis NFTs. You can still play practice mode.");
         return;
       }
-      if (!r.enumerable) {
-        setStatus(st, "This wallet holds " + r.balance + " Chog(s). The contract can't list them automatically, so enter the token ID of the Chog you want to ride. Ownership is checked on-chain.");
-        $("manualEntry").style.display = "flex";
-        return;
-      }
-      setStatus(st, "This wallet holds " + r.balance + " Chog(s). Pick one to ride." +
-        (Number(r.balance) > r.tokenIds.length ? " Showing the first " + r.tokenIds.length + "; enter a token ID for others." : ""));
-      if (Number(r.balance) > r.tokenIds.length) $("manualEntry").style.display = "flex";
-      for (const id of r.tokenIds) addTile(grid, id.toString());
+      setStatus(st, "Found " + r.tokenIds.length + " Chog" + (r.tokenIds.length === 1 ? "" : "s") + " in this wallet. Pick one to ride." +
+        (r.complete ? "" : "\nThe contract says this wallet holds " + r.balance + ", but only " + r.tokenIds.length + " could be found."), r.complete ? "" : "warn");
+      if (!r.complete) $("holdingsRetry").style.display = "inline-block";
+      for (const id of r.tokenIds) addTile(grid, id);
+      if (r.tokenIds.length === 1) selectToken(r.tokenIds[0]);
     } catch (e) {
       if (req !== S.holdingsReq) return;
-      setStatus(st, "Couldn't read the Chog Genesis contract: " + (e.message || e) + "\nYou can enter a token ID instead.", "err");
-      $("manualEntry").style.display = "flex";
+      setStatus(st, "Couldn't read the Chog Genesis contract: " + (e.message || e), "err");
+      $("holdingsRetry").style.display = "inline-block";
     }
   }
 
   function addTile(grid, tokenId) {
     const b = document.createElement("button");
     b.className = "tok";
+    b.dataset.token = tokenId;
     b.innerHTML = '<img alt=""><div>Token ' + esc(tokenId) + "</div>";
     b.onclick = () => selectToken(tokenId);
     grid.appendChild(b);
@@ -452,7 +522,7 @@
     $("traitRows").innerHTML = "";
     $("chosenImg").removeAttribute("src");
     $("chosenName").textContent = "Token " + idStr;
-    document.querySelectorAll(".tok").forEach(t => t.classList.toggle("sel", t.textContent.includes("token " + idStr + ")") || t.textContent === "Token " + idStr));
+    document.querySelectorAll(".tok").forEach(t => t.classList.toggle("sel", t.dataset.token === idStr));
     if (!/^\d+$/.test(idStr)) { setStatus(info, "Enter a whole-number token ID.", "err"); return; }
     const req = ++S.selectReq;
     const stale = () => req !== S.selectReq;
@@ -475,7 +545,7 @@
     $("traitRows").innerHTML = gp.attributes.map(a => "<tr><td>" + esc(a.trait_type) + "</td><td>" + esc(a.value) + "</td></tr>").join("");
     const laser = gp.abilities.find(a => a.id === "laserEyes");
     const lines = [
-      "Token ID " + idStr + ": owned by this wallet (checked on-chain).",
+      "Owned by this wallet (checked on-chain).",
       "Tier: " + (gp.tier || "missing") + " -> score multiplier x" + gp.multiplier.toFixed(2) + (gp.tierStatus === "mapped" ? "" : " (default)"),
       laser ? "Ability: Laser Eyes, " + laser.charges + " charges per run (from " + laser.fromTrait + ": " + laser.fromValue + ")"
         : "Ability: none. This Chog's Eyes trait has no ability mapped.",
@@ -506,13 +576,20 @@
     const own = await Chain.verifyOwnership(S.provider, BigInt(c.tokenId), S.account);
     if (!own.owned) { setStatus(rs, own.reason, "err"); $("rideBtn").disabled = false; return; }
 
-    if (!S.auth || S.auth.account !== S.account || S.auth.expiresAt < Date.now()) {
-      setStatus(rs, "Sign the message in your wallet to enter the leaderboard. This is free and sends no transaction.");
+    if (!authValid() && S.authError !== "the leaderboard server isn't reachable") {
+      setStatus(rs, "Your sign-in expired. Sign the message in your wallet again. It's free and sends no transaction.");
       try { await signIn(); S.authError = ""; }
       catch (e) {
         S.auth = null;
         S.authError = e && e.code === 4001 ? "you declined to sign in" : (e.message || String(e));
       }
+    }
+    if (authValid() && !S.username) {
+      setStatus(rs, "Choose a pilot name above first. It's how you appear on the leaderboard.", "err");
+      $("pilotCard").style.display = "block";
+      $("pilotInput").focus();
+      $("rideBtn").disabled = false;
+      return;
     }
     setStatus(rs, "");
     $("rideBtn").disabled = false;
@@ -533,6 +610,7 @@
     const signature = await S.provider.request({ method: "personal_sign", params: [utf8ToHex(n.message), S.account] });
     const v = await apiCall("/auth/verify", { wallet: S.account, message: n.message, signature });
     S.auth = { token: v.token, account: S.account, expiresAt: v.expiresAt };
+    S.username = v.username || null;
   }
 
   // ---------- Leaderboard view ----------
@@ -546,8 +624,8 @@
       const r = await apiCall("/leaderboard");
       if (!r.entries.length) setStatus(st, "No validated runs yet.");
       else setStatus(st, "");
-      rows.innerHTML = r.entries.map(e => "<tr><td>" + e.rank + "</td><td>" + esc(e.name || "Token " + e.tokenId) +
-        " (token " + esc(e.tokenId) + ")</td><td>" + esc(short(e.wallet)) + "</td><td>" + Number(e.meters).toLocaleString() + " m</td></tr>").join("");
+      rows.innerHTML = r.entries.map(e => "<tr><td>" + e.rank + "</td><td>" + esc(e.username || short(e.wallet)) + "</td><td>" +
+        esc(e.name || "Token " + e.tokenId) + "</td><td>" + Number(e.meters).toLocaleString() + " m</td></tr>").join("");
     } catch (e) {
       setStatus(st, e.offline ? "The leaderboard server isn't reachable from here. It runs on the deployed site (see README)." : e.message, "err");
     }

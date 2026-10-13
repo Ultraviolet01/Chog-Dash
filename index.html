@@ -131,16 +131,25 @@
     <div class="card">
       <div id="walletButtons" class="row"></div>
       <div id="walletStatus" class="status"></div>
-      <div class="row"><button id="switchNet" style="display:none">Switch to Monad</button></div>
+      <div class="row">
+        <button id="switchNet" style="display:none">Switch to Monad</button>
+        <button id="signInBtn" style="display:none">Sign in</button>
+      </div>
+    </div>
+    <div id="pilotCard" class="card" style="display:none; margin-top:16px">
+      <h2>Pilot name</h2>
+      <div class="status">Shown on the leaderboard instead of your wallet address.</div>
+      <div class="row">
+        <input id="pilotInput" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Pilot name">
+        <button id="pilotSave">Save</button>
+      </div>
+      <div id="pilotStatus" class="status"></div>
     </div>
     <div id="holdingsCard" class="card" style="display:none; margin-top:16px">
       <h2>Your Chogs</h2>
       <div id="holdingsStatus" class="status"></div>
       <div id="holdings" class="grid"></div>
-      <div id="manualEntry" class="row" style="display:none">
-        <input id="tokenInput" inputmode="numeric" placeholder="Token ID">
-        <button id="tokenCheck">Check token</button>
-      </div>
+      <div class="row"><button id="holdingsRetry" style="display:none">Check again</button></div>
     </div>
     <div id="chosenCard" class="card" style="display:none; margin-top:16px">
       <div class="chosen">
@@ -167,7 +176,7 @@
     <p class="status" id="lbRule"></p>
     <div id="lbStatus" class="status"></div>
     <div class="tablewrap">
-      <table><thead><tr><th>#</th><th>Chog</th><th>Wallet</th><th>Distance</th></tr></thead>
+      <table><thead><tr><th>#</th><th>Pilot</th><th>Chog</th><th>Distance</th></tr></thead>
       <tbody id="lbRows"></tbody></table>
     </div>
   </div>
