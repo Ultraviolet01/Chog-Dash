@@ -634,8 +634,8 @@
       // In flight the rider faces where the rocket goes, so the camera sees a back view made from this
       // Chog's own traits and colours (see Art.chogBackCanvas). The portrait is shown in the HUD.
       const riderPoses = {
-        side: Art.chogBackCanvas(art.img, gp.attributes, "threeQuarter"),
-        back: Art.chogBackCanvas(art.img, gp.attributes, "back"),
+        side: Art.chogBackCanvas(art.img, gp.attributes, "threeQuarter", meta),
+        back: Art.chogBackCanvas(art.img, gp.attributes, "back", meta),
       };
       // Rocket paint, glow and aura trail from the traits (looks only, see js/looks.js)
       const look = root.ChogLooks.rocketLook(gp.attributes, meta, Art.samplePalette(art.img).bg);

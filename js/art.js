@@ -281,14 +281,38 @@
     return v ? "bare" : (pal.hatShown ? "beanie" : "bare");
   }
 
+  // The 10 one-of-one Legendaries have no Head trait, so each gets a back view designed from its artwork.
+  // Keyed by the name after the dash in the metadata name ("CHOG #1373 — Midas"). Colours are [r, g, b].
+  const LEGENDARY_BACKS = {
+    "blaze": { kind: "spikes", hat: [255, 132, 24], face: [255, 196, 64], glow: true },        // living flame
+    "burning skully": { kind: "skull", hat: [255, 120, 30], face: [242, 232, 212] },           // bone skull in flames
+    "chog scream": { kind: "hair", hat: [92, 64, 196], face: [232, 174, 112] },               // painted purple swirl
+    "chogbomination": { kind: "brain", hat: [236, 120, 150], face: [222, 232, 206] },         // zombie, brain showing
+    "frogger": { kind: "frog", hat: [96, 200, 84], face: [242, 218, 196] },                   // frog hood
+    "grim": { kind: "spikes", hat: [238, 238, 238], face: [246, 242, 236] },                  // white manga mane
+    "halo": { kind: "spikes", hat: [250, 236, 196], face: [250, 238, 206] },                  // cream angel (halo is on the rocket)
+    "krown": { kind: "helmet", hat: [242, 196, 40], face: [240, 214, 190], gem: [214, 40, 50] }, // gold war helmet
+    "midas": { kind: "spikes", hat: [250, 200, 32], face: [252, 210, 60], glow: true },       // solid gold
+    "redd": { kind: "horns", hat: [110, 18, 28], face: [222, 44, 56] },                       // red devil
+  };
+  function legendaryBack(attributes, meta) {
+    const base = (attributes || []).find(x => String(x.trait_type).trim().toLowerCase() === "base");
+    if (!base || String(base.value).trim() !== "1:1") return null;
+    const m = String((meta && meta.name) || "").match(/[—–-]\s*(.+)$/);
+    return m ? LEGENDARY_BACKS[m[1].trim().toLowerCase()] || null : null;
+  }
+
   // view: "back" (in flight) or "threeQuarter" (home screen: turned a little left, like Rookie)
-  function chogBackCanvas(img, attributes, view) {
+  // meta (optional): the token metadata, used to recognise the one-of-ones
+  function chogBackCanvas(img, attributes, view, meta) {
     const attr = name => {
       const a = (attributes || []).find(x => String(x.trait_type).trim().toLowerCase() === name);
       return a ? String(a.value).trim().toLowerCase() : "";
     };
     const pal = samplePalette(img, attr("skin") === "black");
-    const kind = headwearKind(attr("head"), pal);
+    const legend = legendaryBack(attributes, meta);
+    if (legend) { pal.hat = legend.hat; pal.face = legend.face; }
+    const kind = legend ? legend.kind : headwearKind(attr("head"), pal);
     const tq = view === "threeQuarter";
     const c = newCanvas(), g = c.getContext("2d"), pen = rookiePen(g), INK = pen.INK;
     const cx = 128, cy = 116, r = 104;
@@ -374,6 +398,57 @@
     } else if (kind === "helmet") {
       dome(24, 140);
       pen.shape(rgb(shade(pal.hat, 0.6)), () => { g.moveTo(118, 8); g.quadraticCurveTo(128, -4, 138, 8); g.lineTo(136, 116); g.lineTo(120, 116); g.closePath(); });
+      if (legend && legend.gem) pen.shape(rgb(legend.gem), () => { g.moveTo(128, 30); g.lineTo(140, 46); g.lineTo(128, 62); g.lineTo(116, 46); g.closePath(); });
+    } else if (kind === "spikes" || kind === "skull") {
+      // A jagged mane over the top of the head (flames for Blaze and Skully)
+      const spikes = (col, lift) => pen.shape(col, () => {
+        g.moveTo(40, 150);
+        const n = 9;
+        for (let i = 0; i <= n; i++) {
+          const a = Math.PI + (i / n) * Math.PI;
+          const tipR = 104 + lift + (i % 2 ? 0 : 6), baseR = 72;
+          const ta = a + Math.PI / n / 2;
+          g.lineTo(128 + Math.cos(a) * (baseR + 12), 132 + Math.sin(a) * baseR * 0.95);
+          if (i < n) g.lineTo(128 + Math.cos(ta) * tipR, 132 + Math.sin(ta) * tipR * 0.95 - (kind === "skull" || (legend && legend.glow) ? 8 : 0));
+        }
+        g.lineTo(216, 150); g.quadraticCurveTo(128, 120, 40, 150); g.closePath();
+      });
+      if (kind === "skull") {
+        spikes(hat, 6);
+        pen.shape(rgb(shade(pal.hat, 1.15)), () => { g.ellipse(128, 132, 70, 50, 0, Math.PI, Math.PI * 2); g.closePath(); });
+        // Bone dome with cracks
+        pen.shape(face, () => { g.ellipse(128 + sx * 0.25, 150, 80, 62, 0, 0, Math.PI * 2); });
+        g.strokeStyle = "rgba(21,21,21,0.6)"; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(108, 96); g.lineTo(118, 120); g.lineTo(110, 138); g.moveTo(160, 100); g.lineTo(152, 126); g.lineTo(164, 144); g.stroke();
+      } else {
+        spikes(hat, 0);
+        g.strokeStyle = "rgba(21,21,21,0.35)"; g.lineWidth = 3;
+        [[100, 90, 92, 130], [128, 80, 128, 126], [156, 90, 164, 130]].forEach(([a, b, x, y]) => { g.beginPath(); g.moveTo(a, b); g.lineTo(x, y); g.stroke(); });
+      }
+    } else if (kind === "frog") {
+      // Frog hood: covers the head, two big eyes on top
+      dome(40, 150);
+      [[84, 52], [172, 52]].forEach(([x, y]) => {
+        pen.shape(hat, () => { g.arc(x, y, 30, 0, Math.PI * 2); });
+        pen.shape("#ffffff", () => { g.arc(x, y - 4, 18, 0, Math.PI * 2); });
+        g.fillStyle = INK; g.beginPath(); g.arc(x + 4, y - 4, 8, 0, Math.PI * 2); g.fill();
+      });
+    } else if (kind === "brain") {
+      // Exposed brain on the top of the head
+      pen.shape(hat, () => {
+        g.moveTo(64, 112);
+        for (let i = 0; i <= 8; i++) { const x = 64 + i * 16; g.quadraticCurveTo(x + 8, 50 + (i % 2) * 10, x + 16, 70 + Math.abs(4 - i) * 6); }
+        g.quadraticCurveTo(128, 124, 64, 112); g.closePath();
+      });
+      g.strokeStyle = "rgba(21,21,21,0.45)"; g.lineWidth = 3;
+      [[90, 74, 100, 100], [128, 64, 124, 106], [164, 74, 154, 102]].forEach(([a, b, x, y]) => { g.beginPath(); g.moveTo(a, b); g.quadraticCurveTo(a + 14, (b + y) / 2, x, y); g.stroke(); });
+    }
+    if (legend && legend.glow) {   // Blaze and Midas glow from within
+      g.globalCompositeOperation = "lighter";
+      const gr = g.createRadialGradient(128, 130, 10, 128, 130, 120);
+      gr.addColorStop(0, "rgba(255,200,80,0.35)"); gr.addColorStop(1, "rgba(255,200,80,0)");
+      g.fillStyle = gr; g.fillRect(0, 0, SIZE, SIZE);
+      g.globalCompositeOperation = "source-over";
     }
     pen.grain();
     g.restore();

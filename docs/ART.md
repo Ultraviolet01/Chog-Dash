@@ -9,7 +9,8 @@
   - Headwear shape comes from its Head trait: cap, bucket hat, beanie, Russian hat, wizard hat, crown, horns, durag, headband, hair or helmet. Anything else shows the bare head.
   - Colours are sampled from its own image: the background behind it, its face, its headwear and its outfit.
   - Skin "Black" Chogs get their dark face colour.
-  - The 10 one-of-one Legendaries have no Head trait, so their headwear is guessed from the image colours only.
+  - The 10 one-of-one Legendaries have no Head trait, so each has a back view designed from its artwork (`LEGENDARY_BACKS` in js/art.js): Blaze flame mane, Burning Skully cracked skull in flames, Chog Scream purple swirl, Chogbomination exposed brain, Frogger frog hood, Grim white manga spikes, Halo cream spikes (its halo floats over the rocket), Krown gold helmet with a red gem, Midas glowing gold spikes, Redd devil horns.
+  - Checked in the game with each one's real artwork, on its own one-of-one rocket, on the home screen and in flight.
   - It sits in a glass bubble helmet on the rocket.
 - The back view is a game-made stand-in, not original NFT art. The real portrait is never altered:
   - it is shown in the Chog list and on the selection card,
