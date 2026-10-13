@@ -150,7 +150,7 @@ body.flying, body.flying #gameCanvas { cursor: none; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes glow { 0%, 100% { box-shadow: 0 7px 0 #b8691a, 0 12px 30px rgba(255,184,77,0.35); }
   50% { box-shadow: 0 7px 0 #b8691a, 0 12px 44px rgba(255,184,77,0.7); } }
-@keyframes blink { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.35; } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.65; } }
 @media (prefers-reduced-motion: reduce) { .home *, .panel.show { animation: none !important; } }
 /* Tall and narrow screens: stack in the middle, rocket shows below */
 @media (max-aspect-ratio: 1/1) {
@@ -340,3 +340,21 @@ th { color: var(--muted); font-weight: normal; }
 .card-wrap { max-width: 680px; }
 .x-btn { display: inline-flex; align-items: center; gap: 8px; background: #f4f1e8; border-color: #f4f1e8; color: #0b0f1c; }
 .x-btn svg { width: 16px; height: 16px; fill: #0b0f1c; }
+
+/* Home screen helper lines (tagline, mode hint, key hint): each sits on its own small dark, softly
+   blurred backing with brighter text, so it reads over bright nebula without darkening the scene. */
+.tagline, .mode-hint, .key-hint {
+  display: table; width: auto; max-width: 100%; box-sizing: border-box;
+  padding: 5px 12px; border-radius: 14px;
+  background: rgba(5, 8, 18, 0.62);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  color: #e3e7f0; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+.tagline { color: #f1ede2; }
+.mode-hint:empty { display: none; }
+@media (max-aspect-ratio: 1/1) {
+  .tagline, .mode-hint, .key-hint { margin-left: auto; margin-right: auto; }
+}
+/* Keep the key hint hidden where it was before (touch screens, short landscape screens) */
+@media (pointer: coarse) { .key-hint { display: none; } }
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) { .key-hint { display: none; } }
