@@ -241,7 +241,7 @@
     const sparkMats = {};
     const pickups = root.ChogPickups.create(scene, {
       player: () => player.position, hitOffsetY: HIT_OFFSET_Y, boundX: BOUND_X, boundY: BOUND_Y,
-      spawnZ: SPAWN_Z, despawnZ: DESPAWN_Z,
+      spawnZ: () => spawnZ(), despawnZ: DESPAWN_Z,
       sparkle: (pos, color) => {
         if (!sparkMats[color]) sparkMats[color] = new THREE.MeshBasicMaterial({ color });
         burst(pos, [sparkMats[color]], 6, 3);
@@ -315,8 +315,13 @@
     let setup = { laserCharges: 0, multiplier: 1, modeLabel: "", showScore: false };
 
     const meters = () => Math.floor(distance / G.unitsPerMeter);
-    const baseSpeed = () => Math.min(G.baseSpeed + meters() * G.speedPerMeter, G.maxSpeed);
-    const currentSpacing = () => Math.max(START_SPACING - meters() * SPACING_SHRINK, MIN_SPACING);
+    const baseSpeed = () => root.ChogTraits.speedAt(meters());
+    // Past the early ramp the world keeps speeding up. To stay fair: obstacles spawn further ahead
+    // (about 2.4 s of warning), groups never get closer in time than at rampSpeed, and steering scales up.
+    const speedScale = () => Math.max(1, baseSpeed() / G.rampSpeed);
+    const steerScale = () => Math.min(1.8, Math.sqrt(speedScale()));
+    const spawnZ = () => -Math.min(880, Math.max(260, baseSpeed() * 2.4));
+    const currentSpacing = () => Math.max(START_SPACING - meters() * SPACING_SHRINK, MIN_SPACING * speedScale());
 
     function clearField() {
       gates.forEach(g => scene.remove(g));
@@ -460,7 +465,7 @@
       const speed = baseSpeed();
       const spacing = nextSpacing;
       // Move the guaranteed-safe point no further than the rocket can travel before the group arrives
-      const reach = (spacing / speed) * Math.min(STEER_SPEED, MAX_UP) * 0.7 + 1;
+      const reach = (spacing / speed) * Math.min(STEER_SPEED, MAX_UP) * steerScale() * 0.7 + 1;
       safe.x = clamp(safe.x + rand(-reach, reach), -BOUND_X + 0.8, BOUND_X - 0.8);
       safe.y = clamp(safe.y + rand(-reach, reach), -BOUND_Y + 0.8, BOUND_Y - 0.8);
 
@@ -504,7 +509,8 @@
     function updateGates(dt, speed) {
       const m = meters(), z = root.ChogTraits.zoneAt(m);
       const remaining = z.endMeters - m;
-      if (remaining <= GATE_LEAD_M && gateFor !== z.number) {
+      // Lead grows with speed so the gate always shows up a couple of seconds ahead
+      if (remaining <= Math.max(GATE_LEAD_M, -spawnZ() / G.unitsPerMeter) && gateFor !== z.number) {
         gateFor = z.number;
         const next = root.ChogTraits.zoneAt(z.endMeters + 1);
         const gate = scenery.makeGate(next.zone.id);
@@ -525,7 +531,8 @@
 
     function nearBoundary(arrivalM) {
       const z = root.ChogTraits.zoneAt(arrivalM);
-      return (z.number > 1 && z.intoZone < BREATHER_M) || z.endMeters - arrivalM < BREATHER_M;
+      const b = BREATHER_M * speedScale();
+      return (z.number > 1 && z.intoZone < b) || z.endMeters - arrivalM < b;
     }
 
     function checkZone() {
@@ -587,7 +594,7 @@
       document.body.classList.toggle("slowmo", playing && pickups.slowed());
       if (flashTimer > 0) { flashTimer -= dt; hud.flash.style.opacity = Math.max(0, flashTimer / 0.5 * 0.8).toFixed(2); }
 
-      scenery.update(dt, speed, G.maxSpeed);
+      scenery.update(dt, speed, G.rampSpeed);
       if (playing) { updateGates(dt, speed); checkZone(); }
       if (zoneFlashTimer > 0) { zoneFlashTimer -= dt; hud.zoneFlash.style.opacity = Math.max(0, zoneFlashTimer / 0.9 * 0.55).toFixed(2); }
       if (bannerTimer > 0) { bannerTimer -= dt; hud.zoneBanner.style.opacity = clamp(bannerTimer / 0.6, 0, 1).toFixed(2); }
@@ -642,18 +649,19 @@
       }
 
       if (playing) {
-        const step = STEER_ACCEL * dt;
+        const ss = steerScale();
+        const step = STEER_ACCEL * ss * dt;
         if (steerMode === "keys") {
           // Keyboard: move while a key is held, stay put when released
-          const tx = ((keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0)) * STEER_SPEED;
-          const ty = ((keys.ArrowUp || keys.KeyW ? 1 : 0) - (keys.ArrowDown || keys.KeyS ? 1 : 0)) * MAX_UP;
+          const tx = ((keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0)) * STEER_SPEED * ss;
+          const ty = ((keys.ArrowUp || keys.KeyW ? 1 : 0) - (keys.ArrowDown || keys.KeyS ? 1 : 0)) * MAX_UP * ss;
           vel.x += clamp(tx - vel.x, -step, step);
           vel.y += clamp(ty - vel.y, -step, step);
         } else {
           // Mouse/touch: fly toward the pointer
-          const tx = clamp((pointerTarget.x - player.position.x) * POINTER_GAIN, -POINTER_SPEED_X, POINTER_SPEED_X);
-          const ty = clamp((pointerTarget.y - player.position.y) * POINTER_GAIN, -POINTER_SPEED_Y, POINTER_SPEED_Y);
-          const pstep = POINTER_ACCEL * dt;
+          const tx = clamp((pointerTarget.x - player.position.x) * POINTER_GAIN, -POINTER_SPEED_X * ss, POINTER_SPEED_X * ss);
+          const ty = clamp((pointerTarget.y - player.position.y) * POINTER_GAIN, -POINTER_SPEED_Y * ss, POINTER_SPEED_Y * ss);
+          const pstep = POINTER_ACCEL * ss * dt;
           vel.x += clamp(tx - vel.x, -pstep, pstep);
           vel.y += clamp(ty - vel.y, -pstep, pstep);
         }
@@ -667,7 +675,7 @@
 
         distance += speed * dt;
         sinceSpawn += speed * dt;
-        if (sinceSpawn >= nextSpacing) { sinceSpawn = 0; spawnGroup(SPAWN_Z); }
+        if (sinceSpawn >= nextSpacing) { sinceSpawn = 0; spawnGroup(spawnZ()); }
       }
       if (playing || state === "ready") updateHud(speed);
 
@@ -737,7 +745,7 @@
       }
       lookAt.set(player.position.x * (home ? 0.45 : 0.8), player.position.y * (home ? 0.6 : 0.8) + (home ? 0.4 : 0), -10);
       camera.lookAt(lookAt);
-      const speedRatio = playing ? (baseSpeed() - G.baseSpeed) / (G.maxSpeed - G.baseSpeed) : 0;
+      const speedRatio = playing ? Math.min(1.6, (baseSpeed() - G.baseSpeed) / (G.rampSpeed - G.baseSpeed)) : 0;
       const fov = 70 + speedRatio * 12 + (dashing ? 10 : 0) - (playing && pickups.slowed() ? 4 : 0);
       if (Math.abs(camera.fov - fov) > 0.01) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix(); }
     }

@@ -79,34 +79,43 @@
     return Math.floor(Math.max(0, meters) * multiplier);
   }
 
-  // Upper bound on distance (meters) reachable in `seconds`. Speed depends only on distance
-  // travelled (see js/game.js); 2% is added for frame-timing differences.
+  // World speed (units/s) at a distance (m): a quick ramp, then a slower climb that never stops.
+  function speedAt(meters, cfg) {
+    const g = (cfg || config).game, m = Math.max(0, meters);
+    const rampEnd = (g.rampSpeed - g.baseSpeed) / g.speedPerMeter;
+    if (m <= rampEnd) return g.baseSpeed + m * g.speedPerMeter;
+    return g.rampSpeed + g.lateGrowth * Math.sqrt(m - rampEnd);
+  }
+
+  // Upper bound on distance (meters) reachable in `seconds`: the speed curve plus every Dash a run could
+  // get (one power-up per powerGapMin seconds from firstAt, each worth dashSeconds), plus 2% for frame timing.
   function maxPossibleMeters(seconds, cfg) {
-    const g = (cfg || config).game;
-    const dt = 0.01;
-    let units = 0;
+    const g = (cfg || config).game, pk = g.pickups;
+    const dt = 0.02;
+    let units = 0, dashLeft = 0, nextDash = pk ? pk.firstAt : Infinity;
     for (let t = 0; t < seconds; t += dt) {
-      const m = Math.floor(units / g.unitsPerMeter);
-      units += Math.min(g.baseSpeed + m * g.speedPerMeter, g.maxSpeed) * dt;
-    }
-    // Dash: at most one power-up per powerGapMin seconds (after firstAt), each worth at most dashSeconds of extra speed
-    const pk = g.pickups;
-    if (pk && seconds > pk.firstAt) {
-      const dashes = Math.floor((seconds - pk.firstAt) / pk.powerGapMin) + 1;
-      units += dashes * pk.dashSeconds * g.maxSpeed * (pk.dashSpeedMult - 1);
+      if (pk && t >= nextDash) { dashLeft += pk.dashSeconds; nextDash += pk.powerGapMin; }
+      const speed = speedAt(units / g.unitsPerMeter, cfg) * (dashLeft > 0 ? pk.dashSpeedMult : 1);
+      units += speed * dt;
+      dashLeft = Math.max(0, dashLeft - dt);
     }
     return Math.floor((units * 1.02) / g.unitsPerMeter);
   }
 
-  // Distance (m) an ideal run has covered after `seconds`. Speed rises with distance until it
-  // hits the cap: dm/dt = b + a*m, so m = (b/a)(e^(a t) - 1), then a straight line at top speed.
+  // Distance (m) an ideal run has covered after `seconds` (no pickups). Built once as a table of
+  // whole seconds, extended on demand, and interpolated.
+  const distTable = { cfg: null, meters: [0], units: 0, t: 0 };
   function metersAtSeconds(seconds, cfg) {
-    const g = (cfg || config).game;
-    const a = g.speedPerMeter / g.unitsPerMeter, b = g.baseSpeed / g.unitsPerMeter;
-    const capM = (g.maxSpeed - g.baseSpeed) / g.speedPerMeter;
-    const capT = Math.log(1 + (a * capM) / b) / a;
-    if (seconds <= capT) return (b / a) * (Math.exp(a * seconds) - 1);
-    return capM + (g.maxSpeed / g.unitsPerMeter) * (seconds - capT);
+    const c = cfg || config, g = c.game;
+    if (distTable.cfg !== c) { distTable.cfg = c; distTable.meters = [0]; distTable.units = 0; distTable.t = 0; }
+    const need = Math.ceil(Math.max(0, seconds)) + 1;
+    const dt = 0.02, perSecond = Math.round(1 / dt);
+    while (distTable.meters.length <= need) {
+      for (let i = 0; i < perSecond; i++) distTable.units += speedAt(distTable.units / g.unitsPerMeter, c) * dt;
+      distTable.meters.push(distTable.units / g.unitsPerMeter);
+    }
+    const s = Math.max(0, seconds), k = Math.floor(s), f = s - k;
+    return distTable.meters[k] + (distTable.meters[k + 1] - distTable.meters[k]) * f;
   }
 
   // Length in minutes of the k-th zone of a run (k = 0, 1, 2 ...): 2, 4, 8, 14, 22, 32 ...
@@ -132,5 +141,5 @@
       number: k + 1, intoZone: m - start, startMeters: start, endMeters: zoneStartMeters(k + 1, cfg) };
   }
 
-  return { normalizeAttributes, resolveGameplay, computeScore, maxPossibleMeters, matchesRule, zoneAt, zoneMinutes, zoneStartSeconds, zoneStartMeters, metersAtSeconds };
+  return { normalizeAttributes, resolveGameplay, computeScore, maxPossibleMeters, matchesRule, zoneAt, zoneMinutes, zoneStartSeconds, zoneStartMeters, metersAtSeconds, speedAt };
 });

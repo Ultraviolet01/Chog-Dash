@@ -60,7 +60,7 @@ Nothing spawns in the first 10 seconds of a run. Pickups can appear anywhere, ri
 
 ## Zones
 
-The run passes through five zones that repeat in order. Each zone lasts longer than the one before: 2, 4, 8, 14, 22, 32, 44 ... minutes (each step adds 2 minutes more than the last). Speed keeps rising up to its cap.
+The run passes through five zones that repeat in order. Each zone lasts longer than the one before: 2, 4, 8, 14, 22, 32, 44 ... minutes (each step adds 2 minutes more than the last). Speed keeps rising the whole time.
 
 | Zone | Length (first loop) | Runs from | Scenery | Obstacles |
 |---|---|---|---|---|
@@ -80,7 +80,9 @@ The run passes through five zones that repeat in order. Each zone lasts longer t
 ## Gameplay rules
 
 - One hit ends the run. Touching the screen edges does not.
-- Speed rises with distance, and obstacles get denser (groups of 1, then 2, then 3).
+- Speed rises with distance for the whole run: quickly to x2.8 in the first 35 seconds, then it keeps climbing, more slowly the further you go (about x3.5 in Zone 2, x7 in Zone 5, x9 on loop 2).
+- To keep it fair at high speed, obstacles appear further ahead (about 2.4 s of warning), steering gets faster, and obstacle groups never come closer together in time than at x2.8.
+- Obstacles get denser with distance (groups of 1, then 2, then 3).
 - Every obstacle group leaves a reachable safe path.
 - Near misses flash on screen. They are feedback only and do not change the score.
 - **Laser Eyes** (Chogs whose Eyes trait maps to it):

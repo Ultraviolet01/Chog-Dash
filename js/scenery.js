@@ -360,8 +360,9 @@
       backdrop.material.color.copy(cur.back);
       scene.fog.color.copy(cur.fog);
       scene.background.copy(cur.fog).multiplyScalar(0.8);
-      scene.fog.near = cur.fogNear;
-      scene.fog.far = cur.fogFar;
+      // Fog recedes as speed rises, so obstacles spawned further ahead are visible in time
+      scene.fog.near = cur.fogNear * fogScale;
+      scene.fog.far = cur.fogFar * fogScale;
       if (lights) { lights.ambient.color.copy(cur.ambient); lights.rim.color.copy(cur.rim); lights.fill.color.copy(cur.fill); }
       hole.scale.setScalar(cur.hole);
     }
@@ -381,7 +382,9 @@
       }
     }
 
+    let fogScale = 1;
     function update(dt, speed, maxSpeed) {
+      fogScale = Math.min(3.5, Math.max(1, speed / maxSpeed));
       applyLook(1 - Math.exp(-dt * blendRate));
       blendRate += (0.9 - blendRate) * Math.min(1, dt * 0.6);
 

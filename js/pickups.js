@@ -202,7 +202,7 @@
         if (shape === 2) { x = x0 + dx * i; y = y0 + dy * i; }
         x = Math.max(-api.boundX, Math.min(api.boundX, x));
         y = Math.max(-api.boundY, Math.min(api.boundY, y));
-        addItem("stardust", null, x, y + api.hitOffsetY, api.spawnZ - i * 5);
+        addItem("stardust", null, x, y + api.hitOffsetY, api.spawnZ() - i * 5);
       }
     }
 
@@ -212,7 +212,7 @@
       const types = allowedTypes(zoneId, onField());
       if (!types.length) return null;
       const type = pickType(types);
-      return addItem("power", type, rand(-api.boundX + 0.5, api.boundX - 0.5), rand(-api.boundY + 0.5, api.boundY - 0.5) + api.hitOffsetY, api.spawnZ);
+      return addItem("power", type, rand(-api.boundX + 0.5, api.boundX - 0.5), rand(-api.boundY + 0.5, api.boundY - 0.5) + api.hitOffsetY, api.spawnZ());
     }
 
     function addStardust(n) {
@@ -331,7 +331,7 @@
         if (revive > 0) revive = Math.max(0, revive - dt);
         if (t >= nextDust) { spawnDustPattern(); nextDust = t + rand(2.5, 4.5); }
         if (t >= nextPower) { spawnPower(zoneId); nextPower = t + rand(P.powerGapMin, P.powerGapMax); }
-        if (t >= nextHorn) { addItem("horn", null, rand(-api.boundX + 0.5, api.boundX - 0.5), rand(-api.boundY + 0.5, api.boundY - 0.5) + api.hitOffsetY, api.spawnZ); nextHorn = t + rand(80, 140); }
+        if (t >= nextHorn) { addItem("horn", null, rand(-api.boundX + 0.5, api.boundX - 0.5), rand(-api.boundY + 0.5, api.boundY - 0.5) + api.hitOffsetY, api.spawnZ()); nextHorn = t + rand(80, 140); }
       }
       const p = api.player(), py = p.y + api.hitOffsetY;
       const magnet = playing && (active.magnet || 0) > 0;

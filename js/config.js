@@ -59,8 +59,11 @@
     game: {
       unitsPerMeter: 2,
       baseSpeed: 40,
+      // Speed rises quickly to rampSpeed, then keeps rising for the rest of the run, more slowly the
+      // further you go: speed = rampSpeed + lateGrowth * sqrt(meters past the ramp). See traits.speedAt.
       speedPerMeter: 0.06,
-      maxSpeed: 110,
+      rampSpeed: 110,
+      lateGrowth: 0.4,
       laserRange: 140,
       laserRadius: 0.9,
       // The run is split into zones that repeat in this order (loop after Milky Way).

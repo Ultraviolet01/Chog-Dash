@@ -20,7 +20,7 @@ const R = path.join(__dirname, '../../');
   await p.mouse.click(640, 360);
   // Keep the rocket alive by moving anything about to hit it out of the way
   await p.evaluate(() => setInterval(() => { const d = ChogUI._game()._debug, q = d.player.position;
-    d.obstacles().forEach(o => { if (o.mesh.position.z > -12 && Math.abs(o.mesh.position.x - q.x) < 5 && Math.abs(o.mesh.position.y - q.y) < 5) o.mesh.position.x += 14; }); }, 16));
+    d.obstacles().forEach(o => { if (o.mesh.position.z > -80 && Math.abs(o.mesh.position.x - q.x) < 6 && Math.abs(o.mesh.position.y - q.y) < 6) o.mesh.position.x += 16; }); }, 16));
   await p.waitForTimeout(600);
   assert.match(await p.textContent('#zoneBanner'), /OUTER SPACE.*Zone 1 of 5/);
 
@@ -36,7 +36,7 @@ const R = path.join(__dirname, '../../');
       [starts[2], /DEEP COSMIC ZONE.*Zone 4 of 5/, 'Deep Cosmic Zone'], [starts[3], /MILKY WAY.*Zone 5 of 5/, 'Milky Way'],
       [starts[4], /OUTER SPACE.*Zone 1 of 5 · Loop 2/, 'Outer Space · Loop 2']]) {
     await p.evaluate(m => ChogUI._game()._debug.setMeters(m), m);
-    await p.waitForTimeout(400);
+    await p.waitForFunction(src => new RegExp(src).test(document.getElementById('zoneBanner').textContent), re.source, { timeout: 15000 }).catch(() => {});
     assert.match(await p.textContent('#zoneBanner'), re);
     assert.strictEqual(await p.textContent('#zoneLabel'), label);
     await p.waitForTimeout(3500);

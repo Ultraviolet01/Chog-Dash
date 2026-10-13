@@ -68,15 +68,13 @@ test("score keeps raw distance separate and rounds down", () => {
   assert.strictEqual(T.computeScore(-5, 1), 0);
 });
 
-test("distance bound grows with time and stays within top speed", () => {
+test("distance bound grows with time and allows every honest run", () => {
   const g = config.game;
   let prev = -1;
   for (const s of [1, 10, 30, 60, 300]) {
     const m = T.maxPossibleMeters(s);
     assert.ok(m > prev);
-    const pk = g.pickups, dashes = s > pk.firstAt ? Math.floor((s - pk.firstAt) / pk.powerGapMin) + 1 : 0;
-    const dashExtra = dashes * pk.dashSeconds * g.maxSpeed * (pk.dashSpeedMult - 1);
-    assert.ok(m <= (g.maxSpeed * s + dashExtra) * 1.02 / g.unitsPerMeter + 1);
+    assert.ok(m >= Math.floor(T.metersAtSeconds(s)), "an ideal run with no pickups must always be allowed");
     assert.ok(m >= (g.baseSpeed * s) / g.unitsPerMeter, "a genuine run at base speed must always be allowed");
     prev = m;
   }
@@ -103,7 +101,7 @@ test("time-to-distance matches the game's speed curve", () => {
   const g = config.game;
   // Step the same rule the game uses and compare
   let units = 0, t = 0;
-  while (t < 300) { units += Math.min(g.baseSpeed + Math.floor(units / g.unitsPerMeter) * g.speedPerMeter, g.maxSpeed) * 0.01; t += 0.01; }
+  while (t < 300) { units += T.speedAt(Math.floor(units / g.unitsPerMeter)) * 0.01; t += 0.01; }
   const sim = units / g.unitsPerMeter, formula = T.metersAtSeconds(300);
   assert.ok(Math.abs(sim - formula) / sim < 0.01, sim + " vs " + formula);
   assert.ok(Math.abs(T.metersAtSeconds(120) - T.zoneStartMeters(1)) < 1e-6);
@@ -115,11 +113,25 @@ test("distance bound allows a run that grabs every Dash", () => {
   let units = 0, t = 0, dashLeft = 0, nextDash = pk.firstAt;
   while (t < 300) {
     if (t >= nextDash) { dashLeft += pk.dashSeconds; nextDash += pk.powerGapMin; }
-    const base = Math.min(g.baseSpeed + Math.floor(units / g.unitsPerMeter) * g.speedPerMeter, g.maxSpeed);
+    const base = T.speedAt(Math.floor(units / g.unitsPerMeter));
     units += base * (dashLeft > 0 ? pk.dashSpeedMult : 1) * 0.01;
     dashLeft = Math.max(0, dashLeft - 0.01);
     t += 0.01;
   }
   const meters = Math.floor(units / g.unitsPerMeter);
   assert.ok(meters <= T.maxPossibleMeters(300), meters + " > " + T.maxPossibleMeters(300));
+});
+
+test("speed keeps rising with distance, more slowly further on", () => {
+  const g = config.game;
+  const v = m => T.speedAt(m);
+  assert.strictEqual(v(0), g.baseSpeed);
+  const rampEnd = (g.rampSpeed - g.baseSpeed) / g.speedPerMeter;
+  assert.ok(Math.abs(v(rampEnd) - g.rampSpeed) < 1e-9, "ramp joins the slow climb smoothly");
+  let prev = 0;
+  for (const m of [100, 1000, rampEnd + 1, 5000, 50000, 200000, 1000000]) { assert.ok(v(m) > prev, "rises at " + m); prev = v(m); }
+  // The climb slows down: each extra 10 km adds less speed than the one before
+  assert.ok(v(20000) - v(10000) > v(30000) - v(20000));
+  // Zone 5 is much faster than the early ramp's top
+  assert.ok(v(T.zoneStartMeters(4)) > g.rampSpeed * 2);
 });
