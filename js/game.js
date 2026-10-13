@@ -124,17 +124,27 @@
 
     // Rider sprite always faces the camera, so the rider's face and traits stay readable
     const riderMat = new THREE.SpriteMaterial({ map: null, transparent: true });
+    let riderTex = {};   // rider views, see setRiderCanvas
     const rider = new THREE.Sprite(riderMat);
     rider.scale.set(1.7, 1.7, 1);
     rider.position.set(0, 0.98, 0.15);
     player.add(rocket, rider);
     scene.add(player);
-    setRiderCanvas(root.ChogArt.rookieCanvas());
+    setRiderCanvas(root.ChogArt.rookieCanvas(), { side: root.ChogArt.rookieSideCanvas(), back: root.ChogArt.rookieBackCanvas() });
+    useRiderPose("side");
 
-    function setRiderCanvas(canvas) {
-      if (riderMat.map) riderMat.map.dispose();
-      riderMat.map = new THREE.CanvasTexture(canvas);
-      riderMat.needsUpdate = true;
+    // Rider views: front (portrait), side (home screen, rocket turned nose-left) and back (flying away
+    // from the camera, looking where the rocket goes). Riders without side/back art (NFT portraits) use front.
+    function setRiderCanvas(canvas, poses) {
+      Object.values(riderTex).forEach(t => t.dispose());
+      const front = new THREE.CanvasTexture(canvas);
+      riderTex = { front, side: poses && poses.side ? new THREE.CanvasTexture(poses.side) : front,
+        back: poses && poses.back ? new THREE.CanvasTexture(poses.back) : front };
+      riderMat.map = null;
+    }
+    function useRiderPose(name) {
+      const t = riderTex[name] || riderTex.front;
+      if (riderMat.map !== t) { riderMat.map = t; riderMat.needsUpdate = true; }
     }
 
     // ---------- Exhaust particles (one pooled point cloud, drawn in a single call) ----------
@@ -512,6 +522,7 @@
     function update(dt) {
       const now = performance.now();
       const playing = state === "playing";
+      useRiderPose(state === "menu" ? "side" : "back");
       // Bigger flame while the rocket climbs (keyboard: holding rise; mouse/touch: moving up)
       const thrusting = playing && vel.y > 1;
 
@@ -572,7 +583,8 @@
         player.position.x += (tx - player.position.x) * k;
         idleY += (ty - idleY) * k;
         player.position.y = idleY + Math.sin(now / 400) * 0.25;
-        player.rotation.set(Math.sin(now / 900) * 0.05, showcase ? Math.sin(now / 1700) * 0.5 - 0.2 : 0, Math.sin(now / 700) * 0.08);
+        // Home screen: rocket turned side-on, nose pointing left, with a gentle sway
+        player.rotation.set(Math.sin(now / 900) * 0.05, showcase ? 1.25 + Math.sin(now / 1700) * 0.15 : 0, Math.sin(now / 700) * 0.08);
       }
 
       if (playing) {
@@ -719,10 +731,10 @@
     frame();
 
     return {
-      // opts: { riderCanvas, laserCharges, multiplier, modeLabel, showScore }
+      // opts: { riderCanvas, riderPoses: { side, back }, laserCharges, multiplier, modeLabel, showScore }
       configure(opts) {
         setup = Object.assign({}, setup, opts);
-        if (opts.riderCanvas) setRiderCanvas(opts.riderCanvas);
+        if (opts.riderCanvas) setRiderCanvas(opts.riderCanvas, opts.riderPoses);
       },
       toReady, toMenu, start,
       get state() { return state; },

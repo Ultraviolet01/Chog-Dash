@@ -14,6 +14,8 @@
 - Drawn in code in the Chog art style: cream face, pink cheeks and nose, big glossy eyes, thick black outlines and a light paper grain.
 - Its own look so it is never mistaken for a real Chog Genesis NFT: amber cap with a ROOKIE badge (no Monad logo), teal tracksuit with white stripes, no background.
 - Transparent background, so it sits straight in the rocket seat with the tracksuit tucked behind the hull.
+- Three views so Rookie always looks where the rocket is going: side profile on the home screen (rocket turned nose-left), back view on the ready screen and while flying (rocket heading into the screen), and the front portrait kept for reference.
+- NFT riders keep their front portrait in the bubble helmet, because NFT artwork only exists from the front.
 - No special abilities: practice runs only get the shared pickups.
 - Always labelled as practice in the HUD and on the ready and results screens.
 
