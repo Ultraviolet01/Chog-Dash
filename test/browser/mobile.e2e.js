@@ -55,7 +55,7 @@ const launchOpts = { executablePath: process.env.CHROME_PATH || '/opt/pw-browser
     await p.waitForTimeout(800);
     assert.ok(await p.isVisible('#cardBtn'), name + ': share button after crash');
     await p.tap('#cardBtn');
-    await p.waitForFunction(() => document.getElementById('cardImg').naturalWidth === 1080, null, { timeout: 5000 });
+    await p.waitForFunction(() => document.getElementById('cardImg').naturalWidth === 1200 && ChogUI._state.lastRun.practice, null, { timeout: 5000 });
     await p.tap('#cardClose');
     await p.waitForTimeout(300);
     await p.touchscreen.tap(vw.width / 2, vw.height / 3);

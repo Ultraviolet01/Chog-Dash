@@ -238,9 +238,15 @@ th { color: var(--muted); font-weight: normal; }
 .podium { display: flex; justify-content: center; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
 .pod { --medal: #cfd6e3; flex: 1 1 0; min-width: 0; max-width: 200px; text-align: center; background: rgba(13,19,34,0.92); border: 2px solid var(--medal);
   border-radius: 16px; padding: 14px 8px 12px; position: relative; animation: podIn 0.45s cubic-bezier(.2,1.3,.4,1) both; }
-.pod.r1 { --medal: #ffcf4d; padding-top: 22px; box-shadow: 0 0 24px rgba(255,207,77,0.35); animation-delay: 0.1s; }
-.pod.r2 { --medal: #cfd6e3; }
-.pod.r3 { --medal: #d08a4e; animation-delay: 0.2s; }
+/* Each podium card glows in its medal colour, pulsing gently (gold strongest) */
+.pod.r1 { --medal: #ffcf4d; --glow: rgba(255,207,77,0.7); padding-top: 22px; animation: podIn 0.45s cubic-bezier(.2,1.3,.4,1) 0.1s both, podGlow 2.4s ease-in-out 0.6s infinite; }
+.pod.r2 { --medal: #cfd6e3; --glow: rgba(207,214,227,0.55); animation: podIn 0.45s cubic-bezier(.2,1.3,.4,1) both, podGlow 2.4s ease-in-out 0.5s infinite; }
+.pod.r3 { --medal: #d08a4e; --glow: rgba(208,138,78,0.6); animation: podIn 0.45s cubic-bezier(.2,1.3,.4,1) 0.2s both, podGlow 2.4s ease-in-out 0.7s infinite; }
+.pod { box-shadow: 0 0 22px var(--glow), inset 0 0 18px var(--glow); }
+.pod .face { box-shadow: 0 0 16px var(--glow); }
+.pod .medal { box-shadow: 0 2px 0 #000, 0 0 14px var(--glow); }
+@keyframes podGlow { 0%, 100% { box-shadow: 0 0 18px var(--glow), inset 0 0 14px var(--glow); } 50% { box-shadow: 0 0 34px var(--glow), inset 0 0 22px var(--glow); } }
+@media (prefers-reduced-motion: reduce) { .pod.r1, .pod.r2, .pod.r3 { animation: none; } }
 .pod .medal { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); width: 32px; height: 32px; border-radius: 50%;
   background: var(--medal); color: #1a1205; font: 16px/32px 'Bungee', Impact, sans-serif; box-shadow: 0 2px 0 #000; }
 .pod .face { width: 76px; height: 76px; border-radius: 50%; border: 3px solid var(--medal); object-fit: cover; background: #0b1020; display: block; margin: 0 auto 8px; }
@@ -304,7 +310,7 @@ th { color: var(--muted); font-weight: normal; }
   font: 18px 'Bungee', Impact, sans-serif; letter-spacing: 1px; padding: 12px 22px; border-radius: 12px; box-shadow: 0 4px 0 #8a5a12; }
 .card-panel { background: rgba(5,7,13,0.88); z-index: 20; }
 .card-wrap { max-width: 560px; margin: 3vh auto; padding: 0 16px; text-align: center; }
-#cardImg { width: 100%; max-width: 520px; aspect-ratio: 1; border-radius: 16px; border: 1px solid var(--line); display: block; margin: 0 auto 14px;
+#cardImg { width: 100%; max-width: 520px; border-radius: 16px; border: 1px solid var(--line); display: block; margin: 0 auto 14px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.6); background: #070b18; }
 .card-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 
@@ -314,3 +320,10 @@ th { color: var(--muted); font-weight: normal; }
   .chip-btn, .icon-btn, .panel button, #hudMenuBtn, #hudFsBtn, .card-actions button, .lb-me button { min-height: 44px; }
   #hudFsBtn { min-width: 44px; }
 }
+.card-formats { display: inline-flex; padding: 4px; border-radius: 999px; background: rgba(10,15,30,0.8); border: 1px solid var(--line); margin-bottom: 12px; }
+.card-formats .mode { font-size: 13px; padding: 8px 16px; }
+#cardImg.square { aspect-ratio: 1; }
+#cardImg.wide { aspect-ratio: 16 / 9; max-width: 640px; }
+.card-wrap { max-width: 680px; }
+.x-btn { display: inline-flex; align-items: center; gap: 8px; background: #f4f1e8; border-color: #f4f1e8; color: #0b0f1c; }
+.x-btn svg { width: 16px; height: 16px; fill: #0b0f1c; }

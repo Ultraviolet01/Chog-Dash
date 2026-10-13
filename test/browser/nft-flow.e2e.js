@@ -120,11 +120,24 @@ const chain = {
   await p.click('#cardBtn');
   await p.waitForFunction(() => document.getElementById('cardPanel').classList.contains('show') && document.getElementById('cardImg').src.startsWith('data:image/png'), null, { timeout: 10000 });
   const card = await p.evaluate(() => { const i = document.getElementById('cardImg'); return { w: i.naturalWidth, h: i.naturalHeight, rank: ChogUI._state.lastRun.rank, total: ChogUI._state.lastRun.total }; });
-  assert.deepStrictEqual([card.w, card.h, card.rank, card.total], [1080, 1080, 1, total], 'card is 1080x1080 with the validated rank and total');
+  assert.deepStrictEqual([card.w, card.h, card.rank, card.total], [1200, 675, 1, total], 'wide card (for X) with the validated rank and total');
   await shot('card');
+  await p.click('#cardFmtSquare');
+  await p.waitForFunction(() => document.getElementById('cardImg').naturalWidth === 1080);
   const dl = p.waitForEvent('download');
   await p.click('#cardSave');
-  assert.strictEqual((await dl).suggestedFilename(), 'chog-dash-run-' + total + 'm.png');
+  assert.strictEqual((await dl).suggestedFilename(), 'chog-dash-run-' + total + 'm-square.png');
+  // Share to X: opens X's post page with the text, and copies the card for pasting
+  await p.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://localhost:3456' });
+  const popup = p.waitForEvent('popup');
+  await p.click('#cardX');
+  const x = await popup;
+  const xu = new URL(x.url());
+  assert.ok(/(^|\.)x\.com$|twitter\.com$/.test(xu.hostname), 'opens X: ' + x.url());
+  assert.match(xu.searchParams.get('text') || '', new RegExp('I flew ' + total.toLocaleString() + ' m in Chog Dash riding Test Chog One'));
+  await x.close();
+  await p.waitForFunction(() => /Card (copied|downloaded)/.test(document.getElementById('cardStatus').textContent), null, { timeout: 5000 });
+  console.log('share to X:', await text('#cardStatus'));
   await p.keyboard.press('Space'); await p.waitForTimeout(300);
   assert.strictEqual(await p.evaluate(() => ChogUI._game().state), 'dead', 'Space does not restart the game behind the card');
   await p.click('#cardClose');

@@ -110,6 +110,9 @@
     $("cardClose").onclick = closeCard;
     $("cardSave").onclick = saveCard;
     $("cardShare").onclick = shareCard;
+    $("cardX").onclick = shareToX;
+    $("cardFmtWide").onclick = () => setCardFormat("wide");
+    $("cardFmtSquare").onclick = () => setCardFormat("square");
     window.addEventListener("keydown", e => { if (e.key === "Escape" && $("cardPanel").classList.contains("show")) closeCard(); });
   }
 
@@ -295,9 +298,12 @@
   }
 
   // ---------- Run card ----------
+  // Built from the finished run, for practice and Chog NFT runs alike. Checked against the stored best
+  // before onEnd updates it, so a record run gets the NEW BEST badge.
   function rememberRun(result) {
     const nft = S.mode === "nft" && S.chog;
     const z = T.zoneAt(result.meters);
+    const prevBest = nft ? readNum("chogDashNftBest:" + S.chog.tokenId) : readNum(PRACTICE_BEST);
     S.lastRun = {
       practice: !nft,
       portrait: nft ? S.chog.img : Art.rookieCanvas(),
@@ -306,30 +312,44 @@
       tier: nft ? S.chog.gameplay.tier : null,
       multiplier: nft ? S.chog.gameplay.multiplier : 1,
       meters: result.meters, total: result.score,
-      zoneName: z.zone.name + (z.loop > 1 ? " (loop " + z.loop + ")" : ""),
-      lookName: nft && S.chog.look ? S.chog.look.name : null,
+      zoneIndex: z.index, zoneName: z.zone.name, loop: z.loop,
+      durationMs: result.durationMs, stardust: result.stardust || 0, nearMisses: result.nearMisses || 0,
+      newBest: (nft ? result.score : result.meters) > prevBest && result.meters > 0,
+      url: /^https?:$/.test(location.protocol) ? location.host : null,
       rank: null,
     };
     $("cardBtn").style.display = result.meters > 0 ? "block" : "none";
   }
 
-  let cardCanvas = null;
+  let cardCanvas = null, cardFormat = "wide";
+  function drawCard() {
+    cardCanvas = root.ChogCard.render(S.lastRun, cardFormat);
+    $("cardImg").src = cardCanvas.toDataURL("image/png");
+    $("cardImg").className = cardFormat;
+    $("cardFmtWide").classList.toggle("on", cardFormat === "wide");
+    $("cardFmtSquare").classList.toggle("on", cardFormat === "square");
+  }
   async function openCard() {
     if (!S.lastRun) return;
     await root.ChogCard.ready();
-    cardCanvas = root.ChogCard.render(S.lastRun);
-    $("cardImg").src = cardCanvas.toDataURL("image/png");
-    const canShareFiles = !!(navigator.canShare && navigator.share);
-    $("cardShare").style.display = canShareFiles ? "" : "none";
+    drawCard();
+    $("cardShare").style.display = navigator.share ? "" : "none";   // the system share menu, where there is one
     setStatus($("cardStatus"), "");
     $("cardPanel").classList.add("show");
   }
   function closeCard() { $("cardPanel").classList.remove("show"); }
+  function setCardFormat(f) { cardFormat = f; if (S.lastRun) drawCard(); }
 
-  const cardName = () => "chog-dash-" + (S.lastRun.practice ? "practice" : "run") + "-" + (S.lastRun.practice ? S.lastRun.meters : S.lastRun.total) + "m.png";
-  const cardText = () => S.lastRun.practice
-    ? "I flew " + S.lastRun.meters.toLocaleString() + " m in Chog Dash practice. Can you fly further?"
-    : "I flew " + S.lastRun.total.toLocaleString() + " m total in Chog Dash with " + S.lastRun.chogName + (S.lastRun.rank ? ", rank #" + S.lastRun.rank : "") + ". Can you fly further?";
+  const cardName = () => "chog-dash-" + (S.lastRun.practice ? "practice" : "run") + "-" +
+    (S.lastRun.practice ? S.lastRun.meters : S.lastRun.total) + "m-" + cardFormat + ".png";
+  const cardText = () => {
+    const r = S.lastRun;
+    return (r.practice
+      ? "I flew " + r.meters.toLocaleString() + " m in Chog Dash practice"
+      : "I flew " + r.total.toLocaleString() + " m in Chog Dash riding " + r.chogName + (r.rank ? " and I'm #" + r.rank + " on the leaderboard" : "")) +
+      (r.newBest ? " (new best)" : "") + ". Can you beat it? #ChogDash";
+  };
+  const cardUrl = () => (/^https?:$/.test(location.protocol) ? location.origin + location.pathname : "");
   function cardBlob() { return new Promise(res => cardCanvas.toBlob(res, "image/png")); }
 
   async function saveCard() {
@@ -339,17 +359,44 @@
     a.href = url; a.download = cardName();
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
-    setStatus($("cardStatus"), "Saved " + cardName(), "ok");
+    setStatus($("cardStatus"), "Downloaded " + cardName(), "ok");
   }
+
+  // System share menu (phones): the image goes straight to the app picked, including X
   async function shareCard() {
     if (!cardCanvas) return;
     const file = new File([await cardBlob()], cardName(), { type: "image/png" });
     try {
-      if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], text: cardText() });
-      else await navigator.share({ text: cardText() });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], text: cardText() + (cardUrl() ? " " + cardUrl() : "") });
+      else await navigator.share({ text: cardText(), url: cardUrl() || undefined });
     } catch (e) {
-      if (e && e.name !== "AbortError") setStatus($("cardStatus"), "Couldn't open sharing here. Use Save image instead.", "err");
+      if (e && e.name !== "AbortError") setStatus($("cardStatus"), "Couldn't open sharing here. Use Download instead.", "err");
     }
+  }
+
+  // Share to X. On phones with file sharing, the share menu attaches the image (pick X there).
+  // Elsewhere X's post link can't carry an image, so the card is copied to the clipboard (or downloaded)
+  // and X opens with the text filled in, ready for the image to be pasted.
+  function shareToX() {
+    if (!cardCanvas) return;
+    const touch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    if (touch && navigator.canShare && navigator.share) {
+      const probe = new File([new Blob([""], { type: "image/png" })], "x.png", { type: "image/png" });
+      if (navigator.canShare({ files: [probe] })) { shareCard(); return; }
+    }
+    const intent = "https://x.com/intent/post?text=" + encodeURIComponent(cardText()) + (cardUrl() ? "&url=" + encodeURIComponent(cardUrl()) : "");
+    const win = window.open(intent, "_blank");   // opened straight away so pop-up blockers allow it
+    if (win) win.opener = null;
+    const st = $("cardStatus");
+    setStatus(st, "Opening X...");
+    const copied = navigator.clipboard && window.ClipboardItem
+      ? navigator.clipboard.write([new ClipboardItem({ "image/png": cardBlob() })]).then(() => true, () => false)
+      : Promise.resolve(false);
+    copied.then(ok => {
+      if (ok) setStatus(st, "Card copied. In the X post, paste it with Ctrl+V (Cmd+V on a Mac).", "ok");
+      else { saveCard().then(() => setStatus(st, "Card downloaded as " + cardName() + ". Attach it to the X post with the image button.", "ok")); }
+      if (!win) setStatus(st, st.textContent + " X didn't open (pop-up blocked?): allow pop-ups for this site and press Share to X again.", "err");
+    });
   }
 
   // ---------- NFT mode: run eligibility ----------

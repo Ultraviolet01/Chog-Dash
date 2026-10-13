@@ -37,9 +37,18 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 
 ## Run card
 
-- After every run, SHARE RUN makes a 1080x1080 image: the rider's portrait, username, total distance (and how it was made), the furthest zone, the leaderboard rank once validated, and the rocket look.
-- Save image downloads it. Share opens the phone's share sheet where the browser supports sharing files.
-- Practice runs get a Rookie card marked as practice.
+- After every run, practice or Chog NFT, SHARE RUN makes a share card, laid out like other games' share cards:
+  - the rider's art front and centre (the Chog's own portrait in a tier-coloured ring, or Rookie)
+  - one huge number: total distance (distance in practice), with how it was made
+  - NEW BEST badge on a record run, and the leaderboard rank once the server validates the run
+  - stats row: time, Stardust, near misses
+  - the zone path: how far through the five zones the run got (and the loop)
+  - "Beat my run" with the game's address
+- Two formats: Wide 1200x675 (shows uncropped in an X post) and Square 1080x1080.
+- Buttons:
+  - **Share to X**: on phones it opens the share menu with the image attached (pick X). On desktop X's post page opens with the text filled in and the card is copied, ready to paste with Ctrl+V / Cmd+V (X's post link can't carry an image itself). If copying isn't allowed, the card is downloaded instead.
+  - **Share...**: the system share menu, where the browser has one.
+  - **Download**: saves the PNG.
 
 ## Performance
 

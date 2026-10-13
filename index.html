@@ -192,10 +192,15 @@
 <!-- Run card -->
 <div id="cardPanel" class="panel card-panel">
   <div class="card-wrap">
+    <div class="card-formats" role="group" aria-label="Card format">
+      <button id="cardFmtWide" class="mode on">WIDE · X</button>
+      <button id="cardFmtSquare" class="mode">SQUARE</button>
+    </div>
     <img id="cardImg" alt="Run card">
     <div class="card-actions">
-      <button id="cardShare">Share</button>
-      <button id="cardSave">Save image</button>
+      <button id="cardX" class="x-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-7.6 8.7L23 22h-6.9l-5.4-7-6.2 7H1.4l8.1-9.3L1 2h7l4.9 6.5L18.9 2zm-1.2 18h1.9L7.4 4H5.4l12.3 16z"/></svg>Share to X</button>
+      <button id="cardShare">Share...</button>
+      <button id="cardSave">Download</button>
       <button id="cardClose" class="ghost">Close</button>
     </div>
     <div id="cardStatus" class="status"></div>
