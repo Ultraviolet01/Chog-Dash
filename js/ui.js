@@ -16,7 +16,7 @@
     chog: null,             // { tokenId, name, metadata, gameplay, imageUrl, riderCanvas }
     auth: null, authError: "",
     runId: null, activeRunId: null, runStatus: { text: "", kind: "" }, sessionReq: 0, runCounter: 0,
-    selectReq: 0, metaCache: {},
+    selectReq: 0, holdingsReq: 0, metaCache: {},
   };
 
   // ---------- Helpers ----------
@@ -325,6 +325,7 @@
   }
 
   function afterConnect() {
+    refreshHome();
     const st = $("walletStatus");
     const right = S.chainId === cfg.collection.chainId;
     $("switchNet").style.display = right ? "none" : "inline-block";
@@ -351,8 +352,11 @@
     grid.innerHTML = "";
     $("manualEntry").style.display = "none";
     setStatus(st, "Checking which Chogs this wallet owns...");
+    // Only the latest load may update the list (a network switch can trigger two loads at once)
+    const req = ++S.holdingsReq;
     try {
       const r = await Chain.listOwnedTokens(S.provider, S.account, 30);
+      if (req !== S.holdingsReq) return;
       if (r.balance === 0n) {
         setStatus(st, "This wallet holds no Chog Genesis NFTs. You can still play practice mode.");
         return;
@@ -367,6 +371,7 @@
       if (Number(r.balance) > r.tokenIds.length) $("manualEntry").style.display = "flex";
       for (const id of r.tokenIds) addTile(grid, id.toString());
     } catch (e) {
+      if (req !== S.holdingsReq) return;
       setStatus(st, "Couldn't read the Chog Genesis contract: " + (e.message || e) + "\nYou can enter a token ID instead.", "err");
       $("manualEntry").style.display = "flex";
     }
