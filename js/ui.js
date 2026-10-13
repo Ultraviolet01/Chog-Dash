@@ -13,7 +13,7 @@
   const S = {
     mode: null,
     provider: null, account: null, chainId: null,
-    chog: null,             // { tokenId, name, metadata, gameplay, imageUrl, riderCanvas }
+    chog: null,             // { tokenId, name, metadata, gameplay, imageUrl, riderCanvas, riderPoses }
     auth: null, authError: "",
     runId: null, activeRunId: null, runStatus: { text: "", kind: "" }, sessionReq: 0, runCounter: 0,
     selectReq: 0, holdingsReq: 0, signReq: 0, metaCache: {},
@@ -192,6 +192,7 @@
       modeLabel: "PRACTICE · Rookie" + (laser ? " · DEV LASER" : ""),
     });
     $("modeBadge").className = "practice";
+    $("riderCard").style.display = "none";
     enterGame();
   }
 
@@ -559,7 +560,13 @@
       canvas.getContext("2d").getImageData(0, 0, 1, 1);   // throws if the image can't be used by the game
       if (stale()) return;
       $("chosenImg").src = art.url;
-      S.chog = { tokenId: idStr, name, metadata: meta, gameplay: gp, imageUrl: art.url, riderCanvas: canvas };
+      // In flight the rider faces where the rocket goes, so the camera sees a back view made from this
+      // Chog's own traits and colours (see Art.chogBackCanvas). The portrait is shown in the HUD.
+      const riderPoses = {
+        side: Art.chogBackCanvas(art.img, gp.attributes, "threeQuarter"),
+        back: Art.chogBackCanvas(art.img, gp.attributes, "back"),
+      };
+      S.chog = { tokenId: idStr, name, metadata: meta, gameplay: gp, imageUrl: art.url, riderCanvas: canvas, riderPoses };
       setStatus(info, lines.join("\n"));
       $("rideBtn").disabled = false;
     } catch (e) {
@@ -597,11 +604,13 @@
     const laser = c.gameplay.abilities.find(a => a.id === "laserEyes");
     S.mode = "nft";
     game.configure({
-      riderCanvas: c.riderCanvas, laserCharges: laser ? laser.charges : 0,
+      riderCanvas: c.riderCanvas, riderPoses: c.riderPoses, laserCharges: laser ? laser.charges : 0,
       multiplier: c.gameplay.multiplier, showScore: true,
       modeLabel: "CHOG NFT · " + c.name + " · Tier " + (c.gameplay.tier || "unknown"),
     });
     $("modeBadge").className = "nft";
+    $("riderCard").src = c.imageUrl;
+    $("riderCard").style.display = "block";
     enterGame();
   }
 

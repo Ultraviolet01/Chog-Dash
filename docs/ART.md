@@ -2,12 +2,20 @@
 
 ## NFT rider
 
-- The rider is the selected Chog's own image, loaded from the `image` field of its metadata.
-- The image is not redrawn or edited. It is cropped to a circle and shown inside a glass bubble helmet seated on the rocket.
-- Why a circle crop: the images couldn't be inspected yet, and they may have backgrounds baked in. A crop keeps the face, eyes and head traits intact, where an automatic cutout could damage them.
-- The rider always faces the camera so the Chog stays recognisable while the rocket banks.
+- Every Chog faces where the rocket is flying, like Rookie.
+  - Home screen: seen from behind, turned toward the rocket's nose (cap brim, one eye and a cheek just visible).
+  - Ready screen and in flight: seen straight from behind.
+- The collection only has front portraits, so the back view is generated per Chog (`Art.chogBackCanvas`):
+  - Headwear shape comes from its Head trait: cap, bucket hat, beanie, Russian hat, wizard hat, crown, horns, durag, headband, hair or helmet. Anything else shows the bare head.
+  - Colours are sampled from its own image: the background behind it, its face, its headwear and its outfit.
+  - Skin "Black" Chogs get their dark face colour.
+  - The 10 one-of-one Legendaries have no Head trait, so their headwear is guessed from the image colours only.
+  - It sits in a glass bubble helmet on the rocket.
+- The back view is a game-made stand-in, not original NFT art. The real portrait is never altered:
+  - it is shown in the Chog list and on the selection card,
+  - and in a round badge in the top-right corner of the screen during every NFT run.
 - If the image can't be loaded (all gateways fail, or the gateway blocks cross-origin use), that Chog can't be ridden. The game shows an error and never substitutes another image.
-- To review once images are reachable: check several Chogs from different backgrounds and tiers. If the images turn out to be transparent, the bubble can be dropped for a direct cutout.
+- Checked on real Chogs covering every headwear kind (see the preview sheet in the project history). Unusual heads (for example Clown Nose, 3rd Eye, Taped Banana) show the bare head, since nothing is worn on the back of it.
 
 ## Rookie (practice pilot)
 
@@ -15,7 +23,6 @@
 - Its own look so it is never mistaken for a real Chog Genesis NFT: amber cap with a ROOKIE badge (no Monad logo), teal tracksuit with white stripes, no background.
 - Transparent background, so it sits straight in the rocket seat with the tracksuit tucked behind the hull.
 - Views so Rookie always looks where the rocket is going: on the home screen the rocket angles away into the screen with its nose up-left and Rookie is shown from behind, turned toward the nose (brim, one eye and a cheek just visible); on the ready screen and while flying he is seen straight from behind. The front portrait is kept for reference.
-- NFT riders keep their front portrait in the bubble helmet, because NFT artwork only exists from the front.
 - No special abilities: practice runs only get the shared pickups.
 - Always labelled as practice in the HUD and on the ready and results screens.
 

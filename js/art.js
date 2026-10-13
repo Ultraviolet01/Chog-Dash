@@ -215,6 +215,173 @@
     return c;
   }
 
+  // ---------- Chog NFT seen from behind ----------
+  // The NFT image is a front portrait, but in flight the rider faces where the rocket is going, so the
+  // camera sees the back of its head. This view is generated per Chog: the headwear shape comes from
+  // its Head trait and the colours are sampled from its own image (background, face, headwear, outfit).
+  // It is a stand-in for a view the collection doesn't have; the real portrait stays on screen in the HUD.
+
+  const rgb = c => "rgb(" + c.map(v => Math.round(Math.max(0, Math.min(255, v)))).join(",") + ")";
+  const shade = (c, k) => c.map(v => v * k);
+  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const light = c => (Math.max(...c) + Math.min(...c)) / 510;
+
+  // Most common colour in a region (fractions of the image), ignoring near-black outlines.
+  // keep(c) can restrict which colours count.
+  function dominant(data, size, x0, y0, x1, y1, keep) {
+    const buckets = new Map();
+    for (let y = Math.floor(y0 * size); y < Math.ceil(y1 * size); y++) {
+      for (let x = Math.floor(x0 * size); x < Math.ceil(x1 * size); x++) {
+        const i = (y * size + x) * 4, c = [data[i], data[i + 1], data[i + 2]];
+        if (data[i + 3] < 128 || Math.max(...c) < 50 || (keep && !keep(c))) continue;
+        const k = (c[0] >> 4) + "," + (c[1] >> 4) + "," + (c[2] >> 4);
+        const b = buckets.get(k) || { n: 0, r: 0, g: 0, b: 0 };
+        b.n++; b.r += c[0]; b.g += c[1]; b.b += c[2];
+        buckets.set(k, b);
+      }
+    }
+    let best = null;
+    buckets.forEach(b => { if (!best || b.n > best.n) best = b; });
+    return best ? [best.r / best.n, best.g / best.n, best.b / best.n] : null;
+  }
+
+  function samplePalette(img, darkFace) {
+    const N = 64, c = document.createElement("canvas");
+    c.width = c.height = N;
+    const g = c.getContext("2d");
+    g.drawImage(img, 0, 0, N, N);
+    const d = g.getImageData(0, 0, N, N).data;
+    const bg = dominant(d, N, 0, 0.35, 0.08, 0.7) || dominant(d, N, 0.92, 0.35, 1, 0.7) || [60, 80, 120];
+    // Face: the most common light colour around the middle that isn't the background
+    // (Skin "Black" Chogs have a dark brown face, so look for a dark colour instead)
+    const face = darkFace
+      ? dominant(d, N, 0.25, 0.4, 0.75, 0.8, x => light(x) < 0.45 && x[0] > x[2] && dist(x, bg) > 60) || [92, 58, 40]
+      : dominant(d, N, 0.2, 0.35, 0.8, 0.85, x => light(x) > 0.55 && dist(x, bg) > 60) || [243, 231, 207];
+    const hat = dominant(d, N, 0.3, 0.02, 0.7, 0.2, x => dist(x, bg) > 50) || shade(face, 0.85);
+    const outfit = dominant(d, N, 0.3, 0.9, 0.7, 1, x => dist(x, face) > 40) || [60, 60, 70];
+    return { bg, face, hat, outfit, hatShown: dist(hat, face) > 45 };
+  }
+
+  // Headwear shape from the Head trait value. Unknown values fall back to the image colours.
+  function headwearKind(value, pal) {
+    const v = String(value || "").toLowerCase();
+    const has = (...w) => w.some(x => v.includes(x));
+    if (has("bucket")) return "bucket";
+    if (has("wizard hat")) return "wizard";
+    if (has("russian")) return "fur";
+    if (has("beanie")) return "beanie";
+    if (has("cap", "mcga", "mega chog", "plumber")) return "cap";
+    if (has("crown", "wreath", "thorn", "seal")) return "crown";
+    if (has("horn")) return "horns";
+    if (has("durag")) return "durag";
+    if (has("headband", "bandana", "wrap")) return "band";
+    if (has("hair", "wig")) return "hair";
+    if (has("helmet")) return "helmet";
+    if (has("hat")) return "bucket";
+    return v ? "bare" : (pal.hatShown ? "beanie" : "bare");
+  }
+
+  // view: "back" (in flight) or "threeQuarter" (home screen: turned a little left, like Rookie)
+  function chogBackCanvas(img, attributes, view) {
+    const attr = name => {
+      const a = (attributes || []).find(x => String(x.trait_type).trim().toLowerCase() === name);
+      return a ? String(a.value).trim().toLowerCase() : "";
+    };
+    const pal = samplePalette(img, attr("skin") === "black");
+    const kind = headwearKind(attr("head"), pal);
+    const tq = view === "threeQuarter";
+    const c = newCanvas(), g = c.getContext("2d"), pen = rookiePen(g), INK = pen.INK;
+    const cx = 128, cy = 116, r = 104;
+    const face = rgb(pal.face), hat = rgb(pal.hat), hatDark = rgb(shade(pal.hat, 0.72));
+    const sx = tq ? 8 : 0;   // seams and strap shift right when the head turns left
+
+    drawCollar(g);
+    g.save();
+    g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
+    g.fillStyle = rgb(pal.bg); g.fillRect(0, 0, SIZE, SIZE);
+    g.translate(0, -18);   // fit head and shoulders inside the helmet
+
+    // Shoulders in the outfit colour, collar line
+    pen.shape(rgb(pal.outfit), () => { g.moveTo(30, 260); g.quadraticCurveTo(36, 206, 84, 196); g.lineTo(172, 196); g.quadraticCurveTo(220, 206, 226, 260); g.closePath(); });
+    pen.shape(rgb(shade(pal.outfit, 0.8)), () => { g.moveTo(96, 194); g.lineTo(160, 194); g.lineTo(156, 206); g.lineTo(100, 206); g.closePath(); });
+
+    // Head with the Chog's pink cheeks peeking out (one cheek and eye edge in the three-quarter view)
+    pen.shape(face, () => { g.ellipse(128 + sx * 0.25, 150, 84, 66, 0, 0, Math.PI * 2); });
+    g.save();
+    g.beginPath(); g.ellipse(128 + sx * 0.25, 150, 81, 63, 0, 0, Math.PI * 2); g.clip();
+    g.fillStyle = "#e2547e";
+    if (tq) {
+      g.beginPath(); g.arc(56, 178, 16, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(206, 178, 9, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#ffffff"; g.beginPath(); g.ellipse(52, 144, 14, 16, 0, 0, Math.PI * 2); g.fill();
+      g.lineWidth = 5; g.strokeStyle = INK; g.stroke();
+      g.fillStyle = INK; g.beginPath(); g.arc(46, 145, 10, 0, Math.PI * 2); g.fill();
+    } else {
+      g.beginPath(); g.arc(48, 176, 12, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(208, 176, 12, 0, Math.PI * 2); g.fill();
+    }
+    g.restore();
+
+    const dome = (top, bottom) => pen.shape(hat, () => {
+      g.moveTo(44, bottom); g.quadraticCurveTo(46, top, 128, top - 4); g.quadraticCurveTo(210, top, 212, bottom); g.quadraticCurveTo(128, bottom - 18, 44, bottom); g.closePath();
+    });
+    const seams = top => {
+      g.strokeStyle = "rgba(21,21,21,0.5)"; g.lineWidth = 3;
+      [[78 + sx * 2, 122], [178 + sx, 122]].forEach(([x, y]) => { g.beginPath(); g.moveTo(128 + sx, top); g.quadraticCurveTo((128 + x) / 2, 60, x, y); g.stroke(); });
+    };
+
+    if (kind === "cap") {
+      if (tq) pen.shape(hatDark, () => { g.moveTo(70, 100); g.quadraticCurveTo(26, 84, 2, 96); g.quadraticCurveTo(18, 116, 66, 120); g.closePath(); });
+      dome(22, 130); seams(22);
+      pen.shape(face, () => { g.moveTo(100 + sx * 3, 126); g.quadraticCurveTo(100 + sx * 3, 94, 128 + sx * 3, 92); g.quadraticCurveTo(156 + sx * 3, 94, 156 + sx * 3, 126); g.closePath(); });
+      pen.shape(hatDark, () => { g.rect(94 + sx * 3, 112, 68, 10); });
+      pen.shape(hatDark, () => { g.arc(128 + sx, 20, 7, 0, Math.PI * 2); });
+    } else if (kind === "bucket") {
+      pen.shape(hatDark, () => { g.ellipse(128, 120, 112, 26, 0, 0, Math.PI * 2); });
+      pen.shape(hat, () => { g.moveTo(58, 122); g.quadraticCurveTo(60, 30, 128, 28); g.quadraticCurveTo(196, 30, 198, 122); g.quadraticCurveTo(128, 108, 58, 122); g.closePath(); });
+      pen.shape(hatDark, () => { g.moveTo(60, 112); g.quadraticCurveTo(128, 98, 196, 112); g.lineTo(197, 122); g.quadraticCurveTo(128, 108, 59, 122); g.closePath(); });
+    } else if (kind === "beanie") {
+      dome(26, 124); seams(26);
+      pen.shape(hatDark, () => { g.moveTo(44, 124); g.quadraticCurveTo(128, 104, 212, 124); g.lineTo(212, 142); g.quadraticCurveTo(128, 122, 44, 142); g.closePath(); });
+      g.strokeStyle = "rgba(21,21,21,0.35)"; g.lineWidth = 2;
+      for (let x = 56; x < 204; x += 12) { g.beginPath(); g.moveTo(x, 120 - Math.sin((x - 44) / 168 * Math.PI) * 14); g.lineTo(x, 138 - Math.sin((x - 44) / 168 * Math.PI) * 14); g.stroke(); }
+    } else if (kind === "fur") {
+      pen.shape(hat, () => { g.moveTo(40, 132); g.lineTo(46, 40); g.quadraticCurveTo(128, 18, 210, 40); g.lineTo(216, 132); g.quadraticCurveTo(128, 112, 40, 132); g.closePath(); });
+      g.fillStyle = "rgba(255,255,255,0.18)";
+      for (let i = 0; i < 90; i++) { g.beginPath(); g.arc(52 + Math.random() * 152, 40 + Math.random() * 84, 3 + Math.random() * 4, 0, Math.PI * 2); g.fill(); }
+      pen.shape(hatDark, () => { g.moveTo(40, 132); g.quadraticCurveTo(128, 112, 216, 132); g.lineTo(214, 112); g.quadraticCurveTo(128, 94, 42, 112); g.closePath(); });
+    } else if (kind === "wizard") {
+      pen.shape(hatDark, () => { g.ellipse(128, 118, 110, 22, 0, 0, Math.PI * 2); });
+      pen.shape(hat, () => { g.moveTo(66, 116); g.quadraticCurveTo(110, 60, 150 + sx, -10); g.quadraticCurveTo(160, 60, 192, 116); g.quadraticCurveTo(128, 104, 66, 116); g.closePath(); });
+    } else if (kind === "crown") {
+      dome(40, 120);   // hair/head top in the sampled colour would hide the crown, so the band sits on the head
+      pen.shape(hat, () => { g.moveTo(66, 104); g.lineTo(70, 46); g.lineTo(92, 78); g.lineTo(110, 34); g.lineTo(128, 72); g.lineTo(146, 34); g.lineTo(164, 78); g.lineTo(186, 46); g.lineTo(190, 104); g.quadraticCurveTo(128, 92, 66, 104); g.closePath(); });
+    } else if (kind === "horns") {
+      [[84, -1], [172, 1]].forEach(([x, d]) => pen.shape(hat, () => { g.moveTo(x - 16, 98); g.quadraticCurveTo(x + d * 6, 40, x + d * 26, 22); g.quadraticCurveTo(x + d * 20, 60, x + 16, 96); g.closePath(); }));
+    } else if (kind === "durag") {
+      dome(28, 128);
+      pen.shape(hat, () => { g.moveTo(116, 120); g.quadraticCurveTo(110, 190, 96, 214); g.lineTo(118, 214); g.quadraticCurveTo(128, 170, 134, 120); g.closePath(); });
+      pen.shape(hat, () => { g.moveTo(128, 120); g.quadraticCurveTo(140, 190, 152, 212); g.lineTo(170, 206); g.quadraticCurveTo(150, 170, 144, 120); g.closePath(); });
+    } else if (kind === "band") {
+      pen.shape(hat, () => { g.moveTo(46, 122); g.quadraticCurveTo(128, 96, 210, 122); g.lineTo(210, 142); g.quadraticCurveTo(128, 116, 46, 142); g.closePath(); });
+      pen.shape(hat, () => { g.moveTo(124, 120); g.quadraticCurveTo(112, 160, 98, 176); g.lineTo(116, 180); g.quadraticCurveTo(128, 156, 136, 122); g.closePath(); });
+    } else if (kind === "hair") {
+      pen.shape(hat, () => {
+        g.moveTo(40, 160);
+        for (let i = 0; i <= 10; i++) { const a = Math.PI + (i / 10) * Math.PI, x = 128 + Math.cos(a) * 92, y = 120 + Math.sin(a) * 92; g.quadraticCurveTo(x + Math.cos(a) * 16, y + Math.sin(a) * 16, x, y); }
+        g.lineTo(216, 160); g.quadraticCurveTo(128, 130, 40, 160); g.closePath();
+      });
+    } else if (kind === "helmet") {
+      dome(24, 140);
+      pen.shape(rgb(shade(pal.hat, 0.6)), () => { g.moveTo(118, 8); g.quadraticCurveTo(128, -4, 138, 8); g.lineTo(136, 116); g.lineTo(120, 116); g.closePath(); });
+    }
+    pen.grain();
+    g.restore();
+    drawGlass(g, cx, cy, r);
+    c.kind = kind;
+    return c;
+  }
+
   // Small soft round dot used for stars and exhaust particles
   function dotCanvas() {
     const c = document.createElement("canvas");
@@ -229,5 +396,5 @@
     return c;
   }
 
-  root.ChogArt = { rookieCanvas, rookieThreeQuarterCanvas, rookieBackCanvas, nftRiderCanvas, dotCanvas };
+  root.ChogArt = { rookieCanvas, rookieThreeQuarterCanvas, rookieBackCanvas, nftRiderCanvas, chogBackCanvas, samplePalette, headwearKind, dotCanvas };
 })(window);

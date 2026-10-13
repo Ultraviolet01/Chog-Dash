@@ -105,6 +105,10 @@ body.dashing::after { box-shadow: inset 0 0 140px rgba(255,184,77,0.4); }
 .fs-btn .fs-close, .is-fullscreen .fs-btn .fs-open { display: none; }
 .is-fullscreen .fs-btn .fs-close { display: inline; }
 .fs-btn.unsupported { display: none !important; }
+/* The ridden Chog's real portrait: the rider faces away from the camera in flight */
+#riderCard { position: absolute; right: 16px; top: 96px; width: 64px; height: 64px; border-radius: 50%; object-fit: cover;
+  border: 3px solid var(--accent2); box-shadow: 0 0 0 2px rgba(0,0,0,0.5); display: none; }
+body.flying #riderCard { top: 52px; }
 #hudFsBtn { position: absolute; right: 16px; top: 52px; pointer-events: auto; padding: 6px 8px; line-height: 0; }
 /* Hide the mouse cursor while flying: the rocket shows where you are steering */
 body.flying, body.flying #gameCanvas { cursor: none; }
