@@ -47,6 +47,7 @@
     return base + (laser ? (isTouch ? " LASER button fires Laser Eyes." : " E fires Laser Eyes.") : "");
   }
   const startText = () => (isTouch ? "Tap to start" : "Press Space or click to start");
+  const portraitTip = () => (window.innerHeight > window.innerWidth ? "Tip: turn your phone sideways for a bigger view." : "");
   const retryText = () => (isTouch ? "Tap to fly again" : "Press Space or click to fly again");
 
   async function apiCall(path, body, token) {
@@ -54,6 +55,9 @@
     if (body) { opts.headers["content-type"] = "application/json"; opts.body = JSON.stringify(body); }
     if (token) opts.headers.authorization = "Bearer " + token;
     let res;
+    if (location.protocol === "file:") {   // no server when the page is opened as a file
+      const err = new Error("Leaderboard server not reachable"); err.offline = true; throw err;
+    }
     try { res = await fetch(cfg.leaderboard.apiBase + path, opts); }
     catch (e) { const err = new Error("Leaderboard server not reachable"); err.offline = true; throw err; }
     let data = null;
@@ -117,6 +121,7 @@
         "Rookie, the practice pilot. Not an NFT run, and not eligible for the NFT leaderboard.",
         "Best distance on this device: " + readNum(PRACTICE_BEST) + " m",
         controlsText(game && dev.includes("laser")),
+        portraitTip(),
         startText(),
       ]);
     } else if (S.mode === "nft") {
@@ -187,6 +192,7 @@
       laser ? "Laser Eyes: " + laser.charges + " charges this run" : "No ability from this Chog's traits",
       S.runStatus.text ? [S.runStatus.text, S.runStatus.kind] : "",
       controlsText(!!laser),
+      portraitTip(),
       startText(),
     ]);
   }

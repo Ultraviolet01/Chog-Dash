@@ -64,7 +64,8 @@
       const w = window.innerWidth, h = window.innerHeight;
       renderer.setSize(w, h);
       camera.aspect = w / h;
-      baseCamZ = camera.aspect < 1.3 ? 7 + (1.3 - camera.aspect) * 8 : 7;
+      // Pull the camera back on narrow screens so the whole flying area (and anything that can hit you) stays in view
+      baseCamZ = Math.max(7, (BOUND_X + 1.2) / (Math.tan(THREE.MathUtils.degToRad(35)) * camera.aspect));
       camera.updateProjectionMatrix();
     }
     window.addEventListener("resize", resize);
@@ -323,6 +324,8 @@
 
     function die() {
       state = "dead";
+      bannerTimer = 0;
+      hud.zoneBanner.style.opacity = 0;
       deadAt = performance.now();
       shake = 0.35;
       player.visible = false;
