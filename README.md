@@ -30,7 +30,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 
 ## Zones
 
-The run is split into four zones of 500 m each, repeating in a loop (one loop is 2,000 m). Speed keeps rising across loops.
+The run is split into four zones of 1,000 m each, repeating in a loop (one loop is 4,000 m). Speed keeps rising across loops.
 
 | Zone | Scenery | Obstacles |
 |---|---|---|

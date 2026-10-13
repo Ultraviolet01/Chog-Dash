@@ -31,8 +31,8 @@ const R = path.join(__dirname, '../../');
     return { n: os.length, share: os.length ? rocks / os.length : 0 };
   });
   const seen = {};
-  for (const [m, re, label] of [[520, /ASTEROID BELT.*Zone 2 of 4/, 'Asteroid Belt'], [1020, /GALACTIC DRIFT.*Zone 3 of 4/, 'Galactic Drift'],
-      [1520, /DEEP COSMIC ZONE.*Zone 4 of 4/, 'Deep Cosmic Zone'], [2020, /OUTER SPACE.*Zone 1 of 4 · Loop 2/, 'Outer Space · Loop 2']]) {
+  for (const [m, re, label] of [[1020, /ASTEROID BELT.*Zone 2 of 4/, 'Asteroid Belt'], [2020, /GALACTIC DRIFT.*Zone 3 of 4/, 'Galactic Drift'],
+      [3020, /DEEP COSMIC ZONE.*Zone 4 of 4/, 'Deep Cosmic Zone'], [4020, /OUTER SPACE.*Zone 1 of 4 · Loop 2/, 'Outer Space · Loop 2']]) {
     await p.evaluate(m => ChogUI._game()._debug.setMeters(m), m);
     await p.waitForTimeout(400);
     assert.match(await p.textContent('#zoneBanner'), re);
