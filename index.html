@@ -170,17 +170,22 @@
 </div>
 
 <!-- Leaderboard -->
-<div id="lbPanel" class="panel">
-  <div class="wrap">
-    <div class="row"><button id="lbBack" class="ghost">Back</button></div>
-    <h2>Official NFT leaderboard</h2>
-    <p class="status" id="lbRule"></p>
-    <div id="lbStatus" class="status"></div>
-    <div class="tablewrap">
-      <table><thead><tr><th>#</th><th>Username</th><th>Total distance</th></tr></thead>
-      <tbody id="lbRows"></tbody></table>
+<div id="lbPanel" class="panel lb">
+  <div class="lb-wrap">
+    <div class="lb-head">
+      <button id="lbBack" class="ghost">Back</button>
+      <div class="lb-title">
+        <h2>RANKS</h2>
+        <div class="lb-sub">ALL TIME &middot; CHOG NFT RUNS</div>
+      </div>
+      <button id="lbRefresh" class="ghost" title="Refresh">Refresh</button>
     </div>
+    <div id="lbPodium" class="podium"></div>
+    <div id="lbList" class="lb-list"></div>
+    <div id="lbStatus" class="lb-status"></div>
+    <p class="lb-rule" id="lbRule"></p>
   </div>
+  <div id="lbMe" class="lb-me"></div>
 </div>
 
 <div id="err"></div>

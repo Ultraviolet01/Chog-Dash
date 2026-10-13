@@ -117,6 +117,12 @@ language sql stable as $$
   from chog_leaderboard me where me.wallet = p_wallet;
 $$;
 
+-- One player's best run record, or null
+create or replace function chog_best(p_wallet text) returns jsonb
+language sql stable as $$
+  select record from chog_leaderboard where wallet = p_wallet;
+$$;
+
 -- Best records, highest total first (earlier runs win ties)
 create or replace function chog_top(p_n integer) returns jsonb
 language sql stable as $$
@@ -132,7 +138,7 @@ begin
   foreach f in array array[
     'chog_kv_get(text)', 'chog_kv_mget(text[])', 'chog_kv_set(text,jsonb,integer)',
     'chog_kv_set_nx(text,jsonb,integer)', 'chog_kv_del(text)', 'chog_run_push(jsonb)',
-    'chog_best_update(text,integer,jsonb)', 'chog_rank(text)', 'chog_top(integer)'
+    'chog_best_update(text,integer,jsonb)', 'chog_rank(text)', 'chog_best(text)', 'chog_top(integer)'
   ] loop
     execute 'revoke all on function ' || f || ' from public';
     if exists (select 1 from pg_roles where rolname = 'anon') then

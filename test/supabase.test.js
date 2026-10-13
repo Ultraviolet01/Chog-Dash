@@ -133,3 +133,10 @@ test("full game flow on the Supabase schema: sign in, username, runs, leaderboar
   const lb = await h.leaderboard();
   assert.deepStrictEqual(lb.entries.map(e => [e.rank, e.username, e.totalMeters, e.meters]), [[1, "Alice", 910, 650], [2, "Bob", 800, 800]]);
 });
+
+test("supabase store: one player's best record", async () => {
+  const { store } = await setup();
+  assert.strictEqual(await store.best("0xa"), null);
+  await store.updateBest("0xa", 300, { wallet: "0xa", finalScore: 300, image: "ipfs://x/1.webp" });
+  assert.deepStrictEqual(await store.best("0xa"), { wallet: "0xa", finalScore: 300, image: "ipfs://x/1.webp" });
+});

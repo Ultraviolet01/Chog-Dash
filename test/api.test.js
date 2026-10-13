@@ -183,3 +183,23 @@ test("pilot names: set, unique per wallet, shown on the leaderboard", async () =
   await h.runFinish({ body: { runId: start.runId, meters: 500, durationMs: 29000 }, token: ta });
   assert.strictEqual((await h.leaderboard()).entries[0].username, "Rocket");
 });
+
+test("leaderboard shows the Chog image and, when signed in, the player's own rank", async () => {
+  const { h, store, alice, bob, signIn, advance } = setup();
+  const ta = await signIn(alice, "Alice"), tb = await signIn(bob, "Bob");
+  const s = await h.runStart({ body: { tokenId: "1" }, token: ta });
+  advance(30000);
+  await h.runFinish({ body: { runId: s.runId, meters: 100, durationMs: 29000 }, token: ta });
+  const pub = await h.leaderboard({});
+  assert.strictEqual(pub.me, null, "no token, no personal row");
+  assert.strictEqual(pub.entries[0].image, null, "test metadata has no image");
+  const mine = await h.leaderboard({ token: ta });
+  assert.deepStrictEqual([mine.me.rank, mine.me.username, mine.me.totalMeters], [1, "Alice", 115]);
+  const bobs = await h.leaderboard({ token: tb });
+  assert.deepStrictEqual(bobs.me, { rank: null, username: "Bob", wallet: bob.address.toLowerCase() });
+  assert.strictEqual((await h.leaderboard({ token: "garbage" })).me, null, "bad token is ignored");
+  store.best = async () => { throw new Error("function missing"); };
+  const degraded = await h.leaderboard({ token: ta });
+  assert.strictEqual(degraded.entries.length, 1, "board still loads if the own-rank lookup fails");
+  assert.strictEqual(degraded.me, null);
+});

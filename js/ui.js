@@ -628,20 +628,95 @@
   }
 
   // ---------- Leaderboard view ----------
+  // Game-style board: podium for the top 3, rows with each player's Chog, and the player's own
+  // standing pinned at the bottom.
+  const fmtM = n => Number(n).toLocaleString() + "<small>m</small>";
+
+  // Chog artwork through the IPFS gateways, falling back to the next one on error
+  function chogImg(uri, cls) {
+    const img = document.createElement("img");
+    img.className = cls; img.alt = "";
+    const urls = uri ? Meta.candidateUrls(uri) : [];
+    let i = 0;
+    img.onerror = () => { if (i < urls.length) img.src = urls[i++]; else img.style.visibility = "hidden"; };
+    img.onerror();
+    return img;
+  }
+  function entryNames(e) {
+    return '<div class="who">' + esc(e.username || short(e.wallet)) + '</div><div class="chog">' +
+      esc((e.name || "Token " + e.tokenId) + (e.tier ? " · " + e.tier + " x" + Number(e.multiplier).toFixed(2) : "")) + "</div>";
+  }
+
+  function renderBoard(r) {
+    const podium = $("lbPodium"), list = $("lbList"), mine = S.auth && S.auth.account;
+    podium.innerHTML = ""; list.innerHTML = "";
+    if (!r.entries.length) {
+      list.innerHTML = '<div class="lb-empty"><div class="t">No pilots yet</div><p>Fly a Chog you own and take the top spot.</p></div>';
+      const b = document.createElement("button");
+      b.textContent = "Fly a Chog"; b.onclick = () => { setHomeMode("nft"); openNft(); };
+      list.firstChild.appendChild(b);
+      return;
+    }
+    // Podium in 2, 1, 3 order so first place stands in the middle
+    [1, 0, 2].forEach(i => {
+      const e = r.entries[i];
+      if (!e) return;
+      const d = document.createElement("div");
+      d.className = "pod lb-entry r" + e.rank + (mine && e.wallet === mine ? " mine" : "");
+      d.innerHTML = '<div class="medal">' + e.rank + "</div>";
+      d.appendChild(chogImg(e.image, "face"));
+      d.insertAdjacentHTML("beforeend", entryNames(e) + '<div class="big">' + fmtM(e.totalMeters) + "</div>");
+      podium.appendChild(d);
+    });
+    r.entries.slice(3).forEach(e => {
+      const d = document.createElement("div");
+      d.className = "lb-row lb-entry" + (mine && e.wallet === mine ? " mine" : "");
+      d.innerHTML = '<div class="rk">' + e.rank + "</div>";
+      d.appendChild(chogImg(e.image, "face"));
+      d.insertAdjacentHTML("beforeend", '<div class="names">' + entryNames(e) + '</div><div class="big">' + fmtM(e.totalMeters) + "</div>");
+      list.appendChild(d);
+    });
+  }
+
+  function renderMe(me) {
+    const box = $("lbMe");
+    box.innerHTML = "";
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    box.appendChild(bar);
+    if (me && me.rank) {
+      bar.innerHTML = '<span class="you">YOU</span><div class="rk">#' + me.rank + "</div>";
+      bar.appendChild(chogImg(me.image, "face"));
+      bar.insertAdjacentHTML("beforeend", '<div class="names">' + entryNames(me) + '</div><div class="big">' + fmtM(me.totalMeters) + "</div>");
+      return;
+    }
+    const signedIn = me || authValid();
+    bar.innerHTML = '<span class="you">YOU</span><div class="names"><div class="who">' +
+      esc(signedIn ? (S.username || short(S.account)) : "Not signed in") + '</div><div class="hint">' +
+      (signedIn ? "Not ranked yet. Finish a Chog NFT run to get on the board." : "Connect a wallet in Chog NFT mode to see your rank.") + "</div></div>";
+    const b = document.createElement("button");
+    b.textContent = signedIn ? "Fly" : "Connect";
+    b.onclick = () => { setHomeMode("nft"); signedIn && S.chog ? (show("menuPanel"), play()) : openNft(); };
+    bar.appendChild(b);
+  }
+
   async function openLeaderboard() {
     show("lbPanel");
-    $("lbRule").textContent = "Ranking: each player's best total distance (distance x the Chog's tier multiplier), flying any Chog they own. Only validated Chog NFT runs appear here; practice runs never do.";
-    const st = $("lbStatus"), rows = $("lbRows");
-    rows.innerHTML = "";
-    setStatus(st, "Loading...");
+    $("lbRule").textContent = "Total distance = distance flown x the Chog's tier multiplier. Each player's best run with any Chog they own counts. Only validated Chog NFT runs appear here; practice runs never do.";
+    $("lbRefresh").onclick = openLeaderboard;
+    const st = $("lbStatus");
+    $("lbPodium").innerHTML = "";
+    $("lbList").innerHTML = '<div class="lb-row skeleton"></div>'.repeat(4);
+    st.textContent = ""; st.className = "lb-status";
+    renderMe(null);
     try {
-      const r = await apiCall("/leaderboard");
-      if (!r.entries.length) setStatus(st, "No validated runs yet.");
-      else setStatus(st, "");
-      rows.innerHTML = r.entries.map(e => "<tr><td>" + e.rank + "</td><td>" + esc(e.username || short(e.wallet)) + "</td><td>" +
-        Number(e.totalMeters).toLocaleString() + " m</td></tr>").join("");
+      const r = await apiCall("/leaderboard", null, authValid() ? S.auth.token : null);
+      renderBoard(r);
+      renderMe(r.me);
     } catch (e) {
-      setStatus(st, e.offline ? "The leaderboard server isn't reachable from here. It runs on the deployed site (see README)." : e.message, "err");
+      $("lbList").innerHTML = "";
+      st.className = "lb-status err";
+      st.textContent = e.offline ? "The leaderboard server isn't reachable from here. It runs on the deployed site (see README)." : e.message;
     }
   }
 

@@ -116,11 +116,11 @@ const chain = {
   const flown = Number(end.match(/Distance: (\d+) m/)[1]), total = Math.floor(flown * 1.15);
   await shot('end');
   await p.click('#hudMenuBtn'); await p.click('#lbBtn'); await p.waitForTimeout(600);
-  console.log('lb:', await p.$$eval('#lbRows tr', r => r.map(x => x.textContent)));
+  const lb = await p.evaluate(() => [...document.querySelectorAll('#lbPanel .lb-entry')].map(e => ({ rank: (e.querySelector('.medal') || e.querySelector('.rk')).textContent, who: e.querySelector('.who').textContent, chog: e.querySelector('.chog').textContent, total: e.querySelector('.big').textContent, mine: e.classList.contains('mine') })));
+  console.log('lb:', JSON.stringify(lb), '| me:', await text('#lbMe'));
   await shot('lb');
-  const lb = await p.$$eval('#lbRows tr', r => r.map(x => x.textContent));
   assert.strictEqual(lb.length, 1, 'one leaderboard entry');
-  assert.strictEqual(lb[0], '1Test_Pilot' + total.toLocaleString() + ' m', 'leaderboard shows the username and total distance');
+  assert.deepStrictEqual([lb[0].rank, lb[0].who, lb[0].total], ['1', 'Test_Pilot', total.toLocaleString() + 'm'], 'leaderboard shows the username and total distance');
   assert.deepStrictEqual(errs, [], 'no page errors');
   console.log('PASS nft flow');
   await b.close(); server.close();

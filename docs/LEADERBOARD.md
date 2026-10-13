@@ -3,6 +3,12 @@
 ## Ranking
 
 - One entry per player: each username's best total distance, flying any Chog they own.
+- Screen (Ranks), laid out like a game leaderboard:
+  - Podium for the top 3 (gold, silver, bronze), each with the Chog they set the record with.
+  - Rows from 4th place down: rank, Chog portrait, username, Chog name and tier, total distance in large numbers.
+  - The player's own standing is pinned to the bottom ("YOU #13 ..."), or a prompt to sign in or fly if they aren't ranked yet. Their row is highlighted on the board.
+  - Empty board: "No pilots yet" with a button to fly a Chog.
+  - When signed in, `GET /api/leaderboard` with the sign-in token also returns `me` (the player's own rank and best run).
 - Pilot names:
   - Set after signing in (`POST /api/profile`, signed in). One name per wallet.
   - 3 to 16 letters, numbers or underscores, starting with a letter, so a name can't look like a wallet address.

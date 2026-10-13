@@ -95,7 +95,8 @@ function ok(name, cond, detail) {
 
   await p.click('#lbBtn'); await p.waitForTimeout(600);
   ok('lbBtn opens leaderboard', await panelShown('lbPanel'), await text('#lbStatus'));
-  ok('leaderboard loads from server (empty)', /No validated runs yet/.test(await text('#lbStatus')));
+  ok('leaderboard loads from server (empty board message)', /No pilots yet/.test(await text('#lbList')));
+  ok('own standing bar shown when signed out', /Not signed in/.test(await text('#lbMe')));
   await p.click('#lbBack'); await p.waitForTimeout(200);
   ok('lbBack returns home', await panelShown('menuPanel'));
 
@@ -181,8 +182,12 @@ function ok(name, cond, detail) {
   ok('PLAY rides the chosen Chog directly', /Test Chog One/.test(await text('#msg')));
   await p.click('#hudMenuBtn'); await p.waitForTimeout(300);
   await p.click('#lbBtn'); await p.waitForTimeout(800);
-  const rows = await p.$$eval('#lbRows tr', r => r.map(x => x.textContent));
-  ok('leaderboard shows the username and distance', rows.length === 1 && /^1Rocket_Chog[\d,]+ m$/.test(rows[0]), rows[0]);
+  const rows = await p.evaluate(() => [...document.querySelectorAll('#lbPanel .lb-entry')].map(e => ({ rank: (e.querySelector('.medal') || e.querySelector('.rk')).textContent, who: e.querySelector('.who').textContent, chog: e.querySelector('.chog').textContent, total: e.querySelector('.big').textContent, mine: e.classList.contains('mine') })));
+  ok('leaderboard podium shows username, Chog and total distance', rows.length === 1 && rows[0].rank === '1' && rows[0].who === 'Rocket_Chog' && /Test Chog One/.test(rows[0].chog) && /^[\d,]+m$/.test(rows[0].total), JSON.stringify(rows));
+  ok('own row highlighted', rows[0].mine);
+  ok('own standing pinned at the bottom', /YOU#1Rocket_Chog/.test((await text('#lbMe')).replace(/\s/g, '')), await text('#lbMe'));
+  await p.click('#lbRefresh'); await p.waitForTimeout(600);
+  ok('lbRefresh reloads the board', (await p.$$('#lbPanel .lb-entry')).length === 1);
   await p.click('#lbBack');
 
   ok('no page errors', errs.length === 0, errs.join(' | '));
