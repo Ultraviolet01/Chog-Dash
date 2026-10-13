@@ -34,6 +34,16 @@ alter table chog_kv enable row level security;
 alter table chog_leaderboard enable row level security;
 alter table chog_runs enable row level security;
 
+-- Belt and braces: the public keys get no table access at all (row level security already blocks them)
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    revoke all on chog_kv, chog_leaderboard, chog_runs from anon, authenticated;
+    revoke all on sequence chog_runs_id_seq from anon, authenticated;
+  end if;
+end;
+$$;
+
 -- ---------- Key-value ----------
 create or replace function chog_kv_get(p_key text) returns jsonb
 language sql stable as $$
