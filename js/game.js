@@ -41,7 +41,7 @@
     const hud = {
       root: $("hud"), dist: $("dist"), score: $("score"), speed: $("speed"), mode: $("modeBadge"),
       laser: $("laserCount"), laserBox: $("laserBox"), near: $("nearMiss"),
-      laserBtn: $("laserBtn"), zoneLabel: $("zoneLabel"), zoneBanner: $("zoneBanner"), flash: $("flash"),
+      laserBtn: $("laserBtn"), zoneLabel: $("zoneLabel"), zoneBanner: $("zoneBanner"), flash: $("flash"), zoneFlash: $("zoneFlash"),
     };
 
     // ---------- Renderer, scene, camera ----------
@@ -319,6 +319,8 @@
     const currentSpacing = () => Math.max(START_SPACING - meters() * SPACING_SHRINK, MIN_SPACING);
 
     function clearField() {
+      gates.forEach(g => scene.remove(g));
+      gates = []; gateFor = -1; zoneFlashTimer = 0; hud.zoneFlash.style.opacity = 0;
       obstacles.forEach(o => scene.remove(o.mesh));
       bits.forEach(b => scene.remove(b.mesh));
       obstacles = []; bits = [];
@@ -468,6 +470,8 @@
       if (m > TRIPLE_START && Math.random() < Math.min(0.4, (m - TRIPLE_START) / 800)) count = 3;
 
       const arrive = -z / speed;
+      // Breather around zone boundaries: nothing to dodge while flying through a warp gate
+      if (nearBoundary(m + Math.floor(-z / G.unitsPerMeter))) { nextSpacing = currentSpacing(); return; }
       // Use the zone the group will be in when it reaches the rocket
       const rules = ZONE_RULES[root.ChogTraits.zoneAt(m + Math.floor(-z / G.unitsPerMeter)).zone.id] || ZONE_RULES.outer;
       for (let n = 0; n < count; n++) {
@@ -491,18 +495,61 @@
     // ---------- Zones ----------
     let zoneKey = null, bannerTimer = 0;
     function zoneText(z) { return z.zone.name + (z.loop > 1 ? " · Loop " + z.loop : ""); }
+    // Zone transitions: a warp gate appears ahead of each boundary; crossing it fires a warp burst,
+    // a flash in the new zone's colour, a quick scenery switch and the ENTERING banner.
+    const GATE_LEAD_M = 125;          // the gate appears this far before the boundary
+    const BREATHER_M = 45;            // no obstacles this close to a boundary, either side
+    let gates = [], gateFor = -1, zoneFlashTimer = 0;
+
+    function updateGates(dt, speed) {
+      const m = meters(), z = root.ChogTraits.zoneAt(m);
+      const remaining = z.endMeters - m;
+      if (remaining <= GATE_LEAD_M && gateFor !== z.number) {
+        gateFor = z.number;
+        const next = root.ChogTraits.zoneAt(z.endMeters + 1);
+        const gate = scenery.makeGate(next.zone.id);
+        gate.position.set(0, HIT_OFFSET_Y, -remaining * G.unitsPerMeter);
+        scene.add(gate);
+        gates.push(gate);
+      }
+      const t = performance.now() / 1000;
+      gates = gates.filter(gate => {
+        gate.position.z += speed * dt;
+        gate.userData.ring.rotation.z = t * 0.6;
+        gate.userData.inner.rotation.z = -t * 1.1;
+        gate.userData.swirl.rotation.z = t * 0.8;
+        if (gate.position.z > 30) { scene.remove(gate); return false; }
+        return true;
+      });
+    }
+
+    function nearBoundary(arrivalM) {
+      const z = root.ChogTraits.zoneAt(arrivalM);
+      return (z.number > 1 && z.intoZone < BREATHER_M) || z.endMeters - arrivalM < BREATHER_M;
+    }
+
     function checkZone() {
       const z = root.ChogTraits.zoneAt(meters());
       const key = z.index + ":" + z.loop;
       if (key === zoneKey) return;
+      const crossing = zoneKey !== null;   // null at the start of a run
       zoneKey = key;
-      scenery.setZone(z.zone.id);
+      scenery.setZone(z.zone.id, false, crossing);
       hud.zoneBanner.innerHTML = "";
-      const title = document.createElement("div"); title.textContent = z.zone.name.toUpperCase();
+      if (crossing) {
+        const pre = document.createElement("div"); pre.className = "pre"; pre.textContent = "ENTERING";
+        hud.zoneBanner.append(pre);
+        scenery.warp();
+        shake = Math.max(shake, 0.25);
+        hud.zoneFlash.style.background = "#" + scenery.accent(z.zone.id).toString(16).padStart(6, "0");
+        zoneFlashTimer = 0.9;
+      }
+      const title = document.createElement("div"); title.className = "title"; title.textContent = z.zone.name.toUpperCase();
       const sub = document.createElement("div"); sub.className = "sub";
       sub.textContent = "Zone " + (z.index + 1) + " of " + G.zones.length + (z.loop > 1 ? " · Loop " + z.loop : "");
       hud.zoneBanner.append(title, sub);
-      bannerTimer = 2.6;
+      hud.zoneBanner.classList.remove("pop"); void hud.zoneBanner.offsetWidth; hud.zoneBanner.classList.add("pop");
+      bannerTimer = crossing ? 3.2 : 2.6;
     }
 
     // ---------- HUD ----------
@@ -541,7 +588,8 @@
       if (flashTimer > 0) { flashTimer -= dt; hud.flash.style.opacity = Math.max(0, flashTimer / 0.5 * 0.8).toFixed(2); }
 
       scenery.update(dt, speed, G.maxSpeed);
-      if (playing) checkZone();
+      if (playing) { updateGates(dt, speed); checkZone(); }
+      if (zoneFlashTimer > 0) { zoneFlashTimer -= dt; hud.zoneFlash.style.opacity = Math.max(0, zoneFlashTimer / 0.9 * 0.55).toFixed(2); }
       if (bannerTimer > 0) { bannerTimer -= dt; hud.zoneBanner.style.opacity = clamp(bannerTimer / 0.6, 0, 1).toFixed(2); }
 
       // Debris bits from crashes and laser hits
@@ -745,7 +793,7 @@
       toReady, toMenu, start,
       get state() { return state; },
       // Test hooks, used by the automated browser tests only
-      _debug: { obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, pickups, runTime: () => runTime,
+      _debug: { gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, pickups, runTime: () => runTime,
         speed: () => (state === "playing" ? baseSpeed() * pickups.speedFactor() : 0),
         setMeters(m) { distance = m * G.unitsPerMeter; }, spawnAt(x, y, z, huge) {
         const o = makeObstacle(); o.vx = o.vy = 0; o.huge = !!huge; o.mesh.position.set(x, y, z); scene.add(o.mesh); obstacles.push(o); return o;

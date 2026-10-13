@@ -54,6 +54,11 @@ input { font: 15px Arial, sans-serif; padding: 9px 10px; border-radius: 8px; bor
 #pickupPop { position: absolute; top: 36%; left: 50%; transform: translateX(-50%); font-family: 'Bungee', Impact, sans-serif;
   font-size: 26px; letter-spacing: 2px; opacity: 0; text-shadow: 0 2px 10px #000; white-space: nowrap; }
 #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+#zoneFlash { position: fixed; inset: 0; opacity: 0; pointer-events: none; mix-blend-mode: screen; }
+#zoneBanner .pre { font-size: 14px; letter-spacing: 6px; color: var(--accent2); margin-bottom: 4px; }
+#zoneBanner .title { font-family: 'Bungee', Impact, sans-serif; font-weight: normal; }
+#zoneBanner.pop { animation: zonePop 0.7s cubic-bezier(.2,1.3,.4,1) both; }
+@keyframes zonePop { from { transform: translateX(-50%) scale(1.8); letter-spacing: 14px; } to { transform: translateX(-50%) scale(1); letter-spacing: 3px; } }
 /* Slow-Mo tint and Dash edge glow */
 body.slowmo::after, body.dashing::after { content: ""; position: fixed; inset: 0; pointer-events: none; }
 body.slowmo::after { box-shadow: inset 0 0 160px rgba(150,110,255,0.45); }

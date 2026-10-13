@@ -43,6 +43,19 @@ const R = path.join(__dirname, '../../');
     seen[label] = await rockShare();
   }
   console.log(seen);
+
+  // ---------- Transition at a zone boundary, flown normally ----------
+  await p.evaluate(() => { ChogUI._game()._debug.obstacles().forEach(o => { o.mesh.position.z = 60; }); ChogUI._game()._debug.setMeters(ChogTraits.zoneStartMeters(6) - 420); });
+  await p.waitForFunction(() => ChogUI._game()._debug.gates().length > 0, null, { timeout: 60000 });
+  const gateZ = await p.evaluate(() => ChogUI._game()._debug.gates()[0].position.z);
+  assert.ok(gateZ < -100, 'warp gate appears well ahead of the boundary (' + gateZ.toFixed(0) + ')');
+  await p.waitForFunction(() => ChogUI._game()._debug.gates().some(g => g.position.z > -30), null, { timeout: 60000 });
+  const crowd = await p.evaluate(() => ChogUI._game()._debug.obstacles().filter(o => o.mesh.position.z > -60 && o.mesh.position.z < 20).length);
+  assert.strictEqual(crowd, 0, 'no obstacles around the warp gate');
+  await p.waitForFunction(() => /ENTERING.*ASTEROID BELT/.test(document.getElementById('zoneBanner').textContent), null, { timeout: 20000 });
+  assert.match(await p.textContent('#zoneBanner'), /ENTERING.*ASTEROID BELT.*Loop 2/);
+  assert.ok(Number(await p.evaluate(() => getComputedStyle(document.getElementById('zoneFlash')).opacity)) > 0, 'zone colour flash on crossing');
+  console.log('transition ok: gate at', gateZ.toFixed(0), 'no obstacles at the gate, ENTERING banner and flash');
   assert.ok(seen['Asteroid Belt'].share > 0.7, 'belt is mostly asteroids');
   assert.ok(seen['Galactic Drift'].share < 0.6, 'drift is mostly debris');
   assert.strictEqual(await p.evaluate(() => ChogUI._game().state), 'playing');

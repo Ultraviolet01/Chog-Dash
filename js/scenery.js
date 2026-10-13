@@ -197,6 +197,43 @@
       clouds: [0xffd8a0, 0xfff0d0, 0xa0b0ff], cloudGain: 1.3, streak: [1, 0.95, 0.8], hole: 0.45, belt: false, galaxy: 1 },
   };
 
+  // Accent colour of each zone, used for its warp gate and the flash when entering it
+  const ACCENTS = { outer: 0x7a8cff, belt: 0xd8a46a, drift: 0x3ad0ff, deep: 0xb04cff, milky: 0xffd27a };
+
+  // Swirling glow for the inside of a warp gate (white, tinted per zone)
+  function gateCanvas() {
+    const S = 512, c = document.createElement("canvas"), R = seeded(31);
+    c.width = c.height = S;
+    const g = c.getContext("2d");
+    g.translate(S / 2, S / 2);
+    const edge = g.createRadialGradient(0, 0, 120, 0, 0, 250);
+    edge.addColorStop(0, "rgba(255,255,255,0)"); edge.addColorStop(0.75, "rgba(255,255,255,0.18)"); edge.addColorStop(1, "rgba(255,255,255,0.55)");
+    g.fillStyle = edge; g.beginPath(); g.arc(0, 0, 250, 0, Math.PI * 2); g.fill();
+    g.globalCompositeOperation = "lighter";
+    for (let i = 0; i < 90; i++) {
+      const r = 140 + R() * 105, a = R() * Math.PI * 2;
+      g.strokeStyle = "rgba(255,255,255," + (0.08 + R() * 0.2) + ")"; g.lineWidth = 1 + R() * 3;
+      g.beginPath(); g.arc(0, 0, r, a, a + 0.4 + R() * 0.9); g.stroke();
+    }
+    return c;
+  }
+  let gateTex = null;
+
+  // A huge glowing ring the rocket flies through when it enters a new zone
+  function makeGate(zoneId) {
+    const color = ACCENTS[zoneId] || 0xffffff;
+    if (!gateTex) gateTex = new THREE.CanvasTexture(gateCanvas());
+    const add = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false };
+    const gate = new THREE.Group();
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(10, 0.45, 16, 72), new THREE.MeshBasicMaterial(Object.assign({ color }, add)));
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(10, 1.4, 12, 72), new THREE.MeshBasicMaterial(Object.assign({ color, opacity: 0.25 }, add)));
+    const inner = new THREE.Mesh(new THREE.TorusGeometry(8.6, 0.12, 8, 72), new THREE.MeshBasicMaterial(Object.assign({ color: 0xffffff, opacity: 0.7 }, add)));
+    const swirl = new THREE.Mesh(new THREE.CircleGeometry(10, 64), new THREE.MeshBasicMaterial(Object.assign({ map: gateTex, color, opacity: 0.9, side: THREE.DoubleSide }, add)));
+    gate.add(halo, ring, inner, swirl);
+    gate.userData = { ring, inner, swirl };
+    return gate;
+  }
+
   // ---------- Scenery ----------
   // lights: { ambient, rim, fill } so each zone can recolour the lighting
   function create(scene, dotTex, lights) {
@@ -329,8 +366,14 @@
       hole.scale.setScalar(cur.hole);
     }
 
-    function setZone(id, instant) {
+    // fast: switch in about a second (crossing a warp gate); otherwise blend over about 3 seconds
+    let blendRate = 0.9;
+    function setZone(id, instant, fast) {
       look = LOOKS[id] || LOOKS.outer;
+      if (fast) {
+        blendRate = 4;
+        clouds.forEach(c => placeCloud(c, c.position.z));   // new zone colours straight away
+      }
       if (instant) {
         applyLook(1);
         clouds.forEach(c => placeCloud(c, c.position.z));
@@ -339,7 +382,8 @@
     }
 
     function update(dt, speed, maxSpeed) {
-      applyLook(1 - Math.exp(-dt * 0.9));   // about 3 seconds to blend into a new zone
+      applyLook(1 - Math.exp(-dt * blendRate));
+      blendRate += (0.9 - blendRate) * Math.min(1, dt * 0.6);
 
       // Belt rocks move with the world; new ones only appear while in the belt
       for (let i = 0; i < BELT; i++) {
@@ -411,7 +455,7 @@
       }
     }
 
-    return { update, setZone, warp() { warp = 1; } };
+    return { update, setZone, warp() { warp = 1; }, makeGate, accent: id => ACCENTS[id] || 0xffffff };
   }
 
   root.ChogScenery = { create };

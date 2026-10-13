@@ -72,8 +72,9 @@ The run passes through five zones that repeat in order. Each zone lasts longer t
 | Loop 2 starts | 32 min, 44 min ... | from 50:00 | | |
 
 - Times assume the game runs at full speed; zone boundaries are fixed distances worked out from these times, so a slow machine reaches them a little later.
-- A banner names each zone as you enter it, and the HUD shows the current zone and loop.
-- Scenery blends smoothly between zones. Every zone keeps a reachable safe path.
+- Each zone change is a moment: a warp gate in the next zone's colour appears about 125 m ahead, nothing spawns around it, and flying through it fires a warp burst, a flash in the zone's colour, a quick scenery switch and an ENTERING banner.
+- The HUD shows the current zone and loop.
+- Every zone keeps a reachable safe path.
 - Zone order and timing are in `js/config.js`; obstacle mixes in `js/game.js` (`ZONE_RULES`); looks in `js/scenery.js` (`LOOKS`).
 
 ## Gameplay rules
