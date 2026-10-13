@@ -272,13 +272,21 @@
     const trailPoints = new THREE.Points(trailGeo, trailMat);
     trailPoints.frustumCulled = false;
     scene.add(trailPoints);
+    // Soft glow in the aura colour around the rider, so the aura reads from behind in flight too
+    const auraGlowMat = new THREE.SpriteMaterial({ map: dotTex, color: 0xffffff, transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, depthWrite: false });
+    const auraGlow = new THREE.Sprite(auraGlowMat);
+    auraGlow.position.set(0, 1.0, -0.15);   // just beyond the rider, seen around its outline
+    auraGlow.scale.set(2.9, 2.9, 1);
+    player.add(auraGlow);
     const trailOrigin = new THREE.Vector3();
     let trailIdx = 0, trailAcc = 0;
-    function emitTrail() {
+    function emitTrail(flying) {
       const t = look.trail, i = trailIdx;
       trailIdx = (trailIdx + 1) % TRAIL;
       trailOrigin.set(0, 0.7, 0.4).applyMatrix4(player.matrixWorld);
-      const a = Math.random() * Math.PI * 2, r = t.style === "glow" ? 0.85 : Math.random() * 0.75;
+      // In flight the camera is right behind, so start particles around the rocket's outline, not inside it
+      const a = Math.random() * Math.PI * 2, r = t.style === "glow" ? 0.85 : flying ? rand(0.6, 1.15) : Math.random() * 0.75;
       trailPos[i * 3] = trailOrigin.x + Math.cos(a) * r;
       trailPos[i * 3 + 1] = trailOrigin.y + Math.sin(a) * r * 0.9;
       trailPos[i * 3 + 2] = trailOrigin.z + rand(-0.2, 0.4);
@@ -292,17 +300,29 @@
         case "smoke": vz = rand(3, 5); vy = rand(0.3, 1.2); life = rand(0.9, 1.4); break;
         case "sparkle": vz = rand(4, 7); life = rand(0.4, 0.7); break;
       }
+      if (flying && t.style !== "wind") { vz *= 0.45; life *= 1.3; }   // drift back slower so they stay in view longer
       trailVel[i * 3] = vx; trailVel[i * 3 + 1] = vy; trailVel[i * 3 + 2] = vz;
       trailMax[i] = trailLife[i] = life;
     }
-    function updateTrail(dt, now, emitting) {
+    function updateTrail(dt, now, emitting, flying) {
       const t = look.trail;
       trailPoints.visible = !!t;
+      auraGlow.visible = !!t && emitting;
       if (!t) return;
+      // Glow: gentle pulse; flames flicker, sparks crackle
+      const pulse = t.style === "flame" ? 0.75 + Math.random() * 0.25 : t.style === "spark" ? (Math.random() < 0.3 ? 1 : 0.45)
+        : 0.8 + 0.2 * Math.sin(now / 260);
+      auraGlowMat.color.setHex(t.color);
+      auraGlowMat.opacity = (flying ? 0.5 : 0.3) * pulse * (t.style === "smoke" ? 0.6 : 1);
+      // Bigger, brighter and denser in flight, where the trail is seen from right behind
+      // (smoke and mist stay smaller and dimmer so they never hide incoming obstacles)
+      const soft = t.style === "smoke" || t.style === "mist";
+      trailMat.size = (TRAIL_SIZE[t.style] || 0.4) * (flying ? (soft ? 1.15 : 1.6) : 1);
       if (emitting) {
-        trailAcc += dt * (t.style === "spark" ? 90 : t.style === "mist" || t.style === "smoke" ? 30 : 55);
-        while (trailAcc >= 1) { trailAcc -= 1; emitTrail(); }
+        trailAcc += dt * (t.style === "spark" ? 90 : t.style === "mist" || t.style === "smoke" ? 30 : 55) * (flying ? 1.6 : 1);
+        while (trailAcc >= 1) { trailAcc -= 1; emitTrail(flying); }
       }
+      const boost = flying ? (t.style === "spark" || t.style === "wind" ? 1.8 : soft ? 0.8 : 1.35) : 1;
       const cr = ((t.color >> 16) & 255) / 255, cg = ((t.color >> 8) & 255) / 255, cb = (t.color & 255) / 255;
       for (let i = 0; i < TRAIL; i++) {
         if (trailLife[i] <= 0) { trailCol[i * 3] = trailCol[i * 3 + 1] = trailCol[i * 3 + 2] = 0; continue; }
@@ -318,6 +338,7 @@
         else if (t.style === "smoke") k = f * 0.35;
         else if (t.style === "sparkle") k = f * (0.4 + 0.6 * Math.abs(Math.sin(now * 0.02 + i * 1.7)));
         else if (t.style === "spark") k = Math.random() < 0.35 ? 1 : 0.2;
+        k *= boost;
         trailCol[i * 3] = Math.min(1, r * k); trailCol[i * 3 + 1] = Math.min(1, g * k); trailCol[i * 3 + 2] = Math.min(1, b * k);
       }
       trailGeo.attributes.position.needsUpdate = true;
@@ -764,7 +785,7 @@
         while (emitAcc >= 1) { emitAcc -= 1; emitExhaust(thrusting); }
       }
       updateExhaust(dt);
-      updateTrail(dt, now, state !== "dead" && player.visible);
+      updateTrail(dt, now, state !== "dead" && player.visible, state === "playing" || state === "ready");
       const halo = extras.getObjectByName("halo");
       if (halo) halo.position.y = 2.2 + Math.sin(now / 400) * 0.05;
 
