@@ -43,7 +43,7 @@
   function controlsText(laser) {
     const base = isTouch
       ? "Drag to fly the rocket up, down, left and right."
-      : "Move the mouse to fly the rocket. Or use the keyboard: hold Space or W to rise, release to fall, A/D or arrows to steer.";
+      : "Move the mouse to fly the rocket. Or use the keyboard: W/A/S/D or the arrow keys. The rocket stays put when you let go.";
     return base + (laser ? (isTouch ? " LASER button fires Laser Eyes." : " E fires Laser Eyes.") : "");
   }
   const startText = () => (isTouch ? "Tap to start" : "Press Space or click to start");

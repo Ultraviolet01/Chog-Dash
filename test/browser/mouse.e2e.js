@@ -1,6 +1,6 @@
 /*
- * Browser test of mouse control: the rocket follows the mouse up/down and left/right,
- * and holding the mouse button does not make it rise.
+ * Browser test of controls: the rocket follows the mouse up/down and left/right, holding the mouse
+ * button does not make it rise, and keyboard movement holds position when keys are released.
  */
 const { chromium } = require('playwright-core');
 const fs = require('fs');
@@ -35,6 +35,25 @@ const R = path.join(__dirname, '../../');
   const held = await pos();
   await p.mouse.up();
   console.log({ top, bottom, left, right, held });
+
+  // Keyboard: the rocket moves while a key is held and stays put after release (no falling back down)
+  await p.keyboard.down('KeyW'); await p.waitForTimeout(500); await p.keyboard.up('KeyW');
+  const afterW = await pos();
+  await p.waitForTimeout(1500);
+  const restW = await pos();
+  await p.keyboard.down('ArrowDown'); await p.waitForTimeout(300); await p.keyboard.up('ArrowDown');
+  const afterDown = await pos();
+  await p.waitForTimeout(1500);
+  const restDown = await pos();
+  await p.keyboard.down('KeyD'); await p.waitForTimeout(400); await p.keyboard.up('KeyD');
+  await p.waitForTimeout(1000);
+  const restD = await pos();
+  console.log({ afterW, restW, afterDown, restDown, restD });
+  assert.ok(afterW.y > held.y + 2, 'W moves the rocket up');
+  assert.ok(Math.abs(restW.y - afterW.y) < 0.6, 'rocket stays up after W is released');
+  assert.ok(afterDown.y < restW.y - 1, 'Down moves the rocket down');
+  assert.ok(Math.abs(restDown.y - afterDown.y) < 0.6, 'rocket stays put after Down is released');
+  assert.ok(restD.x > restDown.x + 1, 'D moves the rocket right and it stays');
 
   assert.ok(top.y > 3, 'mouse at top moves the rocket up');
   assert.ok(bottom.y < -3, 'mouse at bottom moves the rocket down');

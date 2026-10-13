@@ -17,7 +17,8 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 ## Controls
 
 - Mouse: move the mouse and the rocket follows it, up, down, left and right. Clicking only starts a run.
-- Keyboard: hold Space, W or Up to rise, release to fall. Steer with A/D or Left/Right.
+- Keyboard: W/A/S/D or the arrow keys move the rocket up, down, left and right. It stays where it is when you let go.
+- Click or Space starts a run.
 - Whichever you used last (mouse or keyboard) is in control.
 - Laser Eyes: E (only for Chogs with that trait).
 - Touch screens: drag to fly the rocket in any direction, on-screen LASER button.

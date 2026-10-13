@@ -15,9 +15,7 @@
   const STEER_ACCEL = 70;
   const POINTER_SPEED_X = 20, POINTER_SPEED_Y = 16;   // mouse/touch: faster, so the rocket keeps up with the pointer
   const POINTER_ACCEL = 140, POINTER_GAIN = 9;
-  const THRUST = 34;                  // upward acceleration while holding the ascent control
-  const GRAVITY = 24;                 // downward acceleration while released
-  const MAX_UP = 10, MAX_DOWN = 11;
+  const MAX_UP = 10;                  // max up/down speed (keyboard)
   const NEAR_MISS_MARGIN = 1.3;       // extra distance that still counts as a near miss
 
   const SPAWN_Z = -260, DESPAWN_Z = 12;
@@ -223,7 +221,7 @@
     window.addEventListener("keydown", e => {
       if (state === "menu" || e.target.tagName === "INPUT") return;
       keys[e.code] = true;
-      if (["ArrowLeft", "ArrowRight", "ArrowUp", "KeyA", "KeyD", "KeyW", "Space"].includes(e.code)) steerMode = "keys";
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyA", "KeyD", "KeyW", "KeyS"].includes(e.code)) steerMode = "keys";
       if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
       if ((e.code === "Space" || e.code === "Enter") && !e.repeat) onPress();
       if ((e.code === "KeyE" || e.code === "KeyL") && !e.repeat) fireLaser();
@@ -474,9 +472,8 @@
     function update(dt) {
       const now = performance.now();
       const playing = state === "playing";
-      const holdingUp = keys.Space || keys.ArrowUp || keys.KeyW;
       // Bigger flame while the rocket climbs (keyboard: holding rise; mouse/touch: moving up)
-      const thrusting = playing && (steerMode === "keys" ? holdingUp : vel.y > 1);
+      const thrusting = playing && vel.y > 1;
 
       const speed = state === "dead" ? 0 : (playing ? baseSpeed() : G.baseSpeed * 0.3);
 
@@ -523,10 +520,11 @@
       if (playing) {
         const step = STEER_ACCEL * dt;
         if (steerMode === "keys") {
-          // Keyboard: steer sideways, hold to rise, release to fall
+          // Keyboard: move while a key is held, stay put when released
           const tx = ((keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0)) * STEER_SPEED;
+          const ty = ((keys.ArrowUp || keys.KeyW ? 1 : 0) - (keys.ArrowDown || keys.KeyS ? 1 : 0)) * MAX_UP;
           vel.x += clamp(tx - vel.x, -step, step);
-          vel.y = clamp(vel.y + (holdingUp ? THRUST : -GRAVITY) * dt, -MAX_DOWN, MAX_UP);
+          vel.y += clamp(ty - vel.y, -step, step);
         } else {
           // Mouse/touch: fly toward the pointer
           const tx = clamp((pointerTarget.x - player.position.x) * POINTER_GAIN, -POINTER_SPEED_X, POINTER_SPEED_X);
