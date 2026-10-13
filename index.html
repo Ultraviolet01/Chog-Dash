@@ -34,7 +34,16 @@
 <div id="flash"></div>
 <div id="zoneFlash"></div>
 <button id="laserBtn">LASER</button>
-<button id="cardBtn">SHARE RUN</button>
+<!-- Game over actions: one big PLAY AGAIN, with Share, Ranks and Home beside it -->
+<div id="endBar">
+  <button id="againBtn" class="again"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>PLAY AGAIN</button>
+  <div class="end-row">
+    <button id="cardBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v12M7 8l5-5 5 5"/></svg>Share run</button>
+    <button id="endLbBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3a5 5 0 0 1-10 0V4z"/><path d="M12 12v4M8 20h8M9 16h6v4H9z"/></svg>Ranks</button>
+    <button id="endHomeBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</button>
+  </div>
+  <div id="endHint" class="end-hint"></div>
+</div>
 
 <!-- Home screen -->
 <div id="menuPanel" class="home show">
@@ -85,6 +94,7 @@
           <li><b>Keyboard:</b> W/A/S/D or the arrow keys. The rocket stays put when you let go.</li>
           <li><b>Touch:</b> drag to fly in any direction.</li>
           <li><b>Start:</b> click, tap or press Space.</li>
+          <li><b>After a crash:</b> PLAY AGAIN, or Space / R, restarts right away. Esc goes Home.</li>
           <li><b>Full screen:</b> press F or the full-screen button. Esc or F again to leave.</li>
           <li><b>Laser Eyes:</b> E or the LASER button (Chogs with that trait only).</li>
         </ul>

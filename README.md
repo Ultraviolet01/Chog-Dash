@@ -29,6 +29,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 - Mouse: move the mouse and the rocket follows it, up, down, left and right. Clicking only starts a run.
 - Keyboard: W/A/S/D or the arrow keys move the rocket up, down, left and right. It stays where it is when you let go.
 - Click or Space starts a run.
+- After a crash: PLAY AGAIN (or Space, R, a click or a tap) restarts straight away. Share run, Ranks and Home sit beside it; Esc also goes Home. Chog NFT runs register with the leaderboard server first, so the new run is still ranked.
 - Full screen: press F or use the full-screen button (home screen and in-game). Esc or F again to leave. The mouse cursor hides while you fly.
 - Whichever you used last (mouse or keyboard) is in control.
 - Laser Eyes: E (only for Chogs with that trait).

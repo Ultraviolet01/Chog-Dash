@@ -541,7 +541,8 @@
 
     function onPress() {
       if (state === "ready") start();
-      else if (state === "dead" && performance.now() > deadAt + 600) toReady();
+      // Retry (Space, Enter, click or tap after a crash): the UI restarts straight away if it can
+      else if (state === "dead" && performance.now() > deadAt + 600) { if (hooks.onRetry) hooks.onRetry(); else toReady(); }
     }
 
     function burst(pos, mats, count, spread) {

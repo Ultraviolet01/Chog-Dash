@@ -116,8 +116,10 @@ function ok(name, cond, detail) {
   await p.evaluate(() => { const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -6, false); });
   await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 5000 });
   ok('crash shows result', /CRASHED/.test(await text('#msg')));
-  await p.click('#hudMenuBtn'); await p.waitForTimeout(300);
-  ok('hudMenuBtn (after crash) returns home', await panelShown('menuPanel') && (await state()) === 'menu');
+  ok('Menu button hidden on the game-over screen (Home replaces it)', !(await visible('#hudMenuBtn')));
+  await p.waitForTimeout(700);
+  await p.click('#endHomeBtn'); await p.waitForTimeout(300);
+  ok('endHomeBtn (practice) returns home', await panelShown('menuPanel') && (await state()) === 'menu');
   ok('best chip updated after the run', /\d+ m/.test(await text('#bestValue')), await text('#bestValue'));
 
   // ---------- NFT: wallet chip, connect, switch network, tiles, token entry, ride ----------
@@ -167,13 +169,38 @@ function ok(name, cond, detail) {
   await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 5000 });
   await p.waitForFunction(() => !/Submitting/.test(document.getElementById('msg').textContent), null, { timeout: 15000 });
   ok('NFT run submitted and validated', /Validated/.test(await text('#msg')), (await text('#msg')).slice(0, 120));
-  await p.waitForTimeout(700);   // clicks are ignored for 0.6 s after a crash, so a frantic click doesn't skip the result
-  await p.click('#gameCanvas'); await p.waitForTimeout(800);
-  ok('click after crash returns to ready', (await state()) === 'ready');
+  ok('game over shows PLAY AGAIN, Share run, Ranks and Home', await visible('#againBtn') && await visible('#cardBtn') && await visible('#endLbBtn') && await visible('#endHomeBtn'));
+  await p.waitForTimeout(700);   // retries are ignored for 0.6 s after a crash, so a frantic click doesn't skip the result
+  await p.click('#againBtn');
+  await p.waitForFunction(() => ChogUI._game().state === 'playing', null, { timeout: 10000 });
+  ok('againBtn restarts straight away (after the run session for a ranked run)', (await state()) === 'playing' && !(await visible('#endBar')));
   ok('laser charges reset to 10 on a new run', (await text('#laserCount')) === '10/10');
+  ok('the restarted NFT run is registered for the leaderboard', await p.evaluate(() => !!ChogUI._state.activeRunId));
+  await p.evaluate(() => { const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -1, true); });
+  await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 5000 });
+  await p.waitForFunction(() => !/Submitting/.test(document.getElementById('msg').textContent), null, { timeout: 15000 });
+  await p.waitForTimeout(700);
+  await p.keyboard.press('KeyR');
+  await p.waitForFunction(() => ChogUI._game().state === 'playing', null, { timeout: 10000 }).catch(() => {});
+  ok('R restarts after a crash', (await state()) === 'playing');
+  await p.evaluate(() => { const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -1, true); });
+  await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 5000 });
+  await p.waitForFunction(() => !/Submitting/.test(document.getElementById('msg').textContent), null, { timeout: 15000 });
+  await p.waitForTimeout(700);
+  await p.click('#endLbBtn'); await p.waitForTimeout(600);
+  ok('endLbBtn opens the leaderboard', await panelShown('lbPanel') && (await state()) === 'menu');
+  await p.click('#lbBack'); await p.waitForTimeout(300);
+  await p.click('#playBtn');
+  await p.waitForFunction(() => ChogUI._game().state === 'ready', null, { timeout: 15000 });
+  await p.keyboard.press('Space');
+  await p.waitForFunction(() => ChogUI._game().state === 'playing', null, { timeout: 5000 });
+  await p.evaluate(() => { const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -1, true); });
+  await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 5000 });
+  await p.waitForTimeout(700);
 
   // ---------- Back home with a Chog chosen ----------
-  await p.click('#hudMenuBtn'); await p.waitForTimeout(300);
+  await p.click('#endHomeBtn'); await p.waitForTimeout(300);
+  ok('endHomeBtn goes home', await panelShown('menuPanel') && (await state()) === 'menu');
   ok('home in NFT mode shows PLAY once a Chog is chosen', (await text('#playBtn')) === 'PLAY' && /Test Chog One/.test(await text('#modeHint')));
   ok('best chip shows the Chog best total distance', (await text('#bestLabel')) === 'BEST TOTAL' && / m$/.test(await text('#bestValue')));
   ok('wallet chip shows pilot name with green dot', (await text('#walletChipText')) === 'Rocket_Chog' && await p.evaluate(() => document.getElementById('walletDot').classList.contains('on')));

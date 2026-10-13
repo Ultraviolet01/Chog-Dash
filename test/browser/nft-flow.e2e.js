@@ -142,7 +142,7 @@ const chain = {
   assert.strictEqual(await p.evaluate(() => ChogUI._game().state), 'dead', 'Space does not restart the game behind the card');
   await p.click('#cardClose');
   assert.ok(!(await p.isVisible('#cardPanel')), 'card closes');
-  await p.click('#hudMenuBtn'); await p.click('#lbBtn'); await p.waitForTimeout(600);
+  await p.click('#endLbBtn'); await p.waitForTimeout(600);
   const lb = await p.evaluate(() => [...document.querySelectorAll('#lbPanel .lb-entry')].map(e => ({ rank: (e.querySelector('.medal') || e.querySelector('.rk')).textContent, who: e.querySelector('.who').textContent, chog: e.querySelector('.chog').textContent, total: e.querySelector('.big').textContent, mine: e.classList.contains('mine') })));
   console.log('lb:', JSON.stringify(lb), '| me:', await text('#lbMe'));
   await shot('lb');

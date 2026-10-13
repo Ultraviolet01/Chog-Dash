@@ -58,8 +58,11 @@ const launchOpts = { executablePath: process.env.CHROME_PATH || '/opt/pw-browser
     await p.waitForFunction(() => document.getElementById('cardImg').naturalWidth === 1200 && ChogUI._state.lastRun.practice, null, { timeout: 5000 });
     await p.tap('#cardClose');
     await p.waitForTimeout(300);
-    await p.touchscreen.tap(vw.width / 2, vw.height / 3);
-    await p.waitForFunction(() => ChogUI._game().state === 'ready', null, { timeout: 3000 });
+    assert.ok(await p.isVisible('#againBtn'), name + ': PLAY AGAIN shown');
+    const againH = await p.evaluate(() => document.getElementById('againBtn').getBoundingClientRect().height);
+    assert.ok(againH >= 44, name + ': PLAY AGAIN is a big tap target (' + againH + ' px)');
+    await p.tap('#againBtn');
+    await p.waitForFunction(() => ChogUI._game().state === 'playing', null, { timeout: 3000 });
     assert.deepStrictEqual(errs, [], name + ': no page errors');
     console.log('ok', name);
     await ctx.close();

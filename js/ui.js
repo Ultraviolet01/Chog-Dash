@@ -51,7 +51,7 @@
   }
   const startText = () => (isTouch ? "Tap to start" : "Press Space or click to start");
   const portraitTip = () => (window.innerHeight > window.innerWidth ? "Tip: turn your phone sideways for a bigger view." : "");
-  const retryText = () => (isTouch ? "Tap to fly again" : "Press Space or click to fly again");
+  const retryText = () => "";   // the PLAY AGAIN button and its hint replace the old text line
 
   async function apiCall(path, body, token) {
     const opts = { method: body ? "POST" : "GET", headers: {} };
@@ -76,7 +76,7 @@
 
   // ---------- Start ----------
   function start() {
-    game = root.ChogGame.init({ onReady, onStart, onEnd });
+    game = root.ChogGame.init({ onReady, onStart, onEnd, onRetry: playAgain });
     $("formulaNote").innerHTML = "<b>Total distance:</b> " + esc(cfg.scoreFormula) +
       ". Tier multipliers are a Chog Dash game-design choice, not an official Chog Genesis rule.";
     $("modePractice").onclick = () => setHomeMode("practice");
@@ -107,13 +107,23 @@
     $("pilotInput").addEventListener("keydown", e => { if (e.key === "Enter") savePilot(); });
     $("rideBtn").onclick = rideChog;
     $("cardBtn").onclick = openCard;
+    $("againBtn").onclick = playAgain;
+    $("endHomeBtn").onclick = backToMenu;
+    $("endLbBtn").onclick = () => { backToMenu(); openLeaderboard(); };
+    window.addEventListener("keydown", e => {
+      if (e.code === "KeyR" && !e.repeat && game.state === "dead" && !document.querySelector(".panel.show") && e.target.tagName !== "INPUT") playAgain();
+    });
     $("cardClose").onclick = closeCard;
     $("cardSave").onclick = saveCard;
     $("cardShare").onclick = shareCard;
     $("cardX").onclick = shareToX;
     $("cardFmtWide").onclick = () => setCardFormat("wide");
     $("cardFmtSquare").onclick = () => setCardFormat("square");
-    window.addEventListener("keydown", e => { if (e.key === "Escape" && $("cardPanel").classList.contains("show")) closeCard(); });
+    window.addEventListener("keydown", e => {
+      if (e.key !== "Escape") return;
+      if ($("cardPanel").classList.contains("show")) closeCard();
+      else if (game.state === "dead" && !document.querySelector(".panel.show")) backToMenu();
+    });
   }
 
   // ---------- Full screen (button, HUD button, F key) ----------
@@ -192,7 +202,8 @@
   }
 
   function backToMenu() {
-    $("cardBtn").style.display = "none";
+    showEndBar(false);
+    S.autoStart = false;
     closeCard();
     S.sessionReq++;
     S.mode = null;
@@ -223,7 +234,7 @@
   }
 
   function onReady() {
-    $("cardBtn").style.display = "none";
+    showEndBar(false);
     closeCard();
     setFlying(false);
     if (S.mode === "practice") {
@@ -242,6 +253,8 @@
 
   function onStart() {
     setFlying(true);
+    showEndBar(false);
+    S.autoStart = false;
     $("cardBtn").style.display = "none";
     S.lastRun = null;
     $("msg").style.display = "none";
@@ -318,7 +331,34 @@
       url: /^https?:$/.test(location.protocol) ? location.host : null,
       rank: null,
     };
-    $("cardBtn").style.display = result.meters > 0 ? "block" : "none";
+    $("cardBtn").style.display = result.meters > 0 ? "" : "none";
+    showEndBar(true);
+  }
+
+  // ---------- Game over: PLAY AGAIN restarts straight away ----------
+  function showEndBar(on) {
+    $("endBar").classList.toggle("show", on);
+    $("hudMenuBtn").style.display = on || document.body.classList.contains("flying") ? "none" : "block";   // Home in the bar replaces it
+    if (on) {
+      S.crashedAt = performance.now();
+      $("endHint").textContent = isTouch ? "" : "Space or R to play again  ·  Esc for Home";
+    }
+  }
+  function playAgain() {
+    if (game.state !== "dead" || performance.now() - (S.crashedAt || 0) < 600) return;   // no accidental restarts
+    closeCard();
+    showEndBar(false);
+    if (S.mode === "nft") {
+      // A ranked run needs its run session from the server first; start as soon as it's settled
+      S.autoStart = true;
+      game.toReady();
+    } else {
+      game.toReady();
+      game.start();
+    }
+  }
+  function autoStartIfWaiting() {
+    if (S.autoStart && game.state === "ready") { S.autoStart = false; game.start(); }
   }
 
   let cardCanvas = null, cardFormat = "wide";
@@ -421,6 +461,7 @@
     if (!S.auth) {
       S.runStatus = { text: "Not eligible for the leaderboard: " + (S.authError || "not signed in"), kind: "warn" };
       renderNftReady();
+      autoStartIfWaiting();
       return;
     }
     S.runStatus = { text: "Checking leaderboard eligibility...", kind: "" };
@@ -436,6 +477,7 @@
       S.runStatus = { text: "Not eligible for the leaderboard: " + e.message, kind: "warn" };
     }
     if (game.state === "ready") renderNftReady();
+    autoStartIfWaiting();
   }
 
   // ---------- NFT mode: wallet ----------

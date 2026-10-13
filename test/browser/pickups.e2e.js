@@ -139,7 +139,7 @@ function ok(name, cond, detail) {
   ok('crash screen shows Stardust collected', /Stardust collected: \d+/.test(await p.textContent('#msg')));
   const shown = (await p.textContent('#msg')).match(/Best on this device: (\d+) m/);
   await p.waitForTimeout(700);
-  await p.click('#hudMenuBtn'); await p.waitForTimeout(300);
+  await p.waitForTimeout(700); await p.click('#endHomeBtn'); await p.waitForTimeout(300);
   ok('home screen shows the best distance', shown && (await p.textContent('#bestValue')) === Number(shown[1]).toLocaleString() + ' m', await p.textContent('#bestValue'));
   ok('no LAST run chip on the home screen', !(await p.$('#lastValue')));
 
