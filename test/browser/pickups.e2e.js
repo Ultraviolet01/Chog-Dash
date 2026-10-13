@@ -137,12 +137,11 @@ function ok(name, cond, detail) {
   await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 5000 }).catch(() => {});
   ok('a crash with no lives ends the run', await ev(() => ChogUI._game().state) === 'dead');
   ok('crash screen shows Stardust collected', /Stardust collected: \d+/.test(await p.textContent('#msg')));
-  const last = await ev(() => Number(localStorage.getItem('chogDashLastM')));
-  const shown = (await p.textContent('#msg')).match(/Distance: (\d+) m/);
-  ok('last run distance saved', shown && last === Number(shown[1]), last);
+  const shown = (await p.textContent('#msg')).match(/Best on this device: (\d+) m/);
   await p.waitForTimeout(700);
   await p.click('#hudMenuBtn'); await p.waitForTimeout(300);
-  ok('home screen shows the last run distance', (await p.textContent('#lastValue')) === last.toLocaleString() + ' m');
+  ok('home screen shows the best distance', shown && (await p.textContent('#bestValue')) === Number(shown[1]).toLocaleString() + ' m', await p.textContent('#bestValue'));
+  ok('no LAST run chip on the home screen', !(await p.$('#lastValue')));
 
   ok('no page errors', errs.length === 0, errs.join(' | '));
   await b.close();

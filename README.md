@@ -5,7 +5,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 ## Home screen
 
 - Live 3D scene with the rider on its rocket as the hero, a big PLAY button and a Practice / Chog NFT switch.
-- Top: your best distance (or the selected Chog's best score), your last run's distance, and a wallet chip.
+- Top: your best distance (or the selected Chog's best score) and a wallet chip.
 - Bottom: Ranks (leaderboard) and How to play. Space or Enter also plays.
 
 ## Two ways to play
