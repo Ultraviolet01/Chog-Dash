@@ -2,13 +2,14 @@
 
 ## Ranking
 
-- One entry per NFT: each Chog's longest validated distance, shown with the pilot name of the wallet that set it.
+- One entry per player: each username's longest validated distance, flying any Chog they own.
+- The leaderboard shows rank, username and distance. The Chog used for the best run is still stored and returned by the API.
 - Pilot names:
   - Set after signing in (`POST /api/profile`, signed in). One name per wallet.
   - 3 to 16 letters, numbers or underscores, starting with a letter, so a name can't look like a wallet address.
   - Unique regardless of letter case. Changing your name frees the old one.
-  - The leaderboard looks names up when it's shown, so a rename applies to past entries too. Without a name, the short wallet address is shown.
-  - A pilot name is required before a ranked run.
+  - The leaderboard looks names up when it's shown, so a rename applies to past entries too.
+  - A pilot name is required before a ranked run (the server refuses to start one without it).
 - The leaderboard shows distance only. Tier multipliers and the score (distance x multiplier) are still computed and stored, but are on hold until the NFT integration is verified.
 - Practice runs are never submitted.
 

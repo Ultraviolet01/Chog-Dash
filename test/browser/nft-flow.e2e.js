@@ -119,7 +119,7 @@ const chain = {
   await shot('lb');
   const lb = await p.$$eval('#lbRows tr', r => r.map(x => x.textContent));
   assert.strictEqual(lb.length, 1, 'one leaderboard entry');
-  assert.match(lb[0], /Test_Pilot/, 'leaderboard shows the pilot name');
+  assert.match(lb[0], /^1Test_Pilot[\d,]+ m$/, 'leaderboard shows the username and distance');
   assert.deepStrictEqual(errs, [], 'no page errors');
   console.log('PASS nft flow');
   await b.close(); server.close();

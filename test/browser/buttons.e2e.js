@@ -182,7 +182,7 @@ function ok(name, cond, detail) {
   await p.click('#hudMenuBtn'); await p.waitForTimeout(300);
   await p.click('#lbBtn'); await p.waitForTimeout(800);
   const rows = await p.$$eval('#lbRows tr', r => r.map(x => x.textContent));
-  ok('leaderboard lists the validated run under the pilot name', rows.length === 1 && /Rocket_Chog/.test(rows[0]) && /Test Chog One/.test(rows[0]), rows[0]);
+  ok('leaderboard shows the username and distance', rows.length === 1 && /^1Rocket_Chog[\d,]+ m$/.test(rows[0]), rows[0]);
   await p.click('#lbBack');
 
   ok('no page errors', errs.length === 0, errs.join(' | '));

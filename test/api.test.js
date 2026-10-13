@@ -24,10 +24,14 @@ function setup() {
   };
   const store = memoryStore(now);
   const h = createHandlers({ store, chain, secret: "test-secret", now });
-  async function signIn(acct) {
+  // Signs in and, unless name is null, sets a pilot name (needed for ranked runs)
+  async function signIn(acct, name) {
     const { message } = await h.authNonce({ body: { wallet: acct.address } });
     const signature = await acct.signMessage({ message });
-    return (await h.authVerify({ body: { wallet: acct.address, message, signature } })).token;
+    const token = (await h.authVerify({ body: { wallet: acct.address, message, signature } })).token;
+    if (name !== null && !(await store.get("user:" + acct.address.toLowerCase())))
+      await h.profileSet({ body: { username: name || "P" + acct.address.slice(2, 10) }, token });
+    return token;
   }
   return { h, store, owners, alice, bob, signIn, advance: ms => { t += ms; } };
 }
@@ -61,17 +65,28 @@ test("the server's tier is used, whatever the client sends", async () => {
   assert.strictEqual(fin.finalScore, 420);
 });
 
-test("best score per NFT: a lower later run does not replace it", async () => {
-  const { h, alice, signIn, advance } = setup();
-  const token = await signIn(alice);
-  for (const meters of [500, 200]) {
-    const s = await h.runStart({ body: { tokenId: "1" }, token });
+test("one entry per player: their best distance with any of their Chogs", async () => {
+  const { h, alice, bob, signIn, advance } = setup();
+  const token = await signIn(alice, "Alice");
+  for (const [tokenId, meters] of [["1", 500], ["2", 650], ["1", 200]]) {
+    const s = await h.runStart({ body: { tokenId }, token });
     advance(30000);
     await h.runFinish({ body: { runId: s.runId, meters, durationMs: 29000 }, token });
   }
+  const tb = await signIn(bob, "Bob");
+  const s = await h.runStart({ body: { tokenId: "3" }, token: tb });
+  advance(30000);
+  await h.runFinish({ body: { runId: s.runId, meters: 600, durationMs: 29000 }, token: tb });
   const lb = await h.leaderboard();
-  assert.strictEqual(lb.entries.length, 1);
-  assert.strictEqual(lb.entries[0].meters, 500);
+  assert.deepStrictEqual(lb.entries.map(e => [e.rank, e.username, e.meters, e.tokenId]), [[1, "Alice", 650, "2"], [2, "Bob", 600, "3"]]);
+});
+
+test("a ranked run needs a pilot name", async () => {
+  const { h, alice, signIn } = setup();
+  const token = await signIn(alice, null);
+  assert.strictEqual(await status(h.runStart({ body: { tokenId: "1" }, token })), 403);
+  await h.profileSet({ body: { username: "Alice" }, token });
+  assert.strictEqual(await status(h.runStart({ body: { tokenId: "1" }, token })), 200);
 });
 
 test("cannot start a run with a Chog the wallet does not own", async () => {
@@ -146,7 +161,7 @@ test("sign-in rejects wrong signatures, reused nonces and expired tokens", async
 
 test("pilot names: set, unique per wallet, shown on the leaderboard", async () => {
   const { h, alice, bob, signIn, advance } = setup();
-  const ta = await signIn(alice), tb = await signIn(bob);
+  const ta = await signIn(alice, null), tb = await signIn(bob, null);
   assert.strictEqual(await status(h.profileSet({ body: { username: "Ace_1" } })), 401);
   for (const bad of ["ab", "1ace", "0xabc", "has space", "x".repeat(17), "", null])
     assert.strictEqual(await status(h.profileSet({ body: { username: bad }, token: ta })), 400, String(bad));

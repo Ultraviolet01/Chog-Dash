@@ -625,7 +625,7 @@
   // ---------- Leaderboard view ----------
   async function openLeaderboard() {
     show("lbPanel");
-    $("lbRule").textContent = "Ranking: each Chog's longest validated distance. Only validated Chog NFT runs appear here; practice runs never do.";
+    $("lbRule").textContent = "Ranking: each player's longest validated distance, flying any Chog they own. Only validated Chog NFT runs appear here; practice runs never do.";
     const st = $("lbStatus"), rows = $("lbRows");
     rows.innerHTML = "";
     setStatus(st, "Loading...");
@@ -634,7 +634,7 @@
       if (!r.entries.length) setStatus(st, "No validated runs yet.");
       else setStatus(st, "");
       rows.innerHTML = r.entries.map(e => "<tr><td>" + e.rank + "</td><td>" + esc(e.username || short(e.wallet)) + "</td><td>" +
-        esc(e.name || "Token " + e.tokenId) + "</td><td>" + Number(e.meters).toLocaleString() + " m</td></tr>").join("");
+        Number(e.meters).toLocaleString() + " m</td></tr>").join("");
     } catch (e) {
       setStatus(st, e.offline ? "The leaderboard server isn't reachable from here. It runs on the deployed site (see README)." : e.message, "err");
     }

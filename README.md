@@ -18,7 +18,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
   - Connect a wallet on Monad and sign the sign-in message (free, no transaction).
   - The game then finds every Chog Genesis NFT the wallet holds and shows them. Pick one and ride the rocket as that Chog.
     - The contract can't list a wallet's tokens, so the game checks the owner of all 1,969 tokens in a few batched reads (Multicall3). This takes about a second.
-  - Choose a pilot name. It's shown on the leaderboard instead of your wallet address.
+  - Choose a username (pilot name). The leaderboard shows usernames and distances, one entry per player (their best run with any of their Chogs).
   - Ownership is checked on-chain again when a run starts and when it's submitted. The Chog's own artwork is used as the rider.
   - Abilities and the tier score multiplier come from the token's real metadata.
   - Validated runs go on the official NFT leaderboard.
