@@ -80,17 +80,29 @@ test("distance bound grows with time and stays within top speed", () => {
   }
 });
 
-test("zones run in order and loop", () => {
+test("zone lengths grow 2, 4, 8, 14, 22, 32 minutes and zones loop", () => {
+  assert.deepStrictEqual([0, 1, 2, 3, 4, 5, 6].map(k => T.zoneMinutes(k)), [2, 4, 8, 14, 22, 32, 44]);
+  assert.deepStrictEqual([0, 1, 2, 3, 4, 5].map(k => T.zoneStartSeconds(k) / 60), [0, 2, 6, 14, 28, 50]);
   const at = m => { const z = T.zoneAt(m); return z.zone.id + "@" + z.loop; };
+  const start = k => T.zoneStartMeters(k);
   assert.strictEqual(at(0), "outer@1");
-  assert.strictEqual(at(999), "outer@1");
-  assert.strictEqual(at(1000), "belt@1");
-  assert.strictEqual(at(2500), "drift@1");
-  assert.strictEqual(at(3999), "deep@1");
-  assert.strictEqual(at(4000), "milky@1");
-  assert.strictEqual(at(4999), "milky@1");
-  assert.strictEqual(at(5000), "outer@2");
-  assert.strictEqual(at(11200), "belt@3");
-  assert.strictEqual(T.zoneAt(1120).intoZone, 120);
+  assert.strictEqual(at(start(1) - 1), "outer@1");
+  assert.strictEqual(at(start(1)), "belt@1");
+  assert.strictEqual(at(start(2) + 1), "drift@1");
+  assert.strictEqual(at(start(3) + 1), "deep@1");
+  assert.strictEqual(at(start(4) + 1), "milky@1");
+  assert.strictEqual(at(start(5) + 1), "outer@2");
+  assert.strictEqual(at(start(6) + 1), "belt@2");
+  assert.strictEqual(T.zoneAt(start(2) + 120).intoZone, 120);
   assert.deepStrictEqual(config.game.zones.map(z => z.name), ["Outer Space", "Asteroid Belt", "Galactic Drift", "Deep Cosmic Zone", "Milky Way"]);
+});
+
+test("time-to-distance matches the game's speed curve", () => {
+  const g = config.game;
+  // Step the same rule the game uses and compare
+  let units = 0, t = 0;
+  while (t < 300) { units += Math.min(g.baseSpeed + Math.floor(units / g.unitsPerMeter) * g.speedPerMeter, g.maxSpeed) * 0.01; t += 0.01; }
+  const sim = units / g.unitsPerMeter, formula = T.metersAtSeconds(300);
+  assert.ok(Math.abs(sim - formula) / sim < 0.01, sim + " vs " + formula);
+  assert.ok(Math.abs(T.metersAtSeconds(120) - T.zoneStartMeters(1)) < 1e-6);
 });

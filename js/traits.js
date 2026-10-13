@@ -92,18 +92,39 @@
     return Math.floor((units * 1.02) / g.unitsPerMeter);
   }
 
-  // Which zone a distance falls in. Zones repeat in a loop; loop counts from 1.
-  function zoneAt(meters, cfg) {
-    const zones = (cfg || config).game.zones;
-    const total = zones.reduce((sum, z) => sum + z.meters, 0);
-    const m = Math.max(0, meters);
-    let into = m % total;
-    for (let i = 0; i < zones.length; i++) {
-      if (into < zones[i].meters) return { index: i, zone: zones[i], loop: Math.floor(m / total) + 1, intoZone: into };
-      into -= zones[i].meters;
-    }
-    return { index: 0, zone: zones[0], loop: Math.floor(m / total) + 1, intoZone: 0 };
+  // Distance (m) an ideal run has covered after `seconds`. Speed rises with distance until it
+  // hits the cap: dm/dt = b + a*m, so m = (b/a)(e^(a t) - 1), then a straight line at top speed.
+  function metersAtSeconds(seconds, cfg) {
+    const g = (cfg || config).game;
+    const a = g.speedPerMeter / g.unitsPerMeter, b = g.baseSpeed / g.unitsPerMeter;
+    const capM = (g.maxSpeed - g.baseSpeed) / g.speedPerMeter;
+    const capT = Math.log(1 + (a * capM) / b) / a;
+    if (seconds <= capT) return (b / a) * (Math.exp(a * seconds) - 1);
+    return capM + (g.maxSpeed / g.unitsPerMeter) * (seconds - capT);
   }
 
-  return { normalizeAttributes, resolveGameplay, computeScore, maxPossibleMeters, matchesRule, zoneAt };
+  // Length in minutes of the k-th zone of a run (k = 0, 1, 2 ...): 2, 4, 8, 14, 22, 32 ...
+  function zoneMinutes(k, cfg) {
+    const g = (cfg || config).game;
+    return g.zoneFirstMinutes + g.zoneGrowthMinutes * (k * (k + 1)) / 2;
+  }
+  function zoneStartSeconds(k, cfg) {
+    let s = 0;
+    for (let j = 0; j < k; j++) s += zoneMinutes(j, cfg) * 60;
+    return s;
+  }
+  function zoneStartMeters(k, cfg) { return metersAtSeconds(zoneStartSeconds(k, cfg), cfg); }
+
+  // Which zone a distance falls in. Zones repeat in order; loop counts from 1.
+  function zoneAt(meters, cfg) {
+    const zones = (cfg || config).game.zones;
+    const m = Math.max(0, meters);
+    let k = 0;
+    while (zoneStartMeters(k + 1, cfg) <= m) k++;
+    const start = zoneStartMeters(k, cfg);
+    return { index: k % zones.length, zone: zones[k % zones.length], loop: Math.floor(k / zones.length) + 1,
+      number: k + 1, intoZone: m - start, startMeters: start, endMeters: zoneStartMeters(k + 1, cfg) };
+  }
+
+  return { normalizeAttributes, resolveGameplay, computeScore, maxPossibleMeters, matchesRule, zoneAt, zoneMinutes, zoneStartSeconds, zoneStartMeters, metersAtSeconds };
 });

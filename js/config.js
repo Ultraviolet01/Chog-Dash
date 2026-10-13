@@ -63,13 +63,17 @@
       maxSpeed: 110,
       laserRange: 140,
       laserRadius: 0.9,
-      // The run is split into zones that repeat in this order. Speed keeps rising across loops.
+      // The run is split into zones that repeat in this order (loop after Milky Way).
+      // Zone lengths grow: 2, 4, 8, 14, 22, 32, 44 ... minutes, i.e. length(k) = first + growth * k(k+1)/2
+      // for the k-th zone of the run (k = 0, 1, 2 ...). Times are converted to distance with the speed curve.
+      zoneFirstMinutes: 2,
+      zoneGrowthMinutes: 2,
       zones: [
-        { id: "outer", name: "Outer Space", meters: 1000 },
-        { id: "belt", name: "Asteroid Belt", meters: 1000 },
-        { id: "drift", name: "Galactic Drift", meters: 1000 },
-        { id: "deep", name: "Deep Cosmic Zone", meters: 1000 },
-        { id: "milky", name: "Milky Way", meters: 1000 },
+        { id: "outer", name: "Outer Space" },
+        { id: "belt", name: "Asteroid Belt" },
+        { id: "drift", name: "Galactic Drift" },
+        { id: "deep", name: "Deep Cosmic Zone" },
+        { id: "milky", name: "Milky Way" },
       ],
     },
 

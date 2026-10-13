@@ -30,19 +30,21 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 
 ## Zones
 
-The run is split into five zones of 1,000 m each, repeating in a loop (one loop is 5,000 m). Speed keeps rising across loops.
+The run passes through five zones that repeat in order. Each zone lasts longer than the one before: 2, 4, 8, 14, 22, 32, 44 ... minutes (each step adds 2 minutes more than the last). Speed keeps rising up to its cap.
 
-| Zone | Scenery | Obstacles |
-|---|---|---|
-| 1. Outer Space | Blue and violet nebula, black hole | Balanced mix of asteroids and debris |
-| 2. Asteroid Belt | Rock fields streaming past on both sides, dusty light | Nearly all asteroids, more huge ones |
-| 3. Galactic Drift | Cyan and teal nebula | Mostly debris, drifting hard sideways |
-| 4. Deep Cosmic Zone | Dark violet, larger black hole | Shorter view distance, so obstacles appear later |
-| 5. Milky Way | The whole Milky Way spiral glowing ahead, warm starlight | Everything drifts, more huge rocks: the finale before the loop restarts |
+| Zone | Length (first loop) | Runs from | Scenery | Obstacles |
+|---|---|---|---|---|
+| 1. Outer Space | 2 min | 0:00 to 2:00 | Blue and violet nebula, black hole | Balanced mix of asteroids and debris |
+| 2. Asteroid Belt | 4 min | 2:00 to 6:00 | Rock fields streaming past on both sides, dusty light | Nearly all asteroids, more huge ones |
+| 3. Galactic Drift | 8 min | 6:00 to 14:00 | Cyan and teal nebula | Mostly debris, drifting hard sideways |
+| 4. Deep Cosmic Zone | 14 min | 14:00 to 28:00 | Dark violet, larger black hole | Shorter view distance, so obstacles appear later |
+| 5. Milky Way | 22 min | 28:00 to 50:00 | The whole Milky Way spiral glowing ahead, warm starlight | Everything drifts, more huge rocks |
+| Loop 2 starts | 32 min, 44 min ... | from 50:00 | | |
 
+- Times assume the game runs at full speed; zone boundaries are fixed distances worked out from these times, so a slow machine reaches them a little later.
 - A banner names each zone as you enter it, and the HUD shows the current zone and loop.
 - Scenery blends smoothly between zones. Every zone keeps a reachable safe path.
-- Zone lengths and order are in `js/config.js` (`game.zones`); obstacle mixes are in `js/game.js` (`ZONE_RULES`); looks are in `js/scenery.js` (`LOOKS`).
+- Zone order and timing are in `js/config.js`; obstacle mixes in `js/game.js` (`ZONE_RULES`); looks in `js/scenery.js` (`LOOKS`).
 
 ## Gameplay rules
 
