@@ -11,8 +11,10 @@
 
 ## Rookie (practice pilot)
 
-- A separate designed character: white helmet, dark visor, antenna, orange collar.
-- No horns and no Chog face, so it can't be mistaken for a Chog Genesis NFT.
+- Drawn in code in the Chog art style: cream face, pink cheeks and nose, big glossy eyes, thick black outlines and a light paper grain.
+- Its own look so it is never mistaken for a real Chog Genesis NFT: amber cap with a ROOKIE badge (no Monad logo), teal tracksuit with white stripes, no background.
+- Transparent background, so it sits straight in the rocket seat with the tracksuit tucked behind the hull.
+- No special abilities: practice runs only get the shared pickups.
 - Always labelled as practice in the HUD and on the ready and results screens.
 
 ## Rocket

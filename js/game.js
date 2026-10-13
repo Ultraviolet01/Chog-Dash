@@ -126,7 +126,7 @@
     const riderMat = new THREE.SpriteMaterial({ map: null, transparent: true });
     const rider = new THREE.Sprite(riderMat);
     rider.scale.set(1.7, 1.7, 1);
-    rider.position.set(0, 1.08, 0.15);
+    rider.position.set(0, 0.98, 0.15);
     player.add(rocket, rider);
     scene.add(player);
     setRiderCanvas(root.ChogArt.rookieCanvas());
