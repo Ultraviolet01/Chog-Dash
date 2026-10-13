@@ -36,6 +36,26 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 - The game lowers its render resolution on its own if the frame rate stays under 45 fps.
 - Add `?fps` to the address (for example `index.html?fps`) to show the frame rate and quality level in the corner.
 
+## Pickups
+
+Nothing spawns in the first 10 seconds of a run. Pickups can appear anywhere, risky spots included.
+
+| Pickup | What it does |
+|---|---|
+| Stardust | Every 100 gives an extra life (hold up to 3). A crash with a life continues the run with 2 s of protection. Resets each run; a lifetime total shows on the home screen. |
+| Golden Horn | Rare, worth 50 Stardust. |
+| Dash | Speed burst (x1.8) that smashes through anything in its path, huge asteroids included, for 3 s. |
+| Magnet | Pulls in Stardust and Golden Horns nearby for 10 s. |
+| Slow-Mo | Slows the whole game (x0.6) for 6 s. |
+| Nova | Clears every small obstacle on screen; huge asteroids stay. |
+| Radar | Outlines incoming obstacles through the dark for 12 s. Only appears in the Deep Cosmic Zone. |
+| Mystery Box | Turns into a random power-up. |
+
+- A power-up appears every 20 to 30 seconds. The same power-up is never on screen twice at once.
+- Grabbing a power-up that is already running adds its time (for example, a second Dash adds 3 s).
+- Active power-ups show as icons with countdown rings; the Stardust meter and lives are at the bottom.
+- Tuning is in `js/config.js` (`game.pickups`). The leaderboard server allows for Dash when checking distances.
+
 ## Zones
 
 The run passes through five zones that repeat in order. Each zone lasts longer than the one before: 2, 4, 8, 14, 22, 32, 44 ... minutes (each step adds 2 minutes more than the last). Speed keeps rising up to its cap.

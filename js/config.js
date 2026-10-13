@@ -66,6 +66,17 @@
       // The run is split into zones that repeat in this order (loop after Milky Way).
       // Zone lengths grow: 2, 4, 8, 14, 22, 32, 44 ... minutes, i.e. length(k) = first + growth * k(k+1)/2
       // for the k-th zone of the run (k = 0, 1, 2 ...). Times are converted to distance with the speed curve.
+      // Pickups (js/pickups.js). The server uses the Dash values to bound possible distance.
+      pickups: {
+        firstAt: 10,            // seconds into a run before anything spawns
+        powerGapMin: 20, powerGapMax: 30,   // seconds between power-ups
+        dashSeconds: 3, dashSpeedMult: 1.8,
+        magnetSeconds: 10, magnetRadius: 14,
+        slowSeconds: 6, slowSpeedMult: 0.6,
+        radarSeconds: 12,
+        stardustPerLife: 100, maxLives: 3, hornStardust: 50,
+        reviveSeconds: 2,
+      },
       zoneFirstMinutes: 2,
       zoneGrowthMinutes: 2,
       zones: [

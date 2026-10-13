@@ -74,7 +74,9 @@ test("distance bound grows with time and stays within top speed", () => {
   for (const s of [1, 10, 30, 60, 300]) {
     const m = T.maxPossibleMeters(s);
     assert.ok(m > prev);
-    assert.ok(m <= (g.maxSpeed * 1.02 * s) / g.unitsPerMeter);
+    const pk = g.pickups, dashes = s > pk.firstAt ? Math.floor((s - pk.firstAt) / pk.powerGapMin) + 1 : 0;
+    const dashExtra = dashes * pk.dashSeconds * g.maxSpeed * (pk.dashSpeedMult - 1);
+    assert.ok(m <= (g.maxSpeed * s + dashExtra) * 1.02 / g.unitsPerMeter + 1);
     assert.ok(m >= (g.baseSpeed * s) / g.unitsPerMeter, "a genuine run at base speed must always be allowed");
     prev = m;
   }
@@ -105,4 +107,19 @@ test("time-to-distance matches the game's speed curve", () => {
   const sim = units / g.unitsPerMeter, formula = T.metersAtSeconds(300);
   assert.ok(Math.abs(sim - formula) / sim < 0.01, sim + " vs " + formula);
   assert.ok(Math.abs(T.metersAtSeconds(120) - T.zoneStartMeters(1)) < 1e-6);
+});
+
+test("distance bound allows a run that grabs every Dash", () => {
+  const g = config.game, pk = g.pickups;
+  // Simulate the fastest legal run: top speed rules plus a Dash every powerGapMin seconds from firstAt
+  let units = 0, t = 0, dashLeft = 0, nextDash = pk.firstAt;
+  while (t < 300) {
+    if (t >= nextDash) { dashLeft += pk.dashSeconds; nextDash += pk.powerGapMin; }
+    const base = Math.min(g.baseSpeed + Math.floor(units / g.unitsPerMeter) * g.speedPerMeter, g.maxSpeed);
+    units += base * (dashLeft > 0 ? pk.dashSpeedMult : 1) * 0.01;
+    dashLeft = Math.max(0, dashLeft - 0.01);
+    t += 0.01;
+  }
+  const meters = Math.floor(units / g.unitsPerMeter);
+  assert.ok(meters <= T.maxPossibleMeters(300), meters + " > " + T.maxPossibleMeters(300));
 });

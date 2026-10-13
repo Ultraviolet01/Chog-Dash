@@ -89,6 +89,12 @@
       const m = Math.floor(units / g.unitsPerMeter);
       units += Math.min(g.baseSpeed + m * g.speedPerMeter, g.maxSpeed) * dt;
     }
+    // Dash: at most one power-up per powerGapMin seconds (after firstAt), each worth at most dashSeconds of extra speed
+    const pk = g.pickups;
+    if (pk && seconds > pk.firstAt) {
+      const dashes = Math.floor((seconds - pk.firstAt) / pk.powerGapMin) + 1;
+      units += dashes * pk.dashSeconds * g.maxSpeed * (pk.dashSpeedMult - 1);
+    }
     return Math.floor((units * 1.02) / g.unitsPerMeter);
   }
 

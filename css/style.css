@@ -39,6 +39,25 @@ input { font: 15px Arial, sans-serif; padding: 9px 10px; border-radius: 8px; bor
 #modeBadge.nft { color: var(--accent2); }
 #laserBox { position: absolute; left: 16px; bottom: 16px; font-size: 16px; font-weight: bold; color: #ff8a8a;
   text-shadow: 0 2px 4px #000; display: none; }
+#dustBox { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: 220px; text-align: center;
+  font-weight: 700; font-size: 14px; text-shadow: 0 2px 4px #000; }
+.dust-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.dust-gem { display: inline-block; width: 10px; height: 10px; transform: rotate(45deg); background: #ffd27a;
+  box-shadow: 0 0 8px #ffb84d; }
+.lives { color: var(--ok); margin-left: 6px; }
+.dust-track { margin-top: 5px; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.15); overflow: hidden; }
+#dustBar { height: 100%; width: 0; background: linear-gradient(90deg, #ffb84d, #ffe2a0); }
+#powerBar { position: absolute; top: 56px; right: 16px; display: flex; gap: 8px; }
+.pw { position: relative; width: 46px; height: 46px; border-radius: 50%; padding: 3px; }
+.pw img { width: 100%; height: 100%; border-radius: 50%; display: block; background: #0b1020; }
+.pw span { position: absolute; left: 0; right: 0; bottom: -16px; text-align: center; font-size: 11px; font-weight: 700; text-shadow: 0 1px 3px #000; }
+#pickupPop { position: absolute; top: 36%; left: 50%; transform: translateX(-50%); font-family: 'Bungee', Impact, sans-serif;
+  font-size: 26px; letter-spacing: 2px; opacity: 0; text-shadow: 0 2px 10px #000; white-space: nowrap; }
+#flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+/* Slow-Mo tint and Dash edge glow */
+body.slowmo::after, body.dashing::after { content: ""; position: fixed; inset: 0; pointer-events: none; }
+body.slowmo::after { box-shadow: inset 0 0 160px rgba(150,110,255,0.45); }
+body.dashing::after { box-shadow: inset 0 0 140px rgba(255,184,77,0.4); }
 #nearMiss { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); font-size: 22px; font-weight: bold;
   color: var(--accent2); opacity: 0; text-shadow: 0 2px 6px #000; }
 #msg { position: absolute; top: clamp(84px, 14vh, 140px); left: 50%; transform: translateX(-50%); text-align: center;
@@ -76,7 +95,7 @@ input { font: 15px Arial, sans-serif; padding: 9px 10px; border-radius: 8px; bor
   background: rgba(10,15,30,0.75); border: 1px solid var(--line); font-weight: 700; font-size: 14px; color: var(--ink); }
 .chip-label { color: var(--accent); letter-spacing: 1px; font-size: 12px; }
 .chip-btn { cursor: pointer; }
-.top-right { display: flex; gap: 8px; }
+.top-right, .top-left { display: flex; gap: 8px; }
 .fs-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .fs-btn .fs-close, .is-fullscreen .fs-btn .fs-open { display: none; }
 .is-fullscreen .fs-btn .fs-close { display: inline; }
@@ -181,6 +200,8 @@ th { color: var(--muted); font-weight: normal; }
   #dist { top: 50px; font-size: 32px; }
   #score { top: 88px; font-size: 14px; }
   #modeBadge { font-size: 11px; padding: 5px 8px; }
+  #dustBox { width: 170px; }
+  #powerBar { top: 120px; }
   #msg { top: clamp(120px, 16vh, 160px); }
 }
 @media (max-height: 450px) {

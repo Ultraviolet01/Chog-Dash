@@ -8,7 +8,7 @@
     "test": "node --test test/*.test.js",
     "verify-contract": "node scripts/verify-contract.js",
     "audit-metadata": "node scripts/audit-metadata.js",
-    "test:browser": "node test/browser/buttons.e2e.js && node test/browser/fullscreen.e2e.js && node test/browser/mouse.e2e.js && node test/browser/zones.e2e.js && node test/browser/laser.e2e.js && node test/browser/nft-flow.e2e.js && node test/browser/nft-flow.e2e.js enum"
+    "test:browser": "node test/browser/buttons.e2e.js && node test/browser/fullscreen.e2e.js && node test/browser/mouse.e2e.js && node test/browser/zones.e2e.js && node test/browser/pickups.e2e.js && node test/browser/laser.e2e.js && node test/browser/nft-flow.e2e.js && node test/browser/nft-flow.e2e.js enum"
   },
   "engines": {
     "node": ">=18"

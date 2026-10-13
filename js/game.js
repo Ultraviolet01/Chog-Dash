@@ -41,7 +41,7 @@
     const hud = {
       root: $("hud"), dist: $("dist"), score: $("score"), speed: $("speed"), mode: $("modeBadge"),
       laser: $("laserCount"), laserBox: $("laserBox"), near: $("nearMiss"),
-      laserBtn: $("laserBtn"), zoneLabel: $("zoneLabel"), zoneBanner: $("zoneBanner"),
+      laserBtn: $("laserBtn"), zoneLabel: $("zoneLabel"), zoneBanner: $("zoneBanner"), flash: $("flash"),
     };
 
     // ---------- Renderer, scene, camera ----------
@@ -212,6 +212,40 @@
     scene.add(beams);
     let beamLife = 0;
 
+    // ---------- Pickups (js/pickups.js), Radar outlines, Dash ram glow ----------
+    const radarMat = new THREE.MeshBasicMaterial({ color: 0x4fe0c5, wireframe: true, transparent: true, opacity: 0.6,
+      fog: false, depthWrite: false });
+    const ramGlow = new THREE.Mesh(new THREE.SphereGeometry(0.75, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffb84d,
+      transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+    ramGlow.position.set(0, 0.1, -1.7);
+    ramGlow.scale.set(1, 1, 1.6);
+    ramGlow.visible = false;
+    player.add(ramGlow);
+    let flashTimer = 0;
+    const sparkMats = {};
+    const pickups = root.ChogPickups.create(scene, {
+      player: () => player.position, hitOffsetY: HIT_OFFSET_Y, boundX: BOUND_X, boundY: BOUND_Y,
+      spawnZ: SPAWN_Z, despawnZ: DESPAWN_Z,
+      sparkle: (pos, color) => {
+        if (!sparkMats[color]) sparkMats[color] = new THREE.MeshBasicMaterial({ color });
+        burst(pos, [sparkMats[color]], 6, 3);
+      },
+      nova: () => {
+        // Clear every small obstacle in view; huge asteroids stay
+        obstacles.forEach(o => { if (!o.huge && o.mesh.position.z > -230) smash(o); });
+        flashTimer = 0.5;
+        shake = Math.max(shake, 0.2);
+      },
+    });
+
+    // Destroy an obstacle with a burst of pieces (Dash, Nova, revive)
+    function smash(o) {
+      if (o.gone) return;
+      o.gone = true;
+      burst(o.mesh.position, [o.mesh.material], 10, 6);
+      scene.remove(o.mesh);
+    }
+
     // ---------- Input ----------
     const keys = {};
     let steerMode = "keys";
@@ -260,7 +294,7 @@
     let obstacles = [], bits = [];
     const vel = { x: 0, y: 0 };
     const safe = { x: 0, y: 0 };
-    let shake = 0, idleY = 0;
+    let shake = 0, idleY = 0, runTime = 0;
     let laserCharges = 0, laserUsed = 0, nearMisses = 0, nearTimer = 0;
     let setup = { laserCharges: 0, multiplier: 1, modeLabel: "", showScore: false };
 
@@ -279,6 +313,8 @@
       distance = 0; sinceSpawn = 0; nextSpacing = START_SPACING;
       vel.x = vel.y = 0; safe.x = safe.y = 0; pointerTarget.x = pointerTarget.y = 0;
       laserCharges = setup.laserCharges; laserUsed = 0; nearMisses = 0;
+      runTime = 0;
+      pickups.reset();
       zoneKey = null; bannerTimer = 0;
       hud.zoneBanner.style.opacity = 0;
       scenery.setZone("outer", true);
@@ -292,6 +328,7 @@
 
     function toMenu() {
       clearField();
+      pickups.reset();
       state = "menu";
       player.position.z = 0;
       player.visible = true;
@@ -301,6 +338,7 @@
     function start() {
       state = "playing";
       runStartedAt = performance.now();
+      runTime = 0;
       scenery.warp();
       for (let z = -90; z > SPAWN_Z; z -= START_SPACING) spawnGroup(z);
       if (hooks.onStart) hooks.onStart();
@@ -322,6 +360,7 @@
 
     function die() {
       state = "dead";
+      document.body.classList.remove("dashing", "slowmo");
       bannerTimer = 0;
       hud.zoneBanner.style.opacity = 0;
       deadAt = performance.now();
@@ -334,6 +373,7 @@
         durationMs: Math.round(deadAt - runStartedAt),
         score: root.ChogTraits.computeScore(m, setup.multiplier),
         laserUsed, nearMisses,
+        stardust: pickups.stats().stardust,
       });
     }
 
@@ -475,7 +515,13 @@
       // Bigger flame while the rocket climbs (keyboard: holding rise; mouse/touch: moving up)
       const thrusting = playing && vel.y > 1;
 
-      const speed = state === "dead" ? 0 : (playing ? baseSpeed() : G.baseSpeed * 0.3);
+      const speed = state === "dead" ? 0 : (playing ? baseSpeed() * pickups.speedFactor() : G.baseSpeed * 0.3);
+      if (playing) runTime += dt;
+      pickups.update(dt, speed, runTime, root.ChogTraits.zoneAt(meters()).zone.id, playing);
+      const dashing = playing && pickups.dashing();
+      document.body.classList.toggle("dashing", dashing);
+      document.body.classList.toggle("slowmo", playing && pickups.slowed());
+      if (flashTimer > 0) { flashTimer -= dt; hud.flash.style.opacity = Math.max(0, flashTimer / 0.5 * 0.8).toFixed(2); }
 
       scenery.update(dt, speed, G.maxSpeed);
       if (playing) checkZone();
@@ -492,7 +538,12 @@
       });
 
       // Flame and exhaust: bigger while thrusting
-      const power = state === "dead" ? 0 : (playing ? 0.55 + (thrusting ? 0.45 : 0) : 0.5);
+      const power = state === "dead" ? 0 : (playing ? 0.55 + (thrusting ? 0.45 : 0) + (dashing ? 1.2 : 0) : 0.5);
+      flameMat.color.setHex(dashing ? 0x4fd1c5 : 0xffb84d);
+      ramGlow.visible = dashing;
+      if (dashing) ramGlow.material.opacity = 0.25 + Math.random() * 0.15;
+      // Blink while protected after using a life
+      if (playing) player.visible = !pickups.reviving() || Math.floor(now / 90) % 2 === 0;
       const flameLen = power * rand(0.85, 1.15);
       flame.scale.set(0.7 + power * 0.4, flameLen * 1.4, 0.7 + power * 0.4);
       flame.position.z = 1.42 + 0.35 * flameLen * 1.4;
@@ -569,10 +620,24 @@
           o.mesh.rotation.x += o.spin.x * dt;
           o.mesh.rotation.y += o.spin.y * dt;
           o.mesh.rotation.z += o.spin.z * dt;
-          if (!playing) continue;
+          // Radar: glowing outline that shows through the dark and fog
+          if (playing && pickups.radarOn()) {
+            if (!o.ghost) { o.ghost = new THREE.Mesh(o.mesh.geometry, radarMat); o.mesh.add(o.ghost); }
+            o.ghost.visible = true;
+          } else if (o.ghost) o.ghost.visible = false;
+          if (!playing || o.gone) continue;
           const dx = px - pos.x, dy = py - pos.y, dz = pz - pos.z;
           const r = HIT_R + o.hitR;
-          if (dx * dx + dy * dy + dz * dz < r * r) { die(); break; }
+          if (dx * dx + dy * dy + dz * dz < r * r) {
+            if (pickups.dashing() || pickups.reviving()) { smash(o); shake = Math.max(shake, 0.12); continue; }
+            if (pickups.tryUseLife()) {
+              // Extra life: clear what's around the rocket and keep going
+              obstacles.forEach(q => { if (q.mesh.position.z > -45) smash(q); });
+              shake = Math.max(shake, 0.35);
+              continue;
+            }
+            die(); break;
+          }
           if (!o.passed && prevZ < pz && pos.z >= pz) {
             o.passed = true;
             const near = r + NEAR_MISS_MARGIN;
@@ -585,6 +650,7 @@
           }
         }
         obstacles = obstacles.filter(o => {
+          if (o.gone) return false;
           if (o.mesh.position.z > DESPAWN_Z) { scene.remove(o.mesh); return false; }
           return true;
         });
@@ -606,7 +672,7 @@
       lookAt.set(player.position.x * (home ? 0.45 : 0.8), player.position.y * (home ? 0.6 : 0.8) + (home ? 0.4 : 0), -10);
       camera.lookAt(lookAt);
       const speedRatio = playing ? (baseSpeed() - G.baseSpeed) / (G.maxSpeed - G.baseSpeed) : 0;
-      const fov = 70 + speedRatio * 12;
+      const fov = 70 + speedRatio * 12 + (dashing ? 10 : 0) - (playing && pickups.slowed() ? 4 : 0);
       if (Math.abs(camera.fov - fov) > 0.01) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix(); }
     }
 
@@ -629,13 +695,15 @@
 
     // Prepare every material once now, so the first crash, laser or debris doesn't freeze the game
     function warmUp() {
-      const temp = [new THREE.Mesh(rockGeos[0], rockMat)].concat(Object.values(debris).map(d => new THREE.Mesh(d.geo, d.mat)));
+      const temp = [new THREE.Mesh(rockGeos[0], rockMat), new THREE.Mesh(rockGeos[1], radarMat)].concat(Object.values(debris).map(d => new THREE.Mesh(d.geo, d.mat)));
+      ramGlow.visible = true;
       temp.forEach((m, i) => { m.position.set(i * 3 - 3, 0, -40); scene.add(m); });
       beams.visible = true;
       renderer.compile(scene, camera);
       renderer.render(scene, camera);
       temp.forEach(m => scene.remove(m));
       beams.visible = false;
+      ramGlow.visible = false;
     }
 
     function frame() {
@@ -659,7 +727,8 @@
       toReady, toMenu, start,
       get state() { return state; },
       // Test hooks, used by the automated browser tests only
-      _debug: { obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges,
+      _debug: { obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, pickups, runTime: () => runTime,
+        speed: () => (state === "playing" ? baseSpeed() * pickups.speedFactor() : 0),
         setMeters(m) { distance = m * G.unitsPerMeter; }, spawnAt(x, y, z, huge) {
         const o = makeObstacle(); o.vx = o.vy = 0; o.huge = !!huge; o.mesh.position.set(x, y, z); scene.add(o.mesh); obstacles.push(o); return o;
       } },

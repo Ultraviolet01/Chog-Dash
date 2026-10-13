@@ -7,6 +7,7 @@
   const $ = id => document.getElementById(id);
   const dev = new URLSearchParams(location.search).get("dev") || "";
   const PRACTICE_BEST = "chogDashPracticeBest";
+  const DUST_TOTAL = "chogDashStardustTotal";
   const isTouch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
 
   let game;
@@ -152,6 +153,7 @@
     $("playBtn").textContent = nft && !S.chog ? "PICK CHOG" : "PLAY";
     $("playBtn").style.fontSize = nft && !S.chog ? "30px" : "";
     $("bestLabel").textContent = nft && S.chog ? "BEST SCORE" : "BEST";
+    $("dustTotal").textContent = readNum(DUST_TOTAL).toLocaleString();
     $("bestValue").textContent = nft && S.chog
       ? readNum("chogDashNftBest:" + S.chog.tokenId).toLocaleString()
       : readNum(PRACTICE_BEST).toLocaleString() + " m";
@@ -224,12 +226,14 @@
 
   function onEnd(result) {
     setFlying(false);
+    writeNum(DUST_TOTAL, readNum(DUST_TOTAL) + (result.stardust || 0));
     if (S.mode === "practice") {
       const best = Math.max(readNum(PRACTICE_BEST), result.meters);
       writeNum(PRACTICE_BEST, best);
       setMsg("CRASHED", [
         "Distance: " + result.meters + " m",
         "Best on this device: " + best + " m",
+        "Stardust collected: " + (result.stardust || 0),
         ["Practice run. Not submitted to the NFT leaderboard.", ""],
         retryText(),
       ]);
@@ -536,8 +540,7 @@
   // ---------- Leaderboard view ----------
   async function openLeaderboard() {
     show("lbPanel");
-    $("lbRule").textContent = "Ranking: each Chog's best validated score. " + cfg.scoreFormula +
-      ". Only validated Chog NFT runs appear here; practice runs never do.";
+    $("lbRule").textContent = "Ranking: each Chog's longest validated distance. Only validated Chog NFT runs appear here; practice runs never do.";
     const st = $("lbStatus"), rows = $("lbRows");
     rows.innerHTML = "";
     setStatus(st, "Loading...");
@@ -546,8 +549,7 @@
       if (!r.entries.length) setStatus(st, "No validated runs yet.");
       else setStatus(st, "");
       rows.innerHTML = r.entries.map(e => "<tr><td>" + e.rank + "</td><td>" + esc(e.name || "Token " + e.tokenId) +
-        " (token " + esc(e.tokenId) + ")</td><td>" + esc(short(e.wallet)) + "</td><td>" + e.meters + " m</td><td>x" +
-        Number(e.multiplier).toFixed(2) + " (" + esc(e.tier || "unknown") + ")</td><td>" + e.score + "</td></tr>").join("");
+        " (token " + esc(e.tokenId) + ")</td><td>" + esc(short(e.wallet)) + "</td><td>" + Number(e.meters).toLocaleString() + " m</td></tr>").join("");
     } catch (e) {
       setStatus(st, e.offline ? "The leaderboard server isn't reachable from here. It runs on the deployed site (see README)." : e.message, "err");
     }

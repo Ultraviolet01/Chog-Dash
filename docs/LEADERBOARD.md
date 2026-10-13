@@ -2,8 +2,8 @@
 
 ## Ranking
 
-- One entry per NFT: each Chog's best validated score. The wallet that set it is shown alongside.
-- Score = distance (m) x tier multiplier, rounded down. Raw distance and the multiplier are stored and shown separately.
+- One entry per NFT: each Chog's longest validated distance. The wallet that set it is shown alongside.
+- The leaderboard shows distance only. Tier multipliers and the score (distance x multiplier) are still computed and stored, but are on hold until the NFT integration is verified.
 - Practice runs are never submitted.
 
 ## Flow
