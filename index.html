@@ -203,7 +203,7 @@ function loadAll(list, done) {
   loadScript(list[0], function () { loadAll(list.slice(1), done); }, function () { showError("Could not load " + list[0]); });
 }
 function boot() {
-  loadAll(["js/config.js", "js/traits.js", "js/chain.js", "js/metadata.js", "js/art.js", "js/scenery.js", "js/pickups.js", "js/game.js", "js/ui.js"], function () {
+  loadAll(["js/config.js", "js/traits.js", "js/chain.js", "js/metadata.js", "js/art.js", "js/looks.js", "js/scenery.js", "js/pickups.js", "js/game.js", "js/ui.js"], function () {
     try { ChogUI.start(); } catch (e) { showError("Game failed to start: " + e.message); }
   });
 }

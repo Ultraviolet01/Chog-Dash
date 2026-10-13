@@ -186,7 +186,7 @@
     const laser = dev.includes("laser") ? cfg.abilities.laserEyes.charges : 0;   // dev testing only
     game.configure({
       riderCanvas: Art.rookieCanvas(), riderPoses: { side: Art.rookieThreeQuarterCanvas(), back: Art.rookieBackCanvas() },
-      laserCharges: laser, multiplier: 1, showScore: false,
+      look: null, laserCharges: laser, multiplier: 1, showScore: false,
       modeLabel: "PRACTICE · Rookie" + (laser ? " · DEV LASER" : ""),
     });
     $("modeBadge").className = "practice";
@@ -278,6 +278,7 @@
       c.name + " (token " + c.tokenId + ")",
       "Tier " + (g.tier || "unknown") + ": distance multiplier x" + g.multiplier.toFixed(2),
       laser ? "Laser Eyes: " + laser.charges + " charges this run" : "No ability from this Chog's traits",
+      lookLines(c.look)[0],
       S.runStatus.text ? [S.runStatus.text, S.runStatus.kind] : "",
       controlsText(!!laser),
       portraitTip(),
@@ -564,12 +565,18 @@
         side: Art.chogBackCanvas(art.img, gp.attributes, "threeQuarter"),
         back: Art.chogBackCanvas(art.img, gp.attributes, "back"),
       };
-      S.chog = { tokenId: idStr, name, metadata: meta, gameplay: gp, imageUrl: art.url, riderCanvas: canvas, riderPoses };
-      setStatus(info, lines.join("\n"));
+      // Rocket paint, glow and aura trail from the traits (looks only, see js/looks.js)
+      const look = root.ChogLooks.rocketLook(gp.attributes, meta, Art.samplePalette(art.img).bg);
+      S.chog = { tokenId: idStr, name, metadata: meta, gameplay: gp, imageUrl: art.url, riderCanvas: canvas, riderPoses, look };
+      setStatus(info, lines.concat(lookLines(look)).join("\n"));
       $("rideBtn").disabled = false;
     } catch (e) {
       if (!stale()) setStatus(info, lines.join("\n") + "\nCouldn't load this Chog's artwork, so it can't be ridden right now. Try again in a moment.", "err");
     }
+  }
+
+  function lookLines(look) {
+    return ["Rocket: " + look.name + (look.trail ? ". Aura trail: " + look.trail.name : ". No aura trail")];
   }
 
   async function rideChog() {
@@ -602,7 +609,7 @@
     const laser = c.gameplay.abilities.find(a => a.id === "laserEyes");
     S.mode = "nft";
     game.configure({
-      riderCanvas: c.riderCanvas, riderPoses: c.riderPoses, laserCharges: laser ? laser.charges : 0,
+      riderCanvas: c.riderCanvas, riderPoses: c.riderPoses, look: c.look, laserCharges: laser ? laser.charges : 0,
       multiplier: c.gameplay.multiplier, showScore: true,
       modeLabel: "CHOG NFT · " + c.name + " · Tier " + (c.gameplay.tier || "unknown"),
     });

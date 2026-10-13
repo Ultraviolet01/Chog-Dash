@@ -123,6 +123,10 @@
     tubRim.position.set(0, 0.45, 0.15);
     rocket.add(tub, tubRim);
 
+    // Extras for some looks (halo ring, crown, horns, skull face), rebuilt by applyLook
+    const extras = new THREE.Group();
+    rocket.add(extras);
+
     const flameMat = new THREE.MeshBasicMaterial({ color: 0xffb84d, transparent: true, opacity: 0.85 });
     const flame = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7, 14), flameMat);
     flame.rotation.x = Math.PI / 2;                 // tip points back toward the camera
@@ -180,10 +184,130 @@
         exLife[i] -= dt;
         exPos[i * 3] += exVel[i * 3] * dt; exPos[i * 3 + 1] += exVel[i * 3 + 1] * dt; exPos[i * 3 + 2] += exVel[i * 3 + 2] * dt;
         const k = Math.max(0, exLife[i] / exMax[i]) * 0.6;   // additive blending: darker = more transparent
-        exCol[i * 3] = k; exCol[i * 3 + 1] = 0.72 * k; exCol[i * 3 + 2] = 0.3 * k;
+        const ec = look.exhaust;
+        exCol[i * 3] = ec[0] * k; exCol[i * 3 + 1] = ec[1] * k; exCol[i * 3 + 2] = ec[2] * k;
       }
       exGeo.attributes.position.needsUpdate = true;
       exGeo.attributes.color.needsUpdate = true;
+    }
+
+    // ---------- Rocket look (from the Chog's traits, see js/looks.js). Looks only. ----------
+    let look = root.ChogLooks.STANDARD;
+    function applyLook(l) {
+      look = l || root.ChogLooks.STANDARD;
+      // A little self-light in the paint colour keeps it true under the blue and violet space lights
+      // (without it, white and bone rockets read as pale blue). Glowing looks add more.
+      hullMat.color.setHex(look.hull); hullMat.metalness = Math.min(0.5, look.metal);
+      hullMat.emissive.setHex(look.glow ? look.glowColor : look.hull); hullMat.emissiveIntensity = look.glow || 0.22;
+      trimMat.color.setHex(look.trim); trimMat.metalness = Math.min(0.5, look.metal);
+      trimMat.emissive.setHex(look.glow ? look.glowColor : look.trim); trimMat.emissiveIntensity = look.glow ? look.glow * 0.5 : 0.15;
+      darkMat.color.setHex(look.dark);
+      flameMat.color.setHex(look.flame);
+      while (extras.children.length) {
+        const c = extras.children.pop();
+        c.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      }
+      const gold = () => new THREE.MeshStandardMaterial({ color: look.trim, metalness: 0.8, roughness: 0.3, emissive: look.trim, emissiveIntensity: 0.25 });
+      if (look.extra === "halo") {
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.05, 10, 32), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
+        ring.rotation.x = Math.PI / 2; ring.position.set(0, 2.2, 0.15); ring.name = "halo";
+        extras.add(ring);
+      } else if (look.extra === "crown") {
+        const crown = new THREE.Group(), mat = gold();
+        crown.add(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16, 1, true), mat));
+        for (let k = 0; k < 5; k++) {
+          const spike = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 6), mat);
+          const a = (k / 5) * Math.PI * 2;
+          spike.position.set(Math.sin(a) * 0.2, 0.12, Math.cos(a) * 0.2);
+          crown.add(spike);
+        }
+        crown.rotation.x = -Math.PI / 2; crown.position.z = -1.55;   // round the nose cone
+        extras.add(crown);
+      } else if (look.extra === "horns") {
+        const mat = new THREE.MeshStandardMaterial({ color: 0x5a0a10, roughness: 0.5 });
+        [-1, 1].forEach(s => {
+          const horn = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.42, 10), mat);
+          horn.position.set(s * 0.22, 0.42, -0.95); horn.rotation.z = -s * 0.45;
+          extras.add(horn);
+        });
+      } else if (look.extra === "skull") {
+        const mat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+        [-1, 1].forEach(s => {
+          const eye = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), mat);
+          eye.position.set(s * 0.13, 0.12, -1.42);
+          extras.add(eye);
+        });
+        const teeth = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.04, 0.04), mat);
+        teeth.position.set(0, -0.08, -1.48);
+        extras.add(teeth);
+      }
+      trailMat.size = TRAIL_SIZE[look.trail ? look.trail.style : "glow"] || 0.4;
+      trailCol.fill(0); trailLife.fill(0);
+    }
+
+    // ---------- Aura trail (one pooled point cloud, styled per aura) ----------
+    const TRAIL = 140;
+    const TRAIL_SIZE = { flame: 0.55, water: 0.3, mist: 0.9, glow: 0.5, wind: 0.22, spark: 0.35, smoke: 0.8, sparkle: 0.32 };
+    const trailPos = new Float32Array(TRAIL * 3), trailCol = new Float32Array(TRAIL * 3);
+    const trailVel = new Float32Array(TRAIL * 3), trailLife = new Float32Array(TRAIL), trailMax = new Float32Array(TRAIL);
+    const trailGeo = new THREE.BufferGeometry();
+    trailGeo.setAttribute("position", new THREE.BufferAttribute(trailPos, 3));
+    trailGeo.setAttribute("color", new THREE.BufferAttribute(trailCol, 3));
+    const trailMat = new THREE.PointsMaterial({ size: 0.5, map: dotTex, vertexColors: true, transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false });
+    const trailPoints = new THREE.Points(trailGeo, trailMat);
+    trailPoints.frustumCulled = false;
+    scene.add(trailPoints);
+    const trailOrigin = new THREE.Vector3();
+    let trailIdx = 0, trailAcc = 0;
+    function emitTrail() {
+      const t = look.trail, i = trailIdx;
+      trailIdx = (trailIdx + 1) % TRAIL;
+      trailOrigin.set(0, 0.7, 0.4).applyMatrix4(player.matrixWorld);
+      const a = Math.random() * Math.PI * 2, r = t.style === "glow" ? 0.85 : Math.random() * 0.75;
+      trailPos[i * 3] = trailOrigin.x + Math.cos(a) * r;
+      trailPos[i * 3 + 1] = trailOrigin.y + Math.sin(a) * r * 0.9;
+      trailPos[i * 3 + 2] = trailOrigin.z + rand(-0.2, 0.4);
+      let vx = rand(-0.5, 0.5), vy = rand(-0.5, 0.5), vz = rand(5, 8), life = rand(0.4, 0.6);
+      switch (t.style) {
+        case "flame": vy = rand(1.5, 3.5); life = rand(0.3, 0.5); break;
+        case "water": vy = rand(-2.5, -0.8); life = rand(0.5, 0.8); break;
+        case "mist": vz = rand(2.5, 4.5); vx *= 1.5; vy *= 1.5; life = rand(0.9, 1.3); break;
+        case "wind": vz = rand(16, 22); vx = rand(-1.5, 1.5); life = rand(0.25, 0.4); break;
+        case "spark": vz = rand(3, 6); life = rand(0.08, 0.18); break;
+        case "smoke": vz = rand(3, 5); vy = rand(0.3, 1.2); life = rand(0.9, 1.4); break;
+        case "sparkle": vz = rand(4, 7); life = rand(0.4, 0.7); break;
+      }
+      trailVel[i * 3] = vx; trailVel[i * 3 + 1] = vy; trailVel[i * 3 + 2] = vz;
+      trailMax[i] = trailLife[i] = life;
+    }
+    function updateTrail(dt, now, emitting) {
+      const t = look.trail;
+      trailPoints.visible = !!t;
+      if (!t) return;
+      if (emitting) {
+        trailAcc += dt * (t.style === "spark" ? 90 : t.style === "mist" || t.style === "smoke" ? 30 : 55);
+        while (trailAcc >= 1) { trailAcc -= 1; emitTrail(); }
+      }
+      const cr = ((t.color >> 16) & 255) / 255, cg = ((t.color >> 8) & 255) / 255, cb = (t.color & 255) / 255;
+      for (let i = 0; i < TRAIL; i++) {
+        if (trailLife[i] <= 0) { trailCol[i * 3] = trailCol[i * 3 + 1] = trailCol[i * 3 + 2] = 0; continue; }
+        trailLife[i] -= dt;
+        if (t.style === "spark") {   // jittery electric flashes
+          trailPos[i * 3] += rand(-0.15, 0.15); trailPos[i * 3 + 1] += rand(-0.15, 0.15);
+        }
+        trailPos[i * 3] += trailVel[i * 3] * dt; trailPos[i * 3 + 1] += trailVel[i * 3 + 1] * dt; trailPos[i * 3 + 2] += trailVel[i * 3 + 2] * dt;
+        const f = Math.max(0, trailLife[i] / trailMax[i]);   // 1 when born, 0 when gone
+        let k = f * 0.7, r = cr, g = cg, b = cb;
+        if (t.style === "flame") { r = 1; g = 0.35 + 0.6 * f * cg + 0.3 * f; b = 0.15 * f; }          // yellow core fading to red
+        else if (t.style === "mist") k = f * 0.3;
+        else if (t.style === "smoke") k = f * 0.35;
+        else if (t.style === "sparkle") k = f * (0.4 + 0.6 * Math.abs(Math.sin(now * 0.02 + i * 1.7)));
+        else if (t.style === "spark") k = Math.random() < 0.35 ? 1 : 0.2;
+        trailCol[i * 3] = Math.min(1, r * k); trailCol[i * 3 + 1] = Math.min(1, g * k); trailCol[i * 3 + 2] = Math.min(1, b * k);
+      }
+      trailGeo.attributes.position.needsUpdate = true;
+      trailGeo.attributes.color.needsUpdate = true;
     }
 
     // ---------- Obstacle shapes ----------
@@ -611,7 +735,7 @@
 
       // Flame and exhaust: bigger while thrusting
       const power = state === "dead" ? 0 : (playing ? 0.55 + (thrusting ? 0.45 : 0) + (dashing ? 1.2 : 0) : 0.5);
-      flameMat.color.setHex(dashing ? 0x4fd1c5 : 0xffb84d);
+      flameMat.color.setHex(dashing ? 0x4fd1c5 : look.flame);
       ramGlow.visible = dashing;
       if (dashing) ramGlow.material.opacity = 0.25 + Math.random() * 0.15;
       // Blink while protected after using a life
@@ -626,6 +750,9 @@
         while (emitAcc >= 1) { emitAcc -= 1; emitExhaust(thrusting); }
       }
       updateExhaust(dt);
+      updateTrail(dt, now, state !== "dead" && player.visible);
+      const halo = extras.getObjectByName("halo");
+      if (halo) halo.position.y = 2.2 + Math.sin(now / 400) * 0.05;
 
       // Laser beam fade
       if (beamLife > 0) {
@@ -793,15 +920,16 @@
     frame();
 
     return {
-      // opts: { riderCanvas, riderPoses: { side, back }, laserCharges, multiplier, modeLabel, showScore }
+      // opts: { riderCanvas, riderPoses: { side, back }, look, laserCharges, multiplier, modeLabel, showScore }
       configure(opts) {
         setup = Object.assign({}, setup, opts);
         if (opts.riderCanvas) setRiderCanvas(opts.riderCanvas, opts.riderPoses);
+        if ("look" in opts) applyLook(opts.look);
       },
       toReady, toMenu, start,
       get state() { return state; },
       // Test hooks, used by the automated browser tests only
-      _debug: { gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, pickups, runTime: () => runTime,
+      _debug: { look: () => look, trailLive: () => Array.from(trailLife).filter(l => l > 0).length, extras, gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, pickups, runTime: () => runTime,
         speed: () => (state === "playing" ? baseSpeed() * pickups.speedFactor() : 0),
         setMeters(m) { distance = m * G.unitsPerMeter; }, spawnAt(x, y, z, huge) {
         const o = makeObstacle(); o.vx = o.vy = 0; o.huge = !!huge; o.mesh.position.set(x, y, z); scene.add(o.mesh); obstacles.push(o); return o;

@@ -21,6 +21,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
   - Choose a username (pilot name). The leaderboard shows usernames and distances, one entry per player (their best run with any of their Chogs).
   - Ownership is checked on-chain again when a run starts and when it's submitted. The Chog's own artwork is used as the rider.
   - Abilities and the tier distance multiplier come from the token's real metadata.
+  - The rocket's look comes from its traits too (looks only): painted in its Background colour, an Aura trail, special Skull and Radioactive rockets, and a unique rocket for each one-of-one Legendary. See docs/TRAIT-MAPPING.md.
   - Validated runs go on the official NFT leaderboard.
 
 ## Controls

@@ -144,3 +144,21 @@ test("total distance is not rounded down by floating-point error", () => {
   assert.strictEqual(T.computeScore(7, 1.05), 7);
   assert.strictEqual(T.computeScore(173, 1.15), 198);
 });
+
+const Looks = require("../js/looks.js");
+test("rocket looks come from Base, Aura and Background, and never from anything else", () => {
+  const A = (t, v) => ({ trait_type: t, value: v });
+  const painted = Looks.rocketLook([A("Background", "Mint"), A("Aura", "Burning Aura")], { name: "CHOG #1" }, [100, 200, 150]);
+  assert.strictEqual(painted.id, "painted");
+  assert.strictEqual(painted.name, "Mint rocket");
+  assert.strictEqual(painted.hull, 0x64c896);
+  assert.deepStrictEqual([painted.trail.style, painted.trail.name], ["flame", "Burning Aura"]);
+  assert.strictEqual(Looks.rocketLook([A("Base", "Skull")], {}, [1, 2, 3]).id, "skull");
+  assert.strictEqual(Looks.rocketLook([A("Base", "Radioactive"), A("Aura", "Wind")], {}, null).trail.style, "wind");
+  const midas = Looks.rocketLook([A("Base", "1:1"), A("Tier", "Legendary")], { name: "CHOG #1373 — Midas" }, [9, 9, 9]);
+  assert.deepStrictEqual([midas.id, midas.name, midas.trail.style], ["legendary:midas", "Midas one-of-one rocket", "sparkle"]);
+  // Unknown values fall back safely
+  assert.strictEqual(Looks.rocketLook([A("Aura", "Mystery Aura")], {}, null).trail, null);
+  assert.strictEqual(Looks.rocketLook([], {}, null).id, "standard");
+  assert.strictEqual(Looks.rocketLook([A("Base", "1:1")], { name: "CHOG #9 — Unknown" }, null).id, "standard");
+});

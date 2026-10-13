@@ -39,3 +39,48 @@ All gameplay effects are Chog Dash game-design decisions. They are not official 
 - Any trait or value without a rule has no gameplay effect.
 - Head perks (crown, cap, magnet) are not implemented. They need the real Head values first, and a magnet needs a pickup system.
 - Background, Skin, Body, Form and the rest are display only.
+
+## Rocket looks (looks only)
+
+These change how the rocket looks. They never change speed, hitbox, pickups or total distance. Code: `js/looks.js`.
+
+| Trait | Tokens | Look |
+|---|---:|---|
+| Background | 1,869 (all Chogs that aren't Skull, Radioactive or 1:1) | Rocket painted in the background colour, sampled from the Chog's own image, with darker trim in the same colour |
+| Base: Skull | 60 | Bone-white rocket, charcoal trim, skull face on the nose, dark purple flame |
+| Base: Radioactive | 30 | Glowing green rocket and green exhaust |
+| Base: 1:1 | 10 | A unique rocket for each, designed from its artwork (see below) |
+| Aura | 974 (22 values) | A trail around and behind the rocket in that aura's style |
+| (none of the above) | | Standard cream and orange rocket, also used in practice mode |
+
+### Aura trails
+
+| Aura | Trail |
+|---|---|
+| Burning Aura, Fiery Aura, Fire | Flames: rising, flickering, yellow to red |
+| Aqua Aura | Water droplets falling away |
+| Rose Aura, Rose Scent, Pink Mist | Soft pink mist |
+| Purple, Light Purple, Violet, Mint, Green Aura, Yellow Aura, White Aura, Royal Blue Aura, Royal Blue | Steady glow in that colour |
+| Royal Aura, Clean, Cool Aura | Twinkling sparkles (gold, white, icy blue) |
+| Wind | Fast white streaks |
+| Smoke | Grey smoke puffs |
+| Electric Shock | Jittery electric sparks |
+
+- All 22 Aura values in the collection are mapped. An unknown value gets no trail.
+
+### One-of-one Legendaries
+
+| Chog | Rocket | Trail |
+|---|---|---|
+| Blaze | Glowing flame orange, red trim | Flames |
+| Burning Skully | Bone white, black trim, skull face | Flames |
+| Chog Scream | Orange with deep blue trim, blue flame | Orange mist |
+| Chogbomination | Pale zombie green, purple trim, toxic glow | Green sparks |
+| Frogger | Frog green, yellow-green trim | Green droplets |
+| Grim | White with black trim (manga style) | Grey smoke |
+| Halo | Cream with gold trim and a floating halo | Gold sparkles |
+| Krown | Royal purple with a gold crown on the nose | Purple glow |
+| Midas | Solid gold | Gold sparkles |
+| Redd | Devil red with horns | Red flames |
+
+- Matched by the name after the dash in the metadata name (for example "CHOG #1373 — Midas"), only when Base is "1:1".
