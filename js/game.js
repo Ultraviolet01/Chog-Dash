@@ -26,11 +26,25 @@
   // Obstacle mix per zone (zones and their lengths are in js/config.js). Every zone keeps the safe path.
   const ZONE_RULES = {
     outer: { rock: 0.55, huge: 0.15, drift: 1.5, rockDrift: 0 },     // balanced mix
-    belt: { rock: 0.92, huge: 0.3, drift: 1.0, rockDrift: 0.3 },     // nearly all asteroids, more huge ones
+    belt: { rock: 0.92, huge: 0.24, drift: 1.0, rockDrift: 0.3 },    // nearly all asteroids, more huge ones
     drift: { rock: 0.3, huge: 0.08, drift: 4.5, rockDrift: 1.5 },    // mostly debris, drifting hard sideways
     deep: { rock: 0.6, huge: 0.2, drift: 2.0, rockDrift: 0.5 },      // shorter view distance (see js/scenery.js)
     milky: { rock: 0.5, huge: 0.22, drift: 2.5, rockDrift: 0.8 },    // finale: everything moves, more huge rocks
   };
+  // A new zone's mix fades in over this distance, starting from the previous zone's mix, so crossing a
+  // gate never makes the field suddenly much more crowded (the Belt used to jump from 22% to 29% of the
+  // flying area blocked in one step).
+  const ZONE_RAMP_M = 800;
+  function zoneRulesAt(z, zones) {
+    const cur = ZONE_RULES[z.zone.id] || ZONE_RULES.outer;
+    if (z.number <= 1) return cur;
+    const prev = ZONE_RULES[zones[(z.index - 1 + zones.length) % zones.length].id] || ZONE_RULES.outer;
+    const t = Math.min(1, Math.max(0, z.intoZone / ZONE_RAMP_M));
+    if (t >= 1) return cur;
+    const out = {};
+    for (const k in cur) out[k] = prev[k] + (cur[k] - prev[k]) * t;
+    return out;
+  }
 
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -602,7 +616,7 @@
       // Breather around zone boundaries: nothing to dodge while flying through a warp gate
       if (nearBoundary(m + Math.floor(-z / G.unitsPerMeter))) { nextSpacing = currentSpacing(); return; }
       // Use the zone the group will be in when it reaches the rocket
-      const rules = ZONE_RULES[root.ChogTraits.zoneAt(m + Math.floor(-z / G.unitsPerMeter)).zone.id] || ZONE_RULES.outer;
+      const rules = zoneRulesAt(root.ChogTraits.zoneAt(m + Math.floor(-z / G.unitsPerMeter)), G.zones);
       for (let n = 0; n < count; n++) {
         const o = makeObstacle(rules);
         for (let t = 0; t < 8; t++) {
