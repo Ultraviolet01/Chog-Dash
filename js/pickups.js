@@ -35,15 +35,20 @@
   }
 
   // ---------- Icon art (used for the 3D pickups and the HUD) ----------
-  function iconCanvas(type) {
+  // disk: true for the HUD badge (dark disk and ring); false for the symbol floating inside a bubble
+  function iconCanvas(type, disk) {
     const S = 128, c = document.createElement("canvas");
     c.width = c.height = S;
     const g = c.getContext("2d"), col = TYPES[type].color;
-    const glow = g.createRadialGradient(64, 64, 30, 64, 64, 64);
-    glow.addColorStop(0, col); glow.addColorStop(1, "rgba(0,0,0,0)");
-    g.globalAlpha = 0.45; g.fillStyle = glow; g.fillRect(0, 0, S, S); g.globalAlpha = 1;
-    g.fillStyle = "#0b1020"; g.beginPath(); g.arc(64, 64, 46, 0, Math.PI * 2); g.fill();
-    g.lineWidth = 6; g.strokeStyle = col; g.stroke();
+    if (disk) {
+      const glow = g.createRadialGradient(64, 64, 30, 64, 64, 64);
+      glow.addColorStop(0, col); glow.addColorStop(1, "rgba(0,0,0,0)");
+      g.globalAlpha = 0.45; g.fillStyle = glow; g.fillRect(0, 0, S, S); g.globalAlpha = 1;
+      g.fillStyle = "#0b1020"; g.beginPath(); g.arc(64, 64, 46, 0, Math.PI * 2); g.fill();
+      g.lineWidth = 6; g.strokeStyle = col; g.stroke();
+    } else {
+      g.shadowColor = col; g.shadowBlur = 14;
+    }
     g.fillStyle = col; g.strokeStyle = col; g.lineCap = "round"; g.lineJoin = "round";
     if (type === "dash") {
       g.beginPath();
@@ -73,6 +78,35 @@
       g.font = "bold 64px Arial"; g.textAlign = "center"; g.textBaseline = "middle";
       g.fillText("?", 64, 68);
     }
+    return c;
+  }
+
+  // Water bubble, in two layers: the body (behind the icon) and the shine (in front of it)
+  function bubbleCanvas(front) {
+    const S = 256, c = document.createElement("canvas");
+    c.width = c.height = S;
+    const g = c.getContext("2d"), r = 118;
+    if (!front) {
+      const body = g.createRadialGradient(128, 128, 20, 128, 128, r);
+      body.addColorStop(0, "rgba(150,215,255,0.05)");
+      body.addColorStop(0.7, "rgba(120,200,255,0.12)");
+      body.addColorStop(0.92, "rgba(140,215,255,0.35)");
+      body.addColorStop(1, "rgba(200,240,255,0)");
+      g.fillStyle = body; g.beginPath(); g.arc(128, 128, r, 0, Math.PI * 2); g.fill();
+      g.lineWidth = 3; g.strokeStyle = "rgba(210,245,255,0.75)";
+      g.beginPath(); g.arc(128, 128, r - 3, 0, Math.PI * 2); g.stroke();
+      return c;
+    }
+    // Rainbow sheen around the rim, like a soap or water bubble
+    [["rgba(120,255,240,0.45)", -0.3, 1.1], ["rgba(255,140,230,0.4)", 1.0, 1.0], ["rgba(255,230,120,0.35)", 2.2, 0.9], ["rgba(140,170,255,0.4)", 3.3, 1.3]]
+      .forEach(([col, a0, len]) => { g.lineWidth = 7; g.strokeStyle = col; g.beginPath(); g.arc(128, 128, r - 9, a0, a0 + len); g.stroke(); });
+    // Highlights
+    g.fillStyle = "rgba(255,255,255,0.75)";
+    g.beginPath(); g.ellipse(88, 74, 30, 16, -0.7, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "rgba(255,255,255,0.5)";
+    g.beginPath(); g.arc(178, 184, 8, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "rgba(255,255,255,0.45)"; g.lineWidth = 4;
+    g.beginPath(); g.arc(128, 128, r - 18, 2.3, 2.9); g.stroke();
     return c;
   }
 
@@ -109,8 +143,11 @@
   // api: { player() -> Vector3, hitOffsetY, boundX, boundY, spawnZ, despawnZ, nova(), sparkle(pos, colorHex) }
   function create(scene, api) {
     const tex = c => new THREE.CanvasTexture(c);
-    const icons = {}, iconUrls = {};
-    Object.keys(TYPES).forEach(t => { const c = iconCanvas(t); icons[t] = tex(c); iconUrls[t] = c.toDataURL(); });
+    const symbols = {}, iconUrls = {};
+    Object.keys(TYPES).forEach(t => { symbols[t] = tex(iconCanvas(t, false)); iconUrls[t] = iconCanvas(t, true).toDataURL(); });
+    const bubbleBack = tex(bubbleCanvas(false)), bubbleFront = tex(bubbleCanvas(true));
+    const BUBBLE = 3.0, SYMBOL = 2.1;
+    let pops = [];
     const dustTex = tex(stardustCanvas()), hornTex = tex(hornCanvas());
 
     let items = [];
@@ -130,14 +167,26 @@
       popTimer = 1.1;
     }
 
+    const spriteOf = (map, size) => {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false, fog: false }));
+      sp.scale.set(size, size, 1);
+      return sp;
+    };
+
     function addItem(kind, type, x, y, z) {
-      const map = kind === "power" ? icons[type] : kind === "horn" ? hornTex : dustTex;
-      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false, fog: false }));
-      const size = kind === "power" ? 2.4 : kind === "horn" ? 2.4 : 1.1;
-      sprite.scale.set(size, size, 1);
+      let sprite, parts = null;
+      if (kind === "power") {
+        // Power-ups float inside a water bubble: body behind, symbol in the middle, shine in front
+        sprite = new THREE.Group();
+        parts = { back: spriteOf(bubbleBack, BUBBLE), icon: spriteOf(symbols[type], SYMBOL), front: spriteOf(bubbleFront, BUBBLE) };
+        parts.back.position.z = -0.05; parts.front.position.z = 0.05;
+        sprite.add(parts.back, parts.icon, parts.front);
+      } else {
+        sprite = spriteOf(kind === "horn" ? hornTex : dustTex, kind === "horn" ? 2.4 : 1.1);
+      }
       sprite.position.set(x, y, z);
       scene.add(sprite);
-      const item = { kind, type, sprite, baseY: y, phase: Math.random() * 6 };
+      const item = { kind, type, sprite, parts, baseY: y, phase: Math.random() * 6, size: kind === "horn" ? 2.4 : 1.1 };
       items.push(item);
       return item;
     }
@@ -192,14 +241,28 @@
     function collect(item, zoneId) {
       if (item.kind === "stardust") { addStardust(1); api.sparkle(item.sprite.position, 0xffd27a); }
       else if (item.kind === "horn") { addStardust(P.hornStardust); popup("GOLDEN HORN +" + P.hornStardust, "#ffd45a"); api.sparkle(item.sprite.position, 0xffd45a); }
-      else { activate(item.type, zoneId); api.sparkle(item.sprite.position, parseInt(TYPES[item.type].color.slice(1), 16)); }
+      else {
+        activate(item.type, zoneId);
+        // The bubble pops: an expanding ring plus a splash of droplets
+        const ring = spriteOf(bubbleBack, BUBBLE);
+        ring.position.copy(item.sprite.position);
+        scene.add(ring);
+        pops.push({ ring, life: 0.3 });
+        api.sparkle(item.sprite.position, 0xbfe8ff);
+        api.sparkle(item.sprite.position, parseInt(TYPES[item.type].color.slice(1), 16));
+      }
     }
 
-    function removeItem(item) { scene.remove(item.sprite); item.sprite.material.dispose(); }
+    function removeItem(item) {
+      scene.remove(item.sprite);
+      item.sprite.traverse(o => { if (o.material) o.material.dispose(); });
+    }
 
     function reset() {
       items.forEach(removeItem);
       items = [];
+      pops.forEach(pp => { scene.remove(pp.ring); pp.ring.material.dispose(); });
+      pops = [];
       Object.keys(active).forEach(k => { active[k] = 0; });
       lives = 0; meter = 0; runDust = 0; revive = 0;
       nextDust = P.firstAt; nextPower = P.firstAt + rand(0, 3); nextHorn = P.firstAt + rand(30, 60);
@@ -238,6 +301,29 @@
       });
     }
 
+    // Keep every pickup moving: bubbles wobble and bob with the symbol swaying inside,
+    // Stardust spins and twinkles, Golden Horns sway and pulse
+    function animate(item, now, dt) {
+      const t = now + item.phase, s = item.sprite;
+      if (item.kind === "power") {
+        if (!item.homing) s.position.y = item.baseY + Math.sin(t * 2.2) * 0.25;
+        const w = Math.sin(t * 4.5) * 0.07, w2 = Math.sin(t * 3.1) * 0.04;
+        item.parts.back.scale.set(BUBBLE * (1 + w + w2), BUBBLE * (1 - w + w2), 1);
+        item.parts.front.scale.set(BUBBLE * (1 + w + w2), BUBBLE * (1 - w + w2), 1);
+        item.parts.icon.material.rotation = Math.sin(t * 1.7) * 0.35;
+        item.parts.icon.position.set(Math.sin(t * 1.3) * 0.12, Math.sin(t * 2.6) * 0.1, 0);
+        const pulse = SYMBOL * (1 + Math.sin(t * 5) * 0.05);
+        item.parts.icon.scale.set(pulse, pulse, 1);
+      } else if (item.kind === "horn") {
+        if (!item.homing) s.position.y = item.baseY + Math.sin(t * 2.2) * 0.2;
+        s.material.rotation = Math.sin(t * 2) * 0.3;
+        s.scale.setScalar(item.size * (1 + Math.sin(t * 4) * 0.08));
+      } else {
+        s.material.rotation += dt * 2.5;
+        s.scale.setScalar(item.size * (1 + Math.sin(t * 9) * 0.25));
+      }
+    }
+
     // dt: frame time; speed: world speed; t: seconds into the run; zoneId: current zone; playing: run in progress
     function update(dt, speed, t, zoneId, playing) {
       if (playing) {
@@ -260,11 +346,19 @@
         } else {
           s.z += speed * dt;
         }
-        if (!item.homing && item.kind !== "stardust") s.y = item.baseY + Math.sin(now * 3 + item.phase) * 0.15;
-        if (item.kind === "stardust") item.sprite.material.rotation += dt * 2;
+        animate(item, now, dt);
         const r = item.kind === "power" ? 1.4 : item.kind === "horn" ? 1.3 : 1.0;
         if (playing && Math.hypot(s.x - p.x, s.y - py, s.z - p.z) < r) { collect(item, zoneId); removeItem(item); return false; }
         if (s.z > api.despawnZ) { removeItem(item); return false; }
+        return true;
+      });
+      pops = pops.filter(pp => {
+        pp.life -= dt;
+        const k = 1 - Math.max(0, pp.life) / 0.3;
+        pp.ring.scale.setScalar(BUBBLE * (1 + k * 0.9));
+        pp.ring.material.opacity = 1 - k;
+        pp.ring.position.z += speed * dt;
+        if (pp.life <= 0) { scene.remove(pp.ring); pp.ring.material.dispose(); return false; }
         return true;
       });
       if (popTimer > 0) { popTimer -= dt; hud.pop.style.opacity = Math.max(0, Math.min(1, popTimer / 0.4)).toFixed(2); }

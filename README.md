@@ -51,6 +51,8 @@ Nothing spawns in the first 10 seconds of a run. Pickups can appear anywhere, ri
 | Radar | Outlines incoming obstacles through the dark for 12 s. Only appears in the Deep Cosmic Zone. |
 | Mystery Box | Turns into a random power-up. |
 
+- Power-ups float inside wobbling water bubbles that pop when collected. Stardust spins and twinkles; Golden Horns sway and pulse.
+
 - A power-up appears every 20 to 30 seconds. The same power-up is never on screen twice at once.
 - Grabbing a power-up that is already running adds its time (for example, a second Dash adds 3 s).
 - Active power-ups show as icons with countdown rings; the Stardust meter and lives are at the bottom.
