@@ -24,7 +24,7 @@ async function setup() {
     assert.ok(m, "unexpected URL " + url);
     assert.strictEqual(opts.method, "POST");
     assert.strictEqual(opts.headers.apikey, "service-key");
-    assert.strictEqual(opts.headers.authorization, "Bearer service-key");
+    assert.strictEqual(opts.headers.authorization, undefined, "non-JWT keys go in apikey only");
     const args = JSON.parse(opts.body), names = Object.keys(args);
     calls.push(m[1]);
     const sql = "select " + m[1] + "(" + names.map((n, i) => n + " => $" + (i + 1) + "::" + (TYPES[n] || "text")).join(", ") + ") as r";
@@ -79,6 +79,11 @@ test("supabase store: leaderboard keeps the higher total and ranks players", asy
 test("supabase store: errors from Supabase are reported, not swallowed", async () => {
   const bad = supabaseStore("https://proj.supabase.co", "k", async () => ({ ok: false, status: 401, text: async () => '{"message":"Invalid API key"}' }));
   await assert.rejects(bad.get("x"), /Storage error 401: Invalid API key/);
+  const missing = supabaseStore("https://proj.supabase.co", "k", async () => ({ ok: false, status: 404, text: async () => '{"code":"PGRST202","message":"Could not find the function"}' }));
+  await assert.rejects(missing.top(5), /not set up: run supabase\/schema.sql/);
+  let headers;
+  await supabaseStore("https://p.supabase.co", "eyJlegacy", async (u, o) => { headers = o.headers; return { ok: true, status: 200, text: async () => "null" }; }).get("x");
+  assert.strictEqual(headers.authorization, "Bearer eyJlegacy", "legacy JWT keys also sent as bearer");
   const down = supabaseStore("https://proj.supabase.co", "k", async () => { throw new Error("ECONNREFUSED"); });
   await assert.rejects(down.get("x"), /Storage unreachable/);
 });
