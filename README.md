@@ -30,7 +30,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 
 ## Zones
 
-The run is split into four zones of 1,000 m each, repeating in a loop (one loop is 4,000 m). Speed keeps rising across loops.
+The run is split into five zones of 1,000 m each, repeating in a loop (one loop is 5,000 m). Speed keeps rising across loops.
 
 | Zone | Scenery | Obstacles |
 |---|---|---|
@@ -38,6 +38,7 @@ The run is split into four zones of 1,000 m each, repeating in a loop (one loop 
 | 2. Asteroid Belt | Rock fields streaming past on both sides, dusty light | Nearly all asteroids, more huge ones |
 | 3. Galactic Drift | Cyan and teal nebula | Mostly debris, drifting hard sideways |
 | 4. Deep Cosmic Zone | Dark violet, larger black hole | Shorter view distance, so obstacles appear later |
+| 5. Milky Way | The whole Milky Way spiral glowing ahead, warm starlight | Everything drifts, more huge rocks: the finale before the loop restarts |
 
 - A banner names each zone as you enter it, and the HUD shows the current zone and loop.
 - Scenery blends smoothly between zones. Every zone keeps a reachable safe path.

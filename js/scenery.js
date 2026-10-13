@@ -111,6 +111,45 @@
     return c;
   }
 
+  // A face-on spiral galaxy: warm core, two star-filled arms turning blue toward the edge
+  function galaxyCanvas() {
+    const S = 1024, c = document.createElement("canvas"), R = seeded(21);
+    c.width = c.height = S;
+    const g = c.getContext("2d");
+    g.translate(S / 2, S / 2);
+    g.globalCompositeOperation = "lighter";
+    const glow = (x, y, r, rgb, a) => {
+      const b = g.createRadialGradient(x, y, 0, x, y, r);
+      b.addColorStop(0, "rgba(" + rgb + "," + a + ")"); b.addColorStop(1, "rgba(" + rgb + ",0)");
+      g.fillStyle = b; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    };
+    // Arms: soft glow first, then individual stars
+    for (let arm = 0; arm < 2; arm++) {
+      for (let i = 0; i < 260; i++) {
+        const t = Math.pow(R(), 0.8) * 3.6 * Math.PI, r = 40 + t * 38;
+        const a = t + arm * Math.PI + (R() - 0.5) * 0.35;
+        const out = r / 480;
+        glow(Math.cos(a) * r, Math.sin(a) * r, 30 + R() * 50, out < 0.5 ? "255,215,170" : "150,180,255", 0.05);
+      }
+      for (let i = 0; i < 2600; i++) {
+        const t = Math.pow(R(), 0.8) * 3.6 * Math.PI, r = 40 + t * 38;
+        const spread = 10 + r * 0.12;
+        const a = t + arm * Math.PI;
+        const x = Math.cos(a) * r + (R() - 0.5) * spread * 2, y = Math.sin(a) * r + (R() - 0.5) * spread * 2;
+        const out = Math.min(1, r / 480);
+        const col = [Math.round(255 - 90 * out), Math.round(235 - 40 * out), Math.round(200 + 55 * out)].join(",");
+        g.fillStyle = "rgba(" + col + "," + (0.25 + R() * 0.6) + ")";
+        const sz = R() < 0.92 ? 1.5 : 3;
+        g.fillRect(x, y, sz, sz);
+      }
+    }
+    // Bright core
+    glow(0, 0, 220, "255,200,140", 0.35);
+    glow(0, 0, 90, "255,240,210", 0.9);
+    glow(0, 0, 30, "255,255,255", 1);
+    return c;
+  }
+
   function cloudCanvas(seed) {
     const S = 256, c = document.createElement("canvas"), R = seeded(seed);
     c.width = c.height = S;
@@ -146,13 +185,16 @@
   // fogNear/fogFar also change how far ahead obstacles can be seen.
   const LOOKS = {
     outer: { back: 0xc8c8d8, fog: 0x05061a, fogNear: 90, fogFar: 250, ambient: 0x6070b0, rim: 0x8a5cff, fill: 0x3b7bff,
-      clouds: [0x2f5bff, 0x7a46ff, 0x3aa0ff, 0x9a4dff], cloudGain: 1, streak: [0.75, 0.82, 1], hole: 1, belt: false },
+      clouds: [0x2f5bff, 0x7a46ff, 0x3aa0ff, 0x9a4dff], cloudGain: 1, streak: [0.75, 0.82, 1], hole: 1, belt: false, galaxy: 0 },
     belt: { back: 0xa08a70, fog: 0x0b0907, fogNear: 90, fogFar: 250, ambient: 0x8a7a6a, rim: 0xc89a6a, fill: 0x6a6aa0,
-      clouds: [0x7a6650, 0x5a5466, 0x8a7058], cloudGain: 0.7, streak: [1, 0.9, 0.75], hole: 0.8, belt: true },
+      clouds: [0x7a6650, 0x5a5466, 0x8a7058], cloudGain: 0.7, streak: [1, 0.9, 0.75], hole: 0.8, belt: true, galaxy: 0 },
     drift: { back: 0x8cf0ff, fog: 0x03101c, fogNear: 90, fogFar: 250, ambient: 0x4a9ac0, rim: 0x3ad0ff, fill: 0x2f6bff,
-      clouds: [0x2fd0ff, 0x3a8aff, 0x40e0c0], cloudGain: 2.0, streak: [0.6, 1, 1], hole: 0.9, belt: false },
+      clouds: [0x2fd0ff, 0x3a8aff, 0x40e0c0], cloudGain: 2.0, streak: [0.6, 1, 1], hole: 0.9, belt: false, galaxy: 0 },
     deep: { back: 0x5a4a88, fog: 0x08041a, fogNear: 55, fogFar: 175, ambient: 0x6a50a0, rim: 0xb04cff, fill: 0x5a3bff,
-      clouds: [0x7a2fff, 0xb04cff, 0x4a1a9a], cloudGain: 0.9, streak: [0.85, 0.65, 1], hole: 1.7, belt: false },
+      clouds: [0x7a2fff, 0xb04cff, 0x4a1a9a], cloudGain: 0.9, streak: [0.85, 0.65, 1], hole: 1.7, belt: false, galaxy: 0 },
+    // Breaking out of the deep zone to see the whole Milky Way spiral ahead
+    milky: { back: 0xe0d2c0, fog: 0x0a0812, fogNear: 90, fogFar: 250, ambient: 0xa09080, rim: 0xffc878, fill: 0x8a9aff,
+      clouds: [0xffd8a0, 0xfff0d0, 0xa0b0ff], cloudGain: 1.3, streak: [1, 0.95, 0.8], hole: 0.45, belt: false, galaxy: 1 },
   };
 
   // ---------- Scenery ----------
@@ -174,6 +216,16 @@
     hole.position.set(-700, 330, BACK_Z + 5);
     hole.renderOrder = -1;
     scene.add(hole);
+
+    // Milky Way spiral, seen at an angle; only visible in the Milky Way zone
+    const galaxyMat = new THREE.MeshBasicMaterial({ map: tex(galaxyCanvas()), transparent: true, opacity: 0,
+      blending: THREE.AdditiveBlending, fog: false, depthWrite: false });
+    const galaxy = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), galaxyMat);
+    galaxy.position.set(380, 140, BACK_Z + 20);
+    galaxy.rotation.set(-1.05, 0.25, 0.4);
+    galaxy.renderOrder = -1;
+    galaxy.visible = false;
+    scene.add(galaxy);
 
     // Streaming stars, a few tinted blue and violet
     const STARS = 1400;
@@ -256,7 +308,7 @@
     const cur = {
       back: new THREE.Color(look.back), fog: new THREE.Color(look.fog), ambient: new THREE.Color(look.ambient),
       rim: new THREE.Color(look.rim), fill: new THREE.Color(look.fill), fogNear: look.fogNear, fogFar: look.fogFar,
-      streak: look.streak.slice(), hole: look.hole,
+      streak: look.streak.slice(), hole: look.hole, galaxy: look.galaxy,
     };
     const tmpColor = new THREE.Color();
     function applyLook(k) {
@@ -264,6 +316,9 @@
       cur.fogNear += (look.fogNear - cur.fogNear) * k;
       cur.fogFar += (look.fogFar - cur.fogFar) * k;
       cur.hole += (look.hole - cur.hole) * k;
+      cur.galaxy += (look.galaxy - cur.galaxy) * k;
+      galaxyMat.opacity = cur.galaxy;
+      galaxy.visible = cur.galaxy > 0.01;
       for (let j = 0; j < 3; j++) cur.streak[j] += (look.streak[j] - cur.streak[j]) * k;
       backdrop.material.color.copy(cur.back);
       scene.fog.color.copy(cur.fog);
@@ -336,6 +391,7 @@
 
       // Black hole spins slowly
       hole.rotation.z += dt * 0.12;
+      if (galaxy.visible) galaxy.rotateZ(dt * 0.02);
 
       // Meteors
       if (meteorLife > 0) {

@@ -1,5 +1,5 @@
 /*
- * Browser test of the zone loop: Outer Space -> Asteroid Belt -> Galactic Drift -> Deep Cosmic Zone -> loop.
+ * Browser test of the zone loop: Outer Space -> Asteroid Belt -> Galactic Drift -> Deep Cosmic Zone -> Milky Way -> loop.
  * Checks the banner and HUD label for each zone and that each zone uses its own obstacle mix.
  */
 const { chromium } = require('playwright-core');
@@ -22,7 +22,7 @@ const R = path.join(__dirname, '../../');
   await p.evaluate(() => setInterval(() => { const d = ChogUI._game()._debug, q = d.player.position;
     d.obstacles().forEach(o => { if (o.mesh.position.z > -12 && Math.abs(o.mesh.position.x - q.x) < 5 && Math.abs(o.mesh.position.y - q.y) < 5) o.mesh.position.x += 14; }); }, 16));
   await p.waitForTimeout(600);
-  assert.match(await p.textContent('#zoneBanner'), /OUTER SPACE.*Zone 1 of 4/);
+  assert.match(await p.textContent('#zoneBanner'), /OUTER SPACE.*Zone 1 of 5/);
 
   // Count rocks vs debris among obstacles that spawned in each zone
   const rockShare = () => p.evaluate(() => {
@@ -31,8 +31,8 @@ const R = path.join(__dirname, '../../');
     return { n: os.length, share: os.length ? rocks / os.length : 0 };
   });
   const seen = {};
-  for (const [m, re, label] of [[1020, /ASTEROID BELT.*Zone 2 of 4/, 'Asteroid Belt'], [2020, /GALACTIC DRIFT.*Zone 3 of 4/, 'Galactic Drift'],
-      [3020, /DEEP COSMIC ZONE.*Zone 4 of 4/, 'Deep Cosmic Zone'], [4020, /OUTER SPACE.*Zone 1 of 4 · Loop 2/, 'Outer Space · Loop 2']]) {
+  for (const [m, re, label] of [[1020, /ASTEROID BELT.*Zone 2 of 5/, 'Asteroid Belt'], [2020, /GALACTIC DRIFT.*Zone 3 of 5/, 'Galactic Drift'],
+      [3020, /DEEP COSMIC ZONE.*Zone 4 of 5/, 'Deep Cosmic Zone'], [4020, /MILKY WAY.*Zone 5 of 5/, 'Milky Way'], [5020, /OUTER SPACE.*Zone 1 of 5 · Loop 2/, 'Outer Space · Loop 2']]) {
     await p.evaluate(m => ChogUI._game()._debug.setMeters(m), m);
     await p.waitForTimeout(400);
     assert.match(await p.textContent('#zoneBanner'), re);

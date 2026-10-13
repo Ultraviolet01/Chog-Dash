@@ -31,6 +31,7 @@
     belt: { rock: 0.92, huge: 0.3, drift: 1.0, rockDrift: 0.3 },     // nearly all asteroids, more huge ones
     drift: { rock: 0.3, huge: 0.08, drift: 4.5, rockDrift: 1.5 },    // mostly debris, drifting hard sideways
     deep: { rock: 0.6, huge: 0.2, drift: 2.0, rockDrift: 0.5 },      // shorter view distance (see js/scenery.js)
+    milky: { rock: 0.5, huge: 0.22, drift: 2.5, rockDrift: 0.8 },    // finale: everything moves, more huge rocks
   };
 
   const rand = (a, b) => a + Math.random() * (b - a);

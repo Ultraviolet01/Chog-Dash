@@ -69,6 +69,7 @@
         { id: "belt", name: "Asteroid Belt", meters: 1000 },
         { id: "drift", name: "Galactic Drift", meters: 1000 },
         { id: "deep", name: "Deep Cosmic Zone", meters: 1000 },
+        { id: "milky", name: "Milky Way", meters: 1000 },
       ],
     },
 

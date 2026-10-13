@@ -87,8 +87,10 @@ test("zones run in order and loop", () => {
   assert.strictEqual(at(1000), "belt@1");
   assert.strictEqual(at(2500), "drift@1");
   assert.strictEqual(at(3999), "deep@1");
-  assert.strictEqual(at(4000), "outer@2");
-  assert.strictEqual(at(9200), "belt@3");
+  assert.strictEqual(at(4000), "milky@1");
+  assert.strictEqual(at(4999), "milky@1");
+  assert.strictEqual(at(5000), "outer@2");
+  assert.strictEqual(at(11200), "belt@3");
   assert.strictEqual(T.zoneAt(1120).intoZone, 120);
-  assert.deepStrictEqual(config.game.zones.map(z => z.name), ["Outer Space", "Asteroid Belt", "Galactic Drift", "Deep Cosmic Zone"]);
+  assert.deepStrictEqual(config.game.zones.map(z => z.name), ["Outer Space", "Asteroid Belt", "Galactic Drift", "Deep Cosmic Zone", "Milky Way"]);
 });
