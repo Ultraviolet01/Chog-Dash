@@ -76,6 +76,14 @@ input { font: 15px Arial, sans-serif; padding: 9px 10px; border-radius: 8px; bor
   background: rgba(10,15,30,0.75); border: 1px solid var(--line); font-weight: 700; font-size: 14px; color: var(--ink); }
 .chip-label { color: var(--accent); letter-spacing: 1px; font-size: 12px; }
 .chip-btn { cursor: pointer; }
+.top-right { display: flex; gap: 8px; }
+.fs-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fs-btn .fs-close, .is-fullscreen .fs-btn .fs-open { display: none; }
+.is-fullscreen .fs-btn .fs-close { display: inline; }
+.fs-btn.unsupported { display: none !important; }
+#hudFsBtn { position: absolute; right: 16px; top: 52px; pointer-events: auto; padding: 6px 8px; line-height: 0; }
+/* Hide the mouse cursor while flying: the rocket shows where you are steering */
+body.flying, body.flying #gameCanvas { cursor: none; }
 .chip-btn:hover { border-color: var(--accent2); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; }
 .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
@@ -127,6 +135,7 @@ input { font: 15px Arial, sans-serif; padding: 9px 10px; border-radius: 8px; bor
   .home-bottom { animation: none; }
 }
 @media (pointer: coarse) { .key-hint { display: none; } }
+@media (max-width: 600px) { .fs-label { display: none; } }
 /* Short screens (phones held sideways): smaller logo and button, icons move to the right */
 @media (max-height: 500px) and (min-aspect-ratio: 1/1) {
   .home-main { top: 54%; }

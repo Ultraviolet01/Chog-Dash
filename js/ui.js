@@ -44,7 +44,7 @@
   function controlsText(laser) {
     const base = isTouch
       ? "Drag to fly the rocket up, down, left and right."
-      : "Move the mouse to fly the rocket. Or use the keyboard: W/A/S/D or the arrow keys. The rocket stays put when you let go.";
+      : "Move the mouse to fly the rocket. Or use the keyboard: W/A/S/D or the arrow keys. The rocket stays put when you let go. F for full screen.";
     return base + (laser ? (isTouch ? " LASER button fires Laser Eyes." : " E fires Laser Eyes.") : "");
   }
   const startText = () => (isTouch ? "Tap to start" : "Press Space or click to start");
@@ -86,6 +86,7 @@
     $("nftBack").onclick = () => show("menuPanel");
     $("lbBack").onclick = () => show("menuPanel");
     $("howBack").onclick = () => show("menuPanel");
+    setupFullscreen();
     // Space or Enter on the home screen plays
     window.addEventListener("keydown", e => {
       if (!$("menuPanel").classList.contains("show") || e.repeat) return;
@@ -99,6 +100,39 @@
     $("tokenCheck").onclick = () => selectToken($("tokenInput").value.trim());
     $("tokenInput").addEventListener("keydown", e => { if (e.key === "Enter") selectToken($("tokenInput").value.trim()); });
     $("rideBtn").onclick = rideChog;
+  }
+
+  // ---------- Full screen (button, HUD button, F key) ----------
+  function setupFullscreen() {
+    const el = document.documentElement;
+    const supported = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+    const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const toggle = () => {
+      try {
+        const r = isFull()
+          ? (document.exitFullscreen || document.webkitExitFullscreen).call(document)
+          : (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+        if (r && r.catch) r.catch(() => {});
+      } catch (e) {}
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    };
+    const sync = () => {
+      document.body.classList.toggle("is-fullscreen", isFull());
+      const label = isFull() ? "Exit full screen" : "Full screen";
+      document.querySelectorAll(".fs-label").forEach(l => { l.textContent = label; });
+      document.querySelectorAll(".fs-btn").forEach(b => { b.title = label + " (F)"; });
+    };
+    ["fsBtn", "hudFsBtn"].forEach(id => {
+      $(id).classList.toggle("unsupported", !supported);
+      $(id).onclick = toggle;
+    });
+    document.addEventListener("fullscreenchange", sync);
+    document.addEventListener("webkitfullscreenchange", sync);
+    window.addEventListener("keydown", e => {
+      if (!supported || e.repeat || e.code !== "KeyF" || /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      toggle();
+    });
+    sync();
   }
 
   // ---------- Home screen ----------
@@ -123,7 +157,7 @@
       : readNum(PRACTICE_BEST).toLocaleString() + " m";
     $("walletChipText").textContent = S.account ? short(S.account) : "Connect wallet";
     $("walletDot").classList.toggle("on", !!S.account && S.chainId === cfg.collection.chainId);
-    $("keyHint").textContent = "Press SPACE to " + (nft && !S.chog ? "pick a Chog" : "play");
+    $("keyHint").textContent = "Press SPACE to " + (nft && !S.chog ? "pick a Chog" : "play") + "  ·  F for full screen";
   }
   function play() {
     if (homeMode === "practice") startPractice();
@@ -140,6 +174,7 @@
   function backToMenu() {
     S.sessionReq++;
     S.mode = null;
+    setFlying(false);
     game.toMenu();
     show("menuPanel");
   }
@@ -157,8 +192,14 @@
   }
 
   // ---------- Game hooks ----------
+  function setFlying(on) {
+    document.body.classList.toggle("flying", on);
+    $("hudMenuBtn").style.display = on ? "none" : "block";
+    $("hudFsBtn").style.display = on ? "none" : "";
+  }
+
   function onReady() {
-    $("hudMenuBtn").style.display = "block";
+    setFlying(false);
     if (S.mode === "practice") {
       setMsg("PRACTICE MODE", [
         "Rookie, the practice pilot. Not an NFT run, and not eligible for the NFT leaderboard.",
@@ -174,7 +215,7 @@
   }
 
   function onStart() {
-    $("hudMenuBtn").style.display = "none";
+    setFlying(true);
     $("msg").style.display = "none";
     S.runCounter++;
     S.activeRunId = S.runId;
@@ -182,7 +223,7 @@
   }
 
   function onEnd(result) {
-    $("hudMenuBtn").style.display = "block";
+    setFlying(false);
     if (S.mode === "practice") {
       const best = Math.max(readNum(PRACTICE_BEST), result.meters);
       writeNum(PRACTICE_BEST, best);
