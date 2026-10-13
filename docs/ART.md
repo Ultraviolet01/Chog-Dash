@@ -21,7 +21,7 @@
 
 ## Rocket
 
-- Built in 3D: hull, nose cone, fins, nozzle and a saddle for the rider.
+- Built in 3D: hull, nose cone, fins, nozzle and a round cockpit tub with an orange rim. The rider sits inside the tub, so its rim hides the lower body in a clean curve at chest height and the shoulders and head show above it from every angle.
 - Responds to input: a bigger flame and more exhaust while rising, banking into turns and pitching while climbing.
 - The hitbox is a sphere (radius 0.6) around the rocket and the lower rider, smaller than the visible artwork.
 

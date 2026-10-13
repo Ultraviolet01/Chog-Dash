@@ -113,9 +113,15 @@
       fin.rotation.z = -a;
       rocket.add(fin);
     }
-    const saddle = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 16), darkMat);
-    saddle.position.set(0, 0.42, 0.15);
-    rocket.add(saddle);
+    // Cockpit: a round seat tub with a rim on top of the hull. The rider sits inside it, so the
+    // tub hides the lower body in a clean curve and only the shoulders and head show above the rim.
+    const tub = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.34, 0.34, 24, 1, true),
+      new THREE.MeshStandardMaterial({ color: 0x2b3340, metalness: 0.6, roughness: 0.4, side: THREE.DoubleSide }));
+    tub.position.set(0, 0.28, 0.15);
+    const tubRim = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.055, 10, 28), trimMat);
+    tubRim.rotation.x = Math.PI / 2;
+    tubRim.position.set(0, 0.45, 0.15);
+    rocket.add(tub, tubRim);
 
     const flameMat = new THREE.MeshBasicMaterial({ color: 0xffb84d, transparent: true, opacity: 0.85 });
     const flame = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.7, 14), flameMat);
@@ -127,7 +133,7 @@
     let riderTex = {};   // rider views, see setRiderCanvas
     const rider = new THREE.Sprite(riderMat);
     rider.scale.set(1.7, 1.7, 1);
-    rider.position.set(0, 0.98, 0.15);
+    rider.position.set(0, 1.12, 0.15);
     player.add(rocket, rider);
     scene.add(player);
     setRiderCanvas(root.ChogArt.rookieCanvas(), { side: root.ChogArt.rookieThreeQuarterCanvas(), back: root.ChogArt.rookieBackCanvas() });
