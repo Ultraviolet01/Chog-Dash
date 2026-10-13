@@ -89,6 +89,8 @@
     $("lbBack").onclick = () => show("menuPanel");
     $("howBack").onclick = () => show("menuPanel");
     setupFullscreen();
+    placeHero();
+    window.addEventListener("resize", () => setTimeout(placeHero, 50));
     // Space or Enter on the home screen plays
     window.addEventListener("keydown", e => {
       if (!$("menuPanel").classList.contains("show") || e.repeat) return;
@@ -165,7 +167,15 @@
     $("walletChipText").textContent = S.account ? (S.username || short(S.account)) : "Connect wallet";
     $("walletDot").classList.toggle("on", !!S.account && S.chainId === cfg.collection.chainId);
     $("keyHint").textContent = "Press SPACE to " + (nft && !S.chog ? "pick a Chog" : "play") + "  ·  F for full screen";
+    placeHero();
   }
+  // On tall screens, place the home screen rocket in the gap between PLAY and the bottom buttons
+  function placeHero() {
+    if (!game || innerWidth >= innerHeight) { game && game.setHeroScreenY(null); return; }
+    const top = $("playBtn").getBoundingClientRect().bottom, bottom = document.querySelector(".home-bottom").getBoundingClientRect().top;
+    game.setHeroScreenY(bottom > top ? ((top + bottom) / 2) / innerHeight : null);
+  }
+
   function play() {
     if (homeMode === "practice") startPractice();
     else if (S.chog) rideChog();

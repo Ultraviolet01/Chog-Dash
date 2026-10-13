@@ -345,6 +345,19 @@
       trailGeo.attributes.color.needsUpdate = true;
     }
 
+    // ---------- Home screen hero on tall (phone) screens ----------
+    // The UI tells us where on screen there is free space for the rocket (between PLAY and the bottom
+    // buttons); this finds the height that puts the rocket and rider there.
+    let heroScreenY = null;   // 0 = top of the screen, 1 = bottom
+    const heroRay = new THREE.Vector3();
+    function tallHeroY() {
+      if (heroScreenY == null) return -2.3;
+      heroRay.set(0, 1 - heroScreenY * 2, 0.5).unproject(camera).sub(camera.position).normalize();
+      if (Math.abs(heroRay.z) < 1e-4) return -2.3;
+      const t = -camera.position.z / heroRay.z;
+      return clamp(camera.position.y + heroRay.y * t - 0.6, -6, 2);   // 0.6: centre of rocket + rider
+    }
+
     // ---------- Obstacle shapes ----------
     function makeRockGeo() {
       const g = new THREE.IcosahedronGeometry(1, 1);
@@ -801,7 +814,7 @@
         // Home screen: the rider poses at the side (or lower down on tall screens), slowly turning to show off.
         // Ready screen: it glides back to the centre.
         const showcase = state === "menu", wide = camera.aspect >= 1;
-        const tx = showcase && wide ? 2.6 : 0, ty = showcase ? (wide ? -0.3 : -2.3) : 0;
+        const tx = showcase && wide ? 2.6 : 0, ty = showcase ? (wide ? (innerHeight < 500 ? 0.3 : -0.3) : tallHeroY()) : 0;
         const k = Math.min(1, dt * 3);
         player.position.x += (tx - player.position.x) * k;
         idleY += (ty - idleY) * k;
@@ -962,9 +975,10 @@
         if ("look" in opts) applyLook(opts.look);
       },
       toReady, toMenu, start,
+      setHeroScreenY(f) { heroScreenY = f; },
       get state() { return state; },
       // Test hooks, used by the automated browser tests only
-      _debug: { look: () => look, trailLive: () => Array.from(trailLife).filter(l => l > 0).length, extras, gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, pickups, runTime: () => runTime,
+      _debug: { camera, look: () => look, trailLive: () => Array.from(trailLife).filter(l => l > 0).length, extras, gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, pickups, runTime: () => runTime,
         speed: () => (state === "playing" ? baseSpeed() * pickups.speedFactor() : 0),
         setMeters(m) { distance = m * G.unitsPerMeter; }, spawnAt(x, y, z, huge) {
         const o = makeObstacle(); o.vx = o.vy = 0; o.huge = !!huge; o.mesh.position.set(x, y, z); scene.add(o.mesh); obstacles.push(o); return o;

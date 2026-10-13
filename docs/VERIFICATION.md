@@ -41,7 +41,7 @@ Checked with `npm run verify-contract` (`data/contract-report.json`), `npm run a
 - **Server deployment:** the Vercel deployment and a full game run against the live database.
   - The live Supabase project was checked on 2026-10-13 after the schema was run: every function answers, a test record was written, read and deleted, and the leaderboard is empty.
   - The public (publishable) key is refused: it can't call the functions, can't write to the leaderboard, and reads return nothing.
-- **Mobile:** real mobile devices.
+- **Mobile:** real phones. Emulated phones are tested (see below), but not a physical device, and not the system share sheet for run cards.
 
 ## How to re-check
 
@@ -59,5 +59,6 @@ Checked with `npm run verify-contract` (`data/contract-report.json`), `npm run a
   - sign-in, run validation and leaderboard ranking
 - **Headless browser runs** (Chromium, software WebGL):
   - practice mode, zones, pickups, Laser Eyes and fullscreen
+  - phones (emulated iPhone 13 portrait and landscape, touch input): layout fits, 44 px tap targets, home rocket in the free space, touch drag steering, crash, run card, tap to restart
   - the full NFT flow against a mock wallet, mock contract and mock IPFS
 - **Real data:** token 1's real metadata and image were loaded through the real gateways and rendered as the rocket rider.

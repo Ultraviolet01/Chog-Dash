@@ -307,3 +307,10 @@ th { color: var(--muted); font-weight: normal; }
 #cardImg { width: 100%; max-width: 520px; aspect-ratio: 1; border-radius: 16px; border: 1px solid var(--line); display: block; margin: 0 auto 14px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.6); background: #070b18; }
 .card-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+/* Touch screens: comfortable tap targets (at least 44px) */
+@media (pointer: coarse) {
+  .mode { min-height: 44px; }
+  .chip-btn, .icon-btn, .panel button, #hudMenuBtn, #hudFsBtn, .card-actions button, .lb-me button { min-height: 44px; }
+  #hudFsBtn { min-width: 44px; }
+}

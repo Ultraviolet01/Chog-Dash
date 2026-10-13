@@ -35,6 +35,12 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 - Touch screens: drag to fly the rocket in any direction, on-screen LASER button.
 - There is no boost. Speed rises on its own as you travel further.
 
+## Run card
+
+- After every run, SHARE RUN makes a 1080x1080 image: the rider's portrait, username, total distance (and how it was made), the furthest zone, the leaderboard rank once validated, and the rocket look.
+- Save image downloads it. Share opens the phone's share sheet where the browser supports sharing files.
+- Practice runs get a Rookie card marked as practice.
+
 ## Performance
 
 - The game lowers its render resolution on its own if the frame rate stays under 45 fps.
