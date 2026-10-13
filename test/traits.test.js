@@ -79,3 +79,16 @@ test("distance bound grows with time and stays within top speed", () => {
     prev = m;
   }
 });
+
+test("zones run in order and loop", () => {
+  const at = m => { const z = T.zoneAt(m); return z.zone.id + "@" + z.loop; };
+  assert.strictEqual(at(0), "outer@1");
+  assert.strictEqual(at(499), "outer@1");
+  assert.strictEqual(at(500), "belt@1");
+  assert.strictEqual(at(1250), "drift@1");
+  assert.strictEqual(at(1999), "deep@1");
+  assert.strictEqual(at(2000), "outer@2");
+  assert.strictEqual(at(4600), "belt@3");
+  assert.strictEqual(T.zoneAt(620).intoZone, 120);
+  assert.deepStrictEqual(config.game.zones.map(z => z.name), ["Outer Space", "Asteroid Belt", "Galactic Drift", "Deep Cosmic Zone"]);
+});

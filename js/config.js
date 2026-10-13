@@ -63,6 +63,13 @@
       maxSpeed: 110,
       laserRange: 140,
       laserRadius: 0.9,
+      // The run is split into zones that repeat in this order. Speed keeps rising across loops.
+      zones: [
+        { id: "outer", name: "Outer Space", meters: 500 },
+        { id: "belt", name: "Asteroid Belt", meters: 500 },
+        { id: "drift", name: "Galactic Drift", meters: 500 },
+        { id: "deep", name: "Deep Cosmic Zone", meters: 500 },
+      ],
     },
 
     leaderboard: {

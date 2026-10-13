@@ -142,8 +142,22 @@
     return c;
   }
 
+  // ---------- Zone looks (blended smoothly when the zone changes) ----------
+  // fogNear/fogFar also change how far ahead obstacles can be seen.
+  const LOOKS = {
+    outer: { back: 0xc8c8d8, fog: 0x05061a, fogNear: 90, fogFar: 250, ambient: 0x6070b0, rim: 0x8a5cff, fill: 0x3b7bff,
+      clouds: [0x2f5bff, 0x7a46ff, 0x3aa0ff, 0x9a4dff], cloudGain: 1, streak: [0.75, 0.82, 1], hole: 1, belt: false },
+    belt: { back: 0xa08a70, fog: 0x0b0907, fogNear: 90, fogFar: 250, ambient: 0x8a7a6a, rim: 0xc89a6a, fill: 0x6a6aa0,
+      clouds: [0x7a6650, 0x5a5466, 0x8a7058], cloudGain: 0.7, streak: [1, 0.9, 0.75], hole: 0.8, belt: true },
+    drift: { back: 0x8cf0ff, fog: 0x03101c, fogNear: 90, fogFar: 250, ambient: 0x4a9ac0, rim: 0x3ad0ff, fill: 0x2f6bff,
+      clouds: [0x2fd0ff, 0x3a8aff, 0x40e0c0], cloudGain: 2.0, streak: [0.6, 1, 1], hole: 0.9, belt: false },
+    deep: { back: 0x5a4a88, fog: 0x08041a, fogNear: 55, fogFar: 175, ambient: 0x6a50a0, rim: 0xb04cff, fill: 0x5a3bff,
+      clouds: [0x7a2fff, 0xb04cff, 0x4a1a9a], cloudGain: 0.9, streak: [0.85, 0.65, 1], hole: 1.7, belt: false },
+  };
+
   // ---------- Scenery ----------
-  function create(scene, dotTex) {
+  // lights: { ambient, rim, fill } so each zone can recolour the lighting
+  function create(scene, dotTex, lights) {
     const rand = (a, b) => a + Math.random() * (b - a);
     const tex = c => new THREE.CanvasTexture(c);
 
@@ -194,15 +208,15 @@
 
     // Nebula clouds drifting past, kept to the edges of the view
     const cloudTex = [tex(cloudCanvas(3)), tex(cloudCanvas(5)), tex(cloudCanvas(9))];
-    const cloudColors = [0x2f5bff, 0x7a46ff, 0x3aa0ff, 0x9a4dff];
     const clouds = [];
+    let look = LOOKS.outer;
     function placeCloud(c, z) {
       const side = Math.random() < 0.5 ? -1 : 1;
       c.position.set(side * rand(70, 150), rand(-60, 70), z);
       const s = rand(160, 300);
       c.scale.set(s, s * rand(0.6, 1), 1);
-      c.material.color.setHex(cloudColors[Math.floor(Math.random() * cloudColors.length)]);
-      c.material.opacity = rand(0.18, 0.32);
+      c.material.color.setHex(look.clouds[Math.floor(Math.random() * look.clouds.length)]);
+      c.material.opacity = rand(0.18, 0.32) * look.cloudGain;
     }
     for (let i = 0; i < 3; i++) {
       const c = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex[i % 3], transparent: true,
@@ -221,7 +235,74 @@
     let meteorWait = rand(3, 6), meteorLife = 0;
     const meteorVel = new THREE.Vector2();
 
+    // Asteroid Belt: rock fields streaming past on both sides, outside the play area
+    const BELT = 150;
+    const beltGeo = new THREE.IcosahedronGeometry(1, 0);
+    const beltRocks = new THREE.InstancedMesh(beltGeo,
+      new THREE.MeshStandardMaterial({ color: 0x6e6660, roughness: 1, flatShading: true }), BELT);
+    const belt = [];
+    const PARKED = -10000;
+    for (let i = 0; i < BELT; i++) belt.push({ x: 0, y: PARKED, z: rand(-420, 10), s: 1, rx: rand(0, 6), ry: rand(0, 6), spin: rand(-1, 1) });
+    function placeBeltRock(b) {
+      const side = Math.random() < 0.5 ? -1 : 1;
+      b.x = side * rand(15, 75);
+      b.y = rand(-35, 30);
+      b.s = rand(0.8, 4.5) * (Math.abs(b.x) > 40 ? 1.6 : 1);
+    }
+    scene.add(beltRocks);
+    const tmpObj = new THREE.Object3D();
+
+    // Current blended values, moving toward the active zone's look
+    const cur = {
+      back: new THREE.Color(look.back), fog: new THREE.Color(look.fog), ambient: new THREE.Color(look.ambient),
+      rim: new THREE.Color(look.rim), fill: new THREE.Color(look.fill), fogNear: look.fogNear, fogFar: look.fogFar,
+      streak: look.streak.slice(), hole: look.hole,
+    };
+    const tmpColor = new THREE.Color();
+    function applyLook(k) {
+      ["back", "fog", "ambient", "rim", "fill"].forEach(key => cur[key].lerp(tmpColor.setHex(look[key]), k));
+      cur.fogNear += (look.fogNear - cur.fogNear) * k;
+      cur.fogFar += (look.fogFar - cur.fogFar) * k;
+      cur.hole += (look.hole - cur.hole) * k;
+      for (let j = 0; j < 3; j++) cur.streak[j] += (look.streak[j] - cur.streak[j]) * k;
+      backdrop.material.color.copy(cur.back);
+      scene.fog.color.copy(cur.fog);
+      scene.background.copy(cur.fog).multiplyScalar(0.8);
+      scene.fog.near = cur.fogNear;
+      scene.fog.far = cur.fogFar;
+      if (lights) { lights.ambient.color.copy(cur.ambient); lights.rim.color.copy(cur.rim); lights.fill.color.copy(cur.fill); }
+      hole.scale.setScalar(cur.hole);
+    }
+
+    function setZone(id, instant) {
+      look = LOOKS[id] || LOOKS.outer;
+      if (instant) {
+        applyLook(1);
+        clouds.forEach(c => placeCloud(c, c.position.z));
+        if (!look.belt) belt.forEach(b => { b.y = PARKED; });
+      }
+    }
+
     function update(dt, speed, maxSpeed) {
+      applyLook(1 - Math.exp(-dt * 0.9));   // about 3 seconds to blend into a new zone
+
+      // Belt rocks move with the world; new ones only appear while in the belt
+      for (let i = 0; i < BELT; i++) {
+        const b = belt[i];
+        b.z += speed * dt;
+        b.rx += b.spin * dt; b.ry += b.spin * 0.7 * dt;
+        if (b.z > 15) {
+          b.z -= 430;
+          if (look.belt) placeBeltRock(b); else b.y = PARKED;
+        }
+        tmpObj.position.set(b.x, b.y, b.z);
+        tmpObj.rotation.set(b.rx, b.ry, 0);
+        tmpObj.scale.setScalar(b.y === PARKED ? 0.0001 : b.s);
+        tmpObj.updateMatrix();
+        beltRocks.setMatrixAt(i, tmpObj.matrix);
+      }
+      beltRocks.instanceMatrix.needsUpdate = true;
+
       // Stars
       for (let i = 0; i < STARS; i++) {
         starPos[i * 3 + 2] += speed * dt;
@@ -241,7 +322,7 @@
         const x = sBase[i * 3], y = sBase[i * 3 + 1];
         sPos[i * 6] = x; sPos[i * 6 + 1] = y; sPos[i * 6 + 2] = z;
         sPos[i * 6 + 3] = x; sPos[i * 6 + 4] = y; sPos[i * 6 + 5] = z - len;
-        sCol[i * 6] = 0.75 * bright; sCol[i * 6 + 1] = 0.82 * bright; sCol[i * 6 + 2] = bright;
+        sCol[i * 6] = cur.streak[0] * bright; sCol[i * 6 + 1] = cur.streak[1] * bright; sCol[i * 6 + 2] = cur.streak[2] * bright;
         sCol[i * 6 + 3] = sCol[i * 6 + 4] = sCol[i * 6 + 5] = 0;
       }
       streakGeo.attributes.position.needsUpdate = true;
@@ -274,7 +355,7 @@
       }
     }
 
-    return { update, warp() { warp = 1; } };
+    return { update, setZone, warp() { warp = 1; } };
   }
 
   root.ChogScenery = { create };

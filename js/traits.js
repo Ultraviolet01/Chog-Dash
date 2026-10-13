@@ -92,5 +92,18 @@
     return Math.floor((units * 1.02) / g.unitsPerMeter);
   }
 
-  return { normalizeAttributes, resolveGameplay, computeScore, maxPossibleMeters, matchesRule };
+  // Which zone a distance falls in. Zones repeat in a loop; loop counts from 1.
+  function zoneAt(meters, cfg) {
+    const zones = (cfg || config).game.zones;
+    const total = zones.reduce((sum, z) => sum + z.meters, 0);
+    const m = Math.max(0, meters);
+    let into = m % total;
+    for (let i = 0; i < zones.length; i++) {
+      if (into < zones[i].meters) return { index: i, zone: zones[i], loop: Math.floor(m / total) + 1, intoZone: into };
+      into -= zones[i].meters;
+    }
+    return { index: 0, zone: zones[0], loop: Math.floor(m / total) + 1, intoZone: 0 };
+  }
+
+  return { normalizeAttributes, resolveGameplay, computeScore, maxPossibleMeters, matchesRule, zoneAt };
 });

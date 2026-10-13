@@ -28,6 +28,21 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 - The game lowers its render resolution on its own if the frame rate stays under 45 fps.
 - Add `?fps` to the address (for example `index.html?fps`) to show the frame rate and quality level in the corner.
 
+## Zones
+
+The run is split into four zones of 500 m each, repeating in a loop (one loop is 2,000 m). Speed keeps rising across loops.
+
+| Zone | Scenery | Obstacles |
+|---|---|---|
+| 1. Outer Space | Blue and violet nebula, black hole | Balanced mix of asteroids and debris |
+| 2. Asteroid Belt | Rock fields streaming past on both sides, dusty light | Nearly all asteroids, more huge ones |
+| 3. Galactic Drift | Cyan and teal nebula | Mostly debris, drifting hard sideways |
+| 4. Deep Cosmic Zone | Dark violet, larger black hole | Shorter view distance, so obstacles appear later |
+
+- A banner names each zone as you enter it, and the HUD shows the current zone and loop.
+- Scenery blends smoothly between zones. Every zone keeps a reachable safe path.
+- Zone lengths and order are in `js/config.js` (`game.zones`); obstacle mixes are in `js/game.js` (`ZONE_RULES`); looks are in `js/scenery.js` (`LOOKS`).
+
 ## Gameplay rules
 
 - One hit ends the run. Touching the screen edges does not.
@@ -52,7 +67,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 
 ## Checks and tests
 
-- `npm run test:browser`: headless browser tests of mouse control, the laser rules and the full NFT flow, against a mock wallet, contract and IPFS.
+- `npm run test:browser`: headless browser tests of mouse control, the zone loop, the laser rules and the full NFT flow, against a mock wallet, contract and IPFS.
 - `npm test`: unit and API tests (trait mapping, tier scoring, contract decoding, gateway fallback, sign-in, run validation, leaderboard).
 - `npm run verify-contract`: reads the live contract (chain ID, interfaces, supply, token ID range, tokenURI). Writes `data/contract-report.json`.
 - `npm run audit-metadata`: loads every token's metadata, lists every trait type and value, and reports what the gameplay mapping does with each. Writes `data/collection-audit.json` and `docs/TRAIT-AUDIT.md`.

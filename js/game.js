@@ -25,6 +25,14 @@
   const CLUSTER_START = 120, TRIPLE_START = 400;
   const SAFE_MARGIN = 1.2;
 
+  // Obstacle mix per zone (zones and their lengths are in js/config.js). Every zone keeps the safe path.
+  const ZONE_RULES = {
+    outer: { rock: 0.55, huge: 0.15, drift: 1.5, rockDrift: 0 },     // balanced mix
+    belt: { rock: 0.92, huge: 0.3, drift: 1.0, rockDrift: 0.3 },     // nearly all asteroids, more huge ones
+    drift: { rock: 0.3, huge: 0.08, drift: 4.5, rockDrift: 1.5 },    // mostly debris, drifting hard sideways
+    deep: { rock: 0.6, huge: 0.2, drift: 2.0, rockDrift: 0.5 },      // shorter view distance (see js/scenery.js)
+  };
+
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
@@ -34,7 +42,7 @@
     const hud = {
       root: $("hud"), dist: $("dist"), score: $("score"), speed: $("speed"), mode: $("modeBadge"),
       laser: $("laserCount"), laserBox: $("laserBox"), near: $("nearMiss"),
-      laserBtn: $("laserBtn"),
+      laserBtn: $("laserBtn"), zoneLabel: $("zoneLabel"), zoneBanner: $("zoneBanner"),
     };
 
     // ---------- Renderer, scene, camera ----------
@@ -62,7 +70,8 @@
     resize();
 
     // Cool key light with blue and violet fills, to match the nebula
-    scene.add(new THREE.AmbientLight(0x6070b0, 0.55));
+    const ambient = new THREE.AmbientLight(0x6070b0, 0.55);
+    scene.add(ambient);
     const sun = new THREE.DirectionalLight(0xe6ebff, 1.0);
     sun.position.set(5, 8, 6);
     scene.add(sun);
@@ -76,7 +85,7 @@
     const dotTex = new THREE.CanvasTexture(root.ChogArt.dotCanvas());
 
     // ---------- Background: nebula backdrop, black hole, stars, warp streaks (js/scenery.js) ----------
-    const scenery = root.ChogScenery.create(scene, dotTex);
+    const scenery = root.ChogScenery.create(scene, dotTex, { ambient, rim, fill });
 
     // ---------- Player: rocket with a rider on top ----------
     const player = new THREE.Group();
@@ -270,6 +279,9 @@
       distance = 0; sinceSpawn = 0; nextSpacing = START_SPACING;
       vel.x = vel.y = 0; safe.x = safe.y = 0; pointerTarget.x = pointerTarget.y = 0;
       laserCharges = setup.laserCharges; laserUsed = 0; nearMisses = 0;
+      zoneKey = null; bannerTimer = 0;
+      hud.zoneBanner.style.opacity = 0;
+      scenery.setZone("outer", true);
       player.position.set(0, 0, 0);
       player.visible = true;
       state = "ready";
@@ -361,21 +373,23 @@
     }
 
     // ---------- Obstacles ----------
-    function makeObstacle() {
+    function makeObstacle(rules) {
+      rules = rules || ZONE_RULES.outer;
       let mesh, hitR, vx = 0, vy = 0, huge = false;
-      if (Math.random() < 0.6) {
-        huge = Math.random() < 0.2;
+      if (Math.random() < rules.rock) {
+        huge = Math.random() < rules.huge;
         const s = huge ? rand(2.2, 2.8) : rand(0.9, 1.7);
         mesh = new THREE.Mesh(rockGeos[Math.floor(Math.random() * rockGeos.length)], rockMat);
         mesh.scale.setScalar(s);
         hitR = s * 0.9;
+        if (rules.rockDrift && !huge) { vx = rand(-rules.rockDrift, rules.rockDrift); vy = rand(-rules.rockDrift, rules.rockDrift); }
       } else {
         const d = debris[debrisKinds[Math.floor(Math.random() * debrisKinds.length)]];
         const s = rand(0.9, 1.4);
         mesh = new THREE.Mesh(d.geo, d.mat);
         mesh.scale.setScalar(s);
         hitR = d.r * s;
-        vx = rand(-1.5, 1.5); vy = rand(-1.5, 1.5);   // debris drifts, rocks don't
+        vx = rand(-rules.drift, rules.drift); vy = rand(-rules.drift, rules.drift);   // debris drifts
       }
       mesh.rotation.set(rand(0, 6.3), rand(0, 6.3), rand(0, 6.3));
       const spin = new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(vx ? 2 : 0.5);
@@ -396,8 +410,10 @@
       if (m > TRIPLE_START && Math.random() < Math.min(0.4, (m - TRIPLE_START) / 800)) count = 3;
 
       const arrive = -z / speed;
+      // Use the zone the group will be in when it reaches the rocket
+      const rules = ZONE_RULES[root.ChogTraits.zoneAt(m + Math.floor(-z / G.unitsPerMeter)).zone.id] || ZONE_RULES.outer;
       for (let n = 0; n < count; n++) {
-        const o = makeObstacle();
+        const o = makeObstacle(rules);
         for (let t = 0; t < 8; t++) {
           let x, y;
           if (n === 0 && Math.random() < 0.35) { x = player.position.x + rand(-1, 1); y = player.position.y + HIT_OFFSET_Y + rand(-1, 1); }
@@ -414,6 +430,23 @@
       nextSpacing = currentSpacing() * rand(0.85, 1.2) * (count > 1 ? 1.3 : 1);
     }
 
+    // ---------- Zones ----------
+    let zoneKey = null, bannerTimer = 0;
+    function zoneText(z) { return z.zone.name + (z.loop > 1 ? " · Loop " + z.loop : ""); }
+    function checkZone() {
+      const z = root.ChogTraits.zoneAt(meters());
+      const key = z.index + ":" + z.loop;
+      if (key === zoneKey) return;
+      zoneKey = key;
+      scenery.setZone(z.zone.id);
+      hud.zoneBanner.innerHTML = "";
+      const title = document.createElement("div"); title.textContent = z.zone.name.toUpperCase();
+      const sub = document.createElement("div"); sub.className = "sub";
+      sub.textContent = "Zone " + (z.index + 1) + " of " + G.zones.length + (z.loop > 1 ? " · Loop " + z.loop : "");
+      hud.zoneBanner.append(title, sub);
+      bannerTimer = 2.6;
+    }
+
     // ---------- HUD ----------
     // Only touch the page when a value actually changes, to avoid layout work every frame
     function setText(el, text) { if (el._text !== text) { el._text = text; el.textContent = text; } }
@@ -423,6 +456,7 @@
       setText(hud.dist, m + " m");
       setText(hud.speed, "x" + ((speed || G.baseSpeed) / G.baseSpeed).toFixed(1));
       setText(hud.mode, setup.modeLabel);
+      setText(hud.zoneLabel, zoneText(root.ChogTraits.zoneAt(m)));
       setDisplay(hud.score, setup.showScore);
       setText(hud.score, "Score " + root.ChogTraits.computeScore(m, setup.multiplier) +
         "  (" + m + " m x" + setup.multiplier.toFixed(2) + ")");
@@ -443,6 +477,8 @@
       const speed = state === "dead" ? 0 : (playing ? baseSpeed() : G.baseSpeed * 0.3);
 
       scenery.update(dt, speed, G.maxSpeed);
+      if (playing) checkZone();
+      if (bannerTimer > 0) { bannerTimer -= dt; hud.zoneBanner.style.opacity = clamp(bannerTimer / 0.6, 0, 1).toFixed(2); }
 
       // Debris bits from crashes and laser hits
       bits = bits.filter(b => {
@@ -611,7 +647,8 @@
       toReady, toMenu, start,
       get state() { return state; },
       // Test hooks, used by the automated browser tests only
-      _debug: { obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, spawnAt(x, y, z, huge) {
+      _debug: { obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges,
+        setMeters(m) { distance = m * G.unitsPerMeter; }, spawnAt(x, y, z, huge) {
         const o = makeObstacle(); o.vx = o.vy = 0; o.huge = !!huge; o.mesh.position.set(x, y, z); scene.add(o.mesh); obstacles.push(o); return o;
       } },
     };
