@@ -21,7 +21,7 @@ const acct = privateKeyToAccount('0x' + '11'.repeat(32));
 const ME = acct.address.toLowerCase();
 const owners = { 1: ME, 2: ME, 5: '0x' + '22'.repeat(20) };
 const metas = {
-  1: { name: 'Test Chog One', image: 'ipfs://imgcid/1.svg', attributes: [{ trait_type: 'Eyes', value: 'Laser Eyes' }, { trait_type: 'Tier', value: 'Rare' }] },
+  1: { name: 'Test Chog One', image: 'ipfs://imgcid/1.svg', attributes: [{ trait_type: 'Eyes', value: 'Purple laser' }, { trait_type: 'Tier', value: 'Rare' }] },
   2: { name: 'Test Chog Two', image: 'ipfs://imgcid/2.svg', attributes: [{ trait_type: 'Eyes', value: 'Happy' }, { trait_type: 'Tier', value: 'Legendary' }] },
 };
 const svg = c => `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="${c}"/><circle cx="100" cy="110" r="60" fill="#f5ead2"/></svg>`;

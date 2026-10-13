@@ -12,7 +12,7 @@ function setup() {
   const bob = privateKeyToAccount(generatePrivateKey());
   const owners = { "1": alice.address.toLowerCase(), "2": alice.address.toLowerCase(), "3": bob.address.toLowerCase() };
   const metadata = {
-    "1": { name: "Chog One", attributes: [{ trait_type: "Eyes", value: "Laser Eyes" }, { trait_type: "Tier", value: "Rare" }] },
+    "1": { name: "Chog One", attributes: [{ trait_type: "Eyes", value: "Purple laser" }, { trait_type: "Tier", value: "Rare" }] },
     "2": { name: "Chog Two", attributes: [{ trait_type: "Eyes", value: "Happy" }, { trait_type: "Tier", value: "Legendary" }] },
     "3": { name: "Chog Three", attributes: [{ trait_type: "Eyes", value: "Happy" }, { trait_type: "Tier", value: "Common" }] },
   };

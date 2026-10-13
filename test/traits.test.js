@@ -26,8 +26,10 @@ test("malformed metadata is reported, not thrown", () => {
 
 test("Laser Eyes is granted only by matching Eyes values", () => {
   const has = attrs => T.resolveGameplay(meta(attrs)).abilities.some(a => a.id === "laserEyes");
-  assert.ok(has([A("Eyes", "Laser Eyes")]));
-  assert.ok(has([A("eyes", "LASER")]));
+  ["Purple laser", "fire laser", "Green laser", "cyan laser"].forEach(v => assert.ok(has([A("Eyes", v)]), v));
+  assert.ok(has([A("eyes", " GREEN LASER ")]), "case and spacing are ignored");
+  assert.ok(!has([A("Eyes", "Plasma visor")]));
+  assert.ok(!has([A("Eyes", "Laser")]), "only the audited values count");
   assert.ok(!has([A("Eyes", "Happy")]));
   assert.ok(!has([A("Eyes", "Side Eye")]));
   assert.ok(!has([A("Head", "Laser Crown")]), "laser in another trait must not count");
@@ -35,9 +37,9 @@ test("Laser Eyes is granted only by matching Eyes values", () => {
 });
 
 test("an ability keeps its source trait for display and auditing", () => {
-  const a = T.resolveGameplay(meta([A("Eyes", "Laser Eyes")])).abilities[0];
+  const a = T.resolveGameplay(meta([A("Eyes", "fire laser")])).abilities[0];
   assert.strictEqual(a.fromTrait, "Eyes");
-  assert.strictEqual(a.fromValue, "Laser Eyes");
+  assert.strictEqual(a.fromValue, "fire laser");
   assert.strictEqual(a.charges, 10);
 });
 
@@ -56,7 +58,7 @@ test("tier multipliers come from the Tier attribute only", () => {
 
 test("tier never changes laser charges", () => {
   for (const tier of ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Unknown"]) {
-    const gp = T.resolveGameplay(meta([A("Eyes", "Laser Eyes"), A("Tier", tier)]));
+    const gp = T.resolveGameplay(meta([A("Eyes", "cyan laser"), A("Tier", tier)]));
     assert.strictEqual(gp.abilities[0].charges, 10, tier);
   }
 });

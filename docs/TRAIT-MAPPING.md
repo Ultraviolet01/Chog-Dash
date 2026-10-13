@@ -11,19 +11,24 @@ All gameplay effects are Chog Dash game-design decisions. They are not official 
 ## Laser Eyes
 
 - Source trait: `Eyes`.
-- Current rule (provisional): any Eyes value containing "laser".
+- Rule: Eyes is exactly one of `Purple laser` (96), `fire laser` (95), `Green laser` (68), `cyan laser` (18). That is 277 of 1,969 tokens.
+- Checked against the full collection: these are the only Eyes values with "laser" in them (58 Eyes values in total).
+- Visors and glasses (for example `Plasma visor`, `Retro Glass`) do not grant Laser Eyes.
+- The 10 one-of-one Legendaries have no Eyes trait, so they get no Laser Eyes.
 - Effect: 10 charges per run, no recharge. See README for beam rules.
-- Before launch: run `npm run audit-metadata`, review the Eyes table in `docs/TRAIT-AUDIT.md`, and replace the rule with an explicit list in `js/config.js` (`abilities.laserEyes.match.exact`) if anything is wrong.
+- To change it, edit `abilities.laserEyes.match.exact` in `js/config.js` and rerun `npm run audit-metadata` to see the new counts.
 
 ## Tier multiplier
 
-| Tier | Multiplier |
-|---|---:|
-| Common | 1.00x |
-| Uncommon | 1.05x |
-| Rare | 1.15x |
-| Epic | 1.25x |
-| Legendary | 1.40x |
+| Tier | Tokens | Multiplier |
+|---|---:|---:|
+| Common | 1,279 | 1.00x |
+| Uncommon | 590 | 1.05x |
+| Rare | 60 | 1.15x |
+| Epic | 30 | 1.25x |
+| Legendary | 10 | 1.40x |
+
+- Counts are from the full audit. Every token has a Tier, and all five values have a multiplier.
 
 - Read only from the `Tier` attribute, never from the name or the image.
 - A missing or unrecognised Tier gets 1.00x and is flagged.

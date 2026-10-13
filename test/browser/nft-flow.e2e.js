@@ -22,7 +22,7 @@ const ME = acct.address.toLowerCase(), OTHER = '0x' + '22'.repeat(20);
 const ENUM = process.argv[2] === 'enum';
 const owners = { 1: ME, 2: ME, 5: OTHER };
 const metas = {
-  1: { name: 'Test Chog One', image: 'ipfs://imgcid/1.svg', attributes: [{ trait_type: 'Eyes', value: 'Laser Eyes' }, { trait_type: 'Tier', value: 'Rare' }, { trait_type: 'Background', value: 'Teal' }] },
+  1: { name: 'Test Chog One', image: 'ipfs://imgcid/1.svg', attributes: [{ trait_type: 'Eyes', value: 'Purple laser' }, { trait_type: 'Tier', value: 'Rare' }, { trait_type: 'Background', value: 'Teal' }] },
   2: { name: 'Test Chog Two', image: 'ipfs://imgcid/2.svg', attributes: [{ trait_type: 'Eyes', value: 'Happy' }, { trait_type: 'Tier', value: 'Legendary' }] },
 };
 const svg = (bg, label) => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="${bg}"/><circle cx="200" cy="230" r="120" fill="#f5ead2" stroke="#111" stroke-width="8"/><polygon points="120,140 150,40 190,120" fill="#e83030"/><polygon points="210,120 250,40 280,140" fill="#e83030"/><rect x="120" y="200" width="160" height="26" fill="#d00"/><text x="200" y="330" font-size="28" text-anchor="middle" font-family="Arial">${label}</text></svg>`;

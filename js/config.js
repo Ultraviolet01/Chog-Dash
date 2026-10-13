@@ -44,9 +44,10 @@
       laserEyes: {
         label: "Laser Eyes",
         trait: "Eyes",
-        // PROVISIONAL: any Eyes value containing "laser". Confirm the exact values with
-        // scripts/audit-metadata.js before launch, then replace with an explicit list if needed.
-        match: { contains: ["laser"], exact: [] },
+        // Checked against all 1,969 tokens (docs/TRAIT-AUDIT.md): these are the only four Eyes
+        // values with a laser, 277 tokens in total. An explicit list so a new value never
+        // grants the ability by accident.
+        match: { contains: [], exact: ["Purple laser", "fire laser", "Green laser", "cyan laser"] },
         charges: 10,
       },
     },
