@@ -4,41 +4,113 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Chog Dash</title>
-<style>
-  :root { --bg: #05070d; --ink: #f4f1e8; --accent: #ffb84d; --accent2: #4fd1c5; }
-  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; touch-action: none;
-    font-family: Arial, Helvetica, sans-serif; color: var(--ink); user-select: none; -webkit-user-select: none; }
-  canvas { display: block; }
-  #hud { position: fixed; inset: 0; pointer-events: none; }
-  #dist { position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
-    font-size: 44px; font-weight: bold; text-shadow: 0 2px 6px #000; }
-  #speed { position: absolute; top: 16px; left: 16px; font-size: 20px; font-weight: bold; color: var(--accent); }
-  #best { position: absolute; top: 18px; right: 16px; font-size: 16px; opacity: 0.8; }
-  #boostLabel { position: absolute; left: 16px; bottom: 32px; font-size: 12px; letter-spacing: 1px; opacity: 0.8; }
-  #boostWrap { position: absolute; left: 16px; bottom: 16px; width: 160px; height: 10px;
-    border: 1px solid rgba(255,255,255,0.4); border-radius: 5px; overflow: hidden; }
-  #boostBar { height: 100%; width: 100%; background: var(--accent2); }
-  #msg { position: absolute; top: 36%; left: 50%; transform: translate(-50%, -50%); text-align: center;
-    font-size: 24px; font-weight: bold; color: var(--accent); text-shadow: 0 2px 8px #000;
-    line-height: 1.5; white-space: pre-line; max-width: 90vw; }
-  #boostBtn { position: fixed; right: 16px; bottom: 16px; width: 84px; height: 84px; border-radius: 50%;
-    border: 2px solid var(--accent2); background: rgba(79,209,197,0.15); color: var(--ink);
-    font: bold 14px Arial, sans-serif; display: none; }
-  #err { position: fixed; left: 8px; right: 8px; top: 8px; z-index: 99; display: none;
-    background: #3a0d16; color: #ffd0d8; font: 14px/1.4 Arial, sans-serif; padding: 10px 12px;
-    border: 1px solid #ff5a76; border-radius: 6px; white-space: pre-wrap; }
-</style>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<!-- In-game HUD -->
 <div id="hud">
   <div id="dist">0 m</div>
+  <div id="score"></div>
   <div id="speed">x1.0</div>
-  <div id="best">Best: 0 m</div>
+  <div id="modeBadge"></div>
+  <button id="hudMenuBtn" class="ghost">Menu</button>
+  <div id="nearMiss">NEAR MISS</div>
+  <div id="laserBox">LASER <span id="laserCount">10/10</span></div>
   <div id="boostLabel">BOOST</div>
   <div id="boostWrap"><div id="boostBar"></div></div>
   <div id="msg"></div>
 </div>
+<button id="laserBtn">LASER</button>
 <button id="boostBtn">BOOST</button>
+
+<!-- Main menu -->
+<div id="menuPanel" class="panel show">
+  <div class="wrap">
+    <h1>CHOG DASH</h1>
+    <p class="lead">Ride a rocket through space and dodge asteroids and debris for as long as you can.</p>
+    <div class="cards">
+      <div class="card">
+        <span class="tag practice">PRACTICE MODE</span>
+        <h2>Play as Rookie</h2>
+        <ul>
+          <li>Rookie is the practice pilot, not a Chog NFT.</li>
+          <li>No wallet needed.</li>
+          <li>Your best distance is saved on this device only.</li>
+          <li>Practice runs never go on the NFT leaderboard.</li>
+        </ul>
+        <button id="practiceBtn">Play practice</button>
+      </div>
+      <div class="card">
+        <span class="tag nft">CHOG NFT MODE</span>
+        <h2>Ride your Chog</h2>
+        <ul>
+          <li>Connect a wallet that owns a Chog Genesis NFT on Monad.</li>
+          <li>Ride the rocket as the Chog you pick.</li>
+          <li>Abilities and tier multiplier come from its traits.</li>
+          <li>Validated runs go on the official NFT leaderboard.</li>
+        </ul>
+        <button id="nftBtn">Connect wallet</button>
+      </div>
+    </div>
+    <div class="row"><button id="lbBtn" class="ghost">Leaderboard</button></div>
+    <div class="foot">
+      <div>Controls: hold Space, W, Up or the mouse button to rise, release to fall. Steer with A/D, the arrow keys or the mouse. Shift to boost. E to fire Laser Eyes (only for Chogs with that trait).</div>
+      <div>On touch screens: hold to rise, drag to steer, and use the on-screen BOOST and LASER buttons.</div>
+      <div id="formulaNote"></div>
+    </div>
+  </div>
+</div>
+
+<!-- NFT selection -->
+<div id="nftPanel" class="panel">
+  <div class="wrap">
+    <div class="row"><button id="nftBack" class="ghost">Back</button></div>
+    <h2>Chog NFT mode</h2>
+    <div class="card">
+      <div id="walletButtons" class="row"></div>
+      <div id="walletStatus" class="status"></div>
+      <div class="row"><button id="switchNet" style="display:none">Switch to Monad</button></div>
+    </div>
+    <div id="holdingsCard" class="card" style="display:none; margin-top:16px">
+      <h2>Your Chogs</h2>
+      <div id="holdingsStatus" class="status"></div>
+      <div id="holdings" class="grid"></div>
+      <div id="manualEntry" class="row" style="display:none">
+        <input id="tokenInput" inputmode="numeric" placeholder="Token ID">
+        <button id="tokenCheck">Check token</button>
+      </div>
+    </div>
+    <div id="chosenCard" class="card" style="display:none; margin-top:16px">
+      <div class="chosen">
+        <img id="chosenImg" alt="">
+        <div>
+          <h2 id="chosenName"></h2>
+          <div id="chosenInfo" class="status"></div>
+          <div class="row"><button id="rideBtn" disabled>Ride this Chog</button></div>
+          <div id="rideStatus" class="status"></div>
+        </div>
+      </div>
+      <div class="tablewrap" style="margin-top:12px">
+        <table><thead><tr><th>Trait (original)</th><th>Value (original)</th></tr></thead><tbody id="traitRows"></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Leaderboard -->
+<div id="lbPanel" class="panel">
+  <div class="wrap">
+    <div class="row"><button id="lbBack" class="ghost">Back</button></div>
+    <h2>Official NFT leaderboard</h2>
+    <p class="status" id="lbRule"></p>
+    <div id="lbStatus" class="status"></div>
+    <div class="tablewrap">
+      <table><thead><tr><th>#</th><th>Chog</th><th>Wallet</th><th>Distance</th><th>Multiplier</th><th>Score</th></tr></thead>
+      <tbody id="lbRows"></tbody></table>
+    </div>
+  </div>
+</div>
+
 <div id="err"></div>
 <script>
 function showError(msg) {
@@ -54,477 +126,18 @@ function loadScript(src, ok, fail) {
   s.src = src; s.onload = ok; s.onerror = fail;
   document.head.appendChild(s);
 }
-
-function bootGame() {
-try {
-// ---------- Tuning (change these to adjust the feel) ----------
-const BOUND_X = 7, BOUND_Y = 4;   // how far the Chog can move left/right and up/down
-const PLAYER_R = 0.55;            // player hitbox radius
-const MOVE_SPEED = 16;            // max sideways speed
-const MOVE_ACCEL = 70;            // how quickly steering responds
-
-// Forward speed and distance
-const UNITS_PER_METER = 2;        // world units per meter on the counter
-const BASE_SPEED = 40;            // starting forward speed (units/s)
-const SPEED_PER_METER = 0.06;     // extra speed per meter travelled
-const MAX_SPEED = 110;
-
-// Boost (hold Shift / Space, or the BOOST button on touch screens)
-const BOOST_MULT = 1.6;           // speed multiplier while boosting
-const BOOST_DRAIN = 0.4;          // meter used per second (full meter = 2.5 s)
-const BOOST_REFILL = 0.15;        // meter regained per second when not boosting
-
-// Obstacles
-const SPAWN_Z = -260, DESPAWN_Z = 12;
-const START_SPACING = 30;         // distance between obstacle groups (units)
-const MIN_SPACING = 11;
-const SPACING_SHRINK = 0.012;     // spacing lost per meter
-const CLUSTER_START = 120;        // groups of 2 start after this many meters
-const TRIPLE_START = 400;         // groups of 3 start after this many meters
-const SAFE_MARGIN = 1.2;          // clear space kept around the guaranteed path
-
-const isTouch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
-
-// ---------- Renderer, scene, camera ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-document.body.insertBefore(renderer.domElement, document.body.firstChild);
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x05070d);
-scene.fog = new THREE.Fog(0x05070d, 90, 250);
-
-const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 1200);
-let baseCamZ = 6.5;
-
-function resize() {
-  const w = window.innerWidth, h = window.innerHeight;
-  renderer.setSize(w, h);
-  camera.aspect = w / h;
-  baseCamZ = camera.aspect < 1.3 ? 6.5 + (1.3 - camera.aspect) * 8 : 6.5;  // pull back on narrow screens
-  camera.updateProjectionMatrix();
+function loadAll(list, done) {
+  if (!list.length) return done();
+  loadScript(list[0], function () { loadAll(list.slice(1), done); }, function () { showError("Could not load " + list[0]); });
 }
-window.addEventListener("resize", resize);
-resize();
-
-scene.add(new THREE.AmbientLight(0x8090b0, 0.6));
-const sun = new THREE.DirectionalLight(0xfff0dd, 1.1);
-sun.position.set(5, 8, 6);
-scene.add(sun);
-const rim = new THREE.DirectionalLight(0x4fd1c5, 0.5);
-rim.position.set(-4, -2, -10);
-scene.add(rim);
-
-// ---------- Background: streaming stars and a far planet ----------
-const STAR_COUNT = 1500;
-const starPos = new Float32Array(STAR_COUNT * 3);
-for (let i = 0; i < STAR_COUNT; i++) {
-  starPos[i * 3] = (Math.random() * 2 - 1) * 120;
-  starPos[i * 3 + 1] = (Math.random() * 2 - 1) * 80;
-  starPos[i * 3 + 2] = -400 + Math.random() * 420;
-}
-const starGeo = new THREE.BufferGeometry();
-starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
-// Round, soft star dots instead of square points
-const dotCanvas = document.createElement("canvas");
-dotCanvas.width = dotCanvas.height = 32;
-const dctx = dotCanvas.getContext("2d");
-const grad = dctx.createRadialGradient(16, 16, 0, 16, 16, 16);
-grad.addColorStop(0, "rgba(255,255,255,1)");
-grad.addColorStop(0.4, "rgba(255,255,255,0.8)");
-grad.addColorStop(1, "rgba(255,255,255,0)");
-dctx.fillStyle = grad;
-dctx.fillRect(0, 0, 32, 32);
-const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({
-  color: 0xffffff, size: 0.5, sizeAttenuation: true, fog: false, transparent: true, opacity: 0.9,
-  map: new THREE.CanvasTexture(dotCanvas), depthWrite: false
-}));
-scene.add(stars);
-
-const planet = new THREE.Mesh(new THREE.SphereGeometry(60, 48, 32),
-  new THREE.MeshStandardMaterial({ color: 0xc0703a, roughness: 0.9, fog: false }));
-planet.position.set(-300, 170, -700);
-scene.add(planet);
-const ring = new THREE.Mesh(new THREE.RingGeometry(80, 105, 64),
-  new THREE.MeshBasicMaterial({ color: 0xe0b27a, side: THREE.DoubleSide, transparent: true, opacity: 0.35, fog: false }));
-ring.position.copy(planet.position);
-ring.rotation.set(1.2, 0.3, 0.2);
-scene.add(ring);
-
-// ---------- Player ----------
-// STEP 3: replace this placeholder with the owned Chog (image or model built from its traits)
-const player = new THREE.Group();
-const head = new THREE.Mesh(new THREE.SphereGeometry(PLAYER_R, 32, 24),
-  new THREE.MeshStandardMaterial({ color: 0xf5ead2, roughness: 0.6 }));
-const outline = new THREE.Mesh(new THREE.SphereGeometry(PLAYER_R * 1.08, 32, 24),
-  new THREE.MeshBasicMaterial({ color: 0x111111, side: THREE.BackSide }));
-player.add(head, outline);
-
-const hornMat = new THREE.MeshStandardMaterial({ color: 0xe83030, roughness: 0.5 });
-[-1, 1].forEach(side => {
-  const horn = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.55, 12), hornMat);
-  horn.position.set(0.25 * side, 0.55, 0);
-  horn.rotation.z = -0.4 * side;
-  player.add(horn);
-});
-
-const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
-const cheekMat = new THREE.MeshBasicMaterial({ color: 0xe0508c });
-[-1, 1].forEach(side => {
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), eyeMat);
-  eye.position.set(0.2 * side, 0.08, -0.52);
-  const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 8), cheekMat);
-  cheek.position.set(0.33 * side, -0.12, -0.44);
-  player.add(eye, cheek);
-});
-
-// Jetpack on the back (the side the camera sees)
-const packMat = new THREE.MeshStandardMaterial({ color: 0x5d6b7a, metalness: 0.6, roughness: 0.4 });
-const flameMat = new THREE.MeshBasicMaterial({ color: 0xffb84d, transparent: true, opacity: 0.9 });
-const flames = [];
-[-1, 1].forEach(side => {
-  const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.45, 12), packMat);
-  tank.rotation.x = Math.PI / 2;
-  tank.position.set(0.18 * side, -0.15, 0.55);
-  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.35, 10), flameMat);
-  flame.rotation.x = Math.PI / 2;             // tip points back toward the camera
-  flame.position.set(0.18 * side, -0.15, 1.0);
-  flames.push(flame);
-  player.add(tank, flame);
-});
-scene.add(player);
-
-// ---------- Obstacle shapes ----------
-function makeRockGeo() {
-  const g = new THREE.IcosahedronGeometry(1, 1);
-  const pos = g.attributes.position, bump = {};
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-    const key = x.toFixed(3) + "," + y.toFixed(3) + "," + z.toFixed(3);   // shared corners move together
-    if (!(key in bump)) bump[key] = 0.8 + Math.random() * 0.4;
-    const s = bump[key];
-    pos.setXYZ(i, x * s, y * s * 0.85, z * s);
-  }
-  g.computeVertexNormals();
-  return g;
-}
-const rockGeos = [makeRockGeo(), makeRockGeo(), makeRockGeo(), makeRockGeo()];
-const rockMat = new THREE.MeshStandardMaterial({ color: 0x8a7f78, roughness: 0.95, flatShading: true });
-const debris = {
-  plate: { geo: new THREE.BoxGeometry(1.6, 1.6, 0.2), mat: new THREE.MeshStandardMaterial({ color: 0x7d8a99, metalness: 0.6, roughness: 0.4 }), r: 0.9 },
-  tube:  { geo: new THREE.CylinderGeometry(0.35, 0.35, 2.4, 12), mat: new THREE.MeshStandardMaterial({ color: 0xb07040, metalness: 0.4, roughness: 0.5 }), r: 1.0 },
-  shard: { geo: new THREE.TetrahedronGeometry(0.9), mat: new THREE.MeshStandardMaterial({ color: 0x9fb3c8, metalness: 0.3, roughness: 0.5, flatShading: true }), r: 0.7 },
-};
-const debrisKinds = Object.keys(debris);
-const bitGeo = new THREE.TetrahedronGeometry(0.12);
-
-// ---------- HUD and input ----------
-const $ = id => document.getElementById(id);
-const hud = { dist: $("dist"), speed: $("speed"), best: $("best"), boost: $("boostBar"), msg: $("msg") };
-const keys = {};
-let steerMode = "keys";
-const pointerTarget = { x: 0, y: 0 };
-let boostButtonDown = false;
-let lastTouch = null;
-
-const READY_TEXT = isTouch
-  ? "CHOG DASH\n\nDrag to steer\nHold BOOST to go faster\n\nTap to start"
-  : "CHOG DASH\n\nSteer: mouse, arrow keys or WASD\nBoost: hold Shift or Space\n\nClick or press Space to start";
-
-if (isTouch) $("boostBtn").style.display = "block";
-
-// ---------- Game state ----------
-let state = "ready", deadAt = 0;
-let distance = 0, sinceSpawn = 0, nextSpacing = START_SPACING;
-let obstacles = [], bits = [];
-const vel = { x: 0, y: 0 };
-const safe = { x: 0, y: 0 };
-let boostMeter = 1, boostAmt = 0, boostLocked = false, shake = 0;
-let best = 0;
-try { best = Number(localStorage.getItem("chogDash3dBestM")) || 0; } catch (e) {}
-
-function meters() { return Math.floor(distance / UNITS_PER_METER); }
-function baseSpeed() { return Math.min(BASE_SPEED + meters() * SPEED_PER_METER, MAX_SPEED); }
-function currentSpeed() { return baseSpeed() * (1 + (BOOST_MULT - 1) * boostAmt); }
-function currentSpacing() { return Math.max(START_SPACING - meters() * SPACING_SHRINK, MIN_SPACING); }
-const rand = (a, b) => a + Math.random() * (b - a);
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
-function resetRun() {
-  obstacles.forEach(o => scene.remove(o.mesh));
-  bits.forEach(b => scene.remove(b.mesh));
-  obstacles = []; bits = [];
-  distance = 0; sinceSpawn = 0; nextSpacing = START_SPACING;
-  vel.x = vel.y = 0; safe.x = safe.y = 0;
-  pointerTarget.x = pointerTarget.y = 0;
-  boostMeter = 1; boostAmt = 0; boostLocked = false;
-  player.position.set(0, 0, 0);
-  player.rotation.set(0, 0, 0);
-  player.visible = true;
-  hud.best.textContent = "Best: " + best + " m";
-  hud.msg.textContent = READY_TEXT;
-  hud.msg.style.display = "block";
-  state = "ready";
-}
-
-function startRun() {
-  state = "playing";
-  hud.msg.style.display = "none";
-  // Fill the space ahead so the first obstacles aren't a long way off
-  for (let z = -90; z > SPAWN_Z; z -= START_SPACING) spawnGroup(z);
-}
-
-function onPress() {
-  if (state === "ready") startRun();
-  else if (state === "dead" && performance.now() > deadAt + 600) resetRun();
-}
-
-function die() {
-  state = "dead";
-  deadAt = performance.now();
-  shake = 0.35;
-  player.visible = false;
-  for (let i = 0; i < 24; i++) {
-    const mesh = new THREE.Mesh(bitGeo, i % 3 === 0 ? hornMat : head.material);
-    mesh.position.copy(player.position);
-    scene.add(mesh);
-    bits.push({ mesh, v: new THREE.Vector3(rand(-6, 6), rand(-6, 6), rand(-6, 6)), life: 0.9 });
-  }
-  const m = meters();
-  if (m > best) {
-    best = m;
-    try { localStorage.setItem("chogDash3dBestM", String(best)); } catch (e) {}
-  }
-  hud.best.textContent = "Best: " + best + " m";
-  hud.msg.textContent = "CRASHED\n\nDistance: " + m + " m\nBest: " + best + " m\n\n" +
-    (isTouch ? "Tap to retry" : "Click or press Space to retry");
-  hud.msg.style.display = "block";
-}
-
-window.addEventListener("keydown", e => {
-  keys[e.code] = true;
-  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD"].includes(e.code)) steerMode = "keys";
-  if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); if (!e.repeat) onPress(); }
-  if (e.code.startsWith("Arrow")) e.preventDefault();
-});
-window.addEventListener("keyup", e => { keys[e.code] = false; });
-
-renderer.domElement.addEventListener("pointerdown", e => {
-  if (e.pointerType !== "mouse") lastTouch = { x: e.clientX, y: e.clientY };
-  onPress();
-});
-window.addEventListener("pointermove", e => {
-  if (e.pointerType === "mouse") {
-    steerMode = "pointer";
-    pointerTarget.x = (e.clientX / window.innerWidth * 2 - 1) * BOUND_X;
-    pointerTarget.y = -(e.clientY / window.innerHeight * 2 - 1) * BOUND_Y;
-  } else if (lastTouch) {
-    // Touch steers by dragging, so the finger doesn't cover the Chog
-    steerMode = "pointer";
-    pointerTarget.x = clamp(pointerTarget.x + (e.clientX - lastTouch.x) / window.innerWidth * BOUND_X * 3, -BOUND_X, BOUND_X);
-    pointerTarget.y = clamp(pointerTarget.y - (e.clientY - lastTouch.y) / window.innerHeight * BOUND_Y * 3, -BOUND_Y, BOUND_Y);
-    lastTouch = { x: e.clientX, y: e.clientY };
-  }
-});
-window.addEventListener("pointerup", e => { if (e.pointerType !== "mouse") lastTouch = null; });
-const boostBtn = $("boostBtn");
-boostBtn.addEventListener("pointerdown", e => { e.stopPropagation(); boostButtonDown = true; if (state !== "playing") onPress(); });
-boostBtn.addEventListener("pointerup", () => { boostButtonDown = false; });
-boostBtn.addEventListener("pointerleave", () => { boostButtonDown = false; });
-
-// ---------- Obstacles ----------
-function makeObstacle() {
-  let mesh, hitR, vx = 0, vy = 0;
-  if (Math.random() < 0.6) {
-    const huge = Math.random() < 0.2;
-    const s = huge ? rand(2.2, 2.8) : rand(0.9, 1.7);
-    mesh = new THREE.Mesh(rockGeos[Math.floor(Math.random() * rockGeos.length)], rockMat);
-    mesh.scale.setScalar(s);
-    hitR = s * 0.9;
-  } else {
-    const d = debris[debrisKinds[Math.floor(Math.random() * debrisKinds.length)]];
-    const s = rand(0.9, 1.4);
-    mesh = new THREE.Mesh(d.geo, d.mat);
-    mesh.scale.setScalar(s);
-    hitR = d.r * s;
-    vx = rand(-1.5, 1.5); vy = rand(-1.5, 1.5);   // debris drifts, rocks don't
-  }
-  mesh.rotation.set(rand(0, 6.3), rand(0, 6.3), rand(0, 6.3));
-  const spin = new THREE.Vector3(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(vx ? 2 : 0.5);
-  return { mesh, hitR, vx, vy, spin };
-}
-
-function spawnGroup(z) {
-  const speed = baseSpeed();
-  const spacing = nextSpacing;
-  // Move the guaranteed-safe point no further than the Chog can steer before the group arrives
-  const reach = (spacing / speed) * MOVE_SPEED * 0.8 + 1;
-  safe.x = clamp(safe.x + rand(-reach, reach), -BOUND_X + 0.8, BOUND_X - 0.8);
-  safe.y = clamp(safe.y + rand(-reach, reach), -BOUND_Y + 0.8, BOUND_Y - 0.8);
-
-  const m = meters();
-  let count = 1;
-  if (m > CLUSTER_START && Math.random() < Math.min(0.6, (m - CLUSTER_START) / 500)) count = 2;
-  if (m > TRIPLE_START && Math.random() < Math.min(0.4, (m - TRIPLE_START) / 800)) count = 3;
-
-  const arrive = -z / speed;   // seconds until the group reaches the Chog
-  for (let n = 0; n < count; n++) {
-    const o = makeObstacle();
-    let placed = false;
-    for (let t = 0; t < 8 && !placed; t++) {
-      // First obstacle often aims at the Chog to force a move
-      let x, y;
-      if (n === 0 && Math.random() < 0.35) { x = player.position.x + rand(-1, 1); y = player.position.y + rand(-1, 1); }
-      else { x = rand(-BOUND_X - 1, BOUND_X + 1); y = rand(-BOUND_Y - 1, BOUND_Y + 1); }
-      const dx = x - safe.x, dy = y - safe.y, need = o.hitR + PLAYER_R + SAFE_MARGIN;
-      if (dx * dx + dy * dy < need * need) continue;
-      // (x, y) is where it will be on arrival; start it back along its drift
-      o.mesh.position.set(x - o.vx * arrive, y - o.vy * arrive, z + rand(-3, 3));
-      scene.add(o.mesh);
-      obstacles.push(o);
-      placed = true;
-    }
-  }
-  nextSpacing = currentSpacing() * rand(0.85, 1.2) * (count > 1 ? 1.3 : 1);
-}
-
-// ---------- Main loop ----------
-const clock = new THREE.Clock();
-const lookAt = new THREE.Vector3();
-
-function update(dt) {
-  const now = performance.now();
-  const playing = state === "playing";
-
-  // Boost meter
-  const wantBoost = playing && (keys.ShiftLeft || keys.ShiftRight || keys.Space || boostButtonDown);
-  if (boostMeter <= 0) boostLocked = true;
-  if (boostLocked && boostMeter > 0.25) boostLocked = false;
-  const boosting = wantBoost && !boostLocked;
-  boostMeter = clamp(boostMeter + (boosting ? -BOOST_DRAIN : BOOST_REFILL) * dt, 0, 1);
-  boostAmt += ((boosting ? 1 : 0) - boostAmt) * Math.min(1, dt * 5);
-
-  const speed = state === "dead" ? 0 : (playing ? currentSpeed() : BASE_SPEED * 0.3);
-
-  // Stars stream past
-  const sp = starGeo.attributes.position.array;
-  for (let i = 0; i < STAR_COUNT; i++) {
-    sp[i * 3 + 2] += speed * dt;
-    if (sp[i * 3 + 2] > 20) {
-      sp[i * 3 + 2] -= 420;
-      sp[i * 3] = (Math.random() * 2 - 1) * 120;
-      sp[i * 3 + 1] = (Math.random() * 2 - 1) * 80;
-    }
-  }
-  starGeo.attributes.position.needsUpdate = true;
-  planet.rotation.y += dt * 0.02;
-
-  // Explosion bits
-  bits = bits.filter(b => {
-    b.life -= dt;
-    b.mesh.position.addScaledVector(b.v, dt);
-    b.mesh.rotation.x += dt * 5;
-    b.mesh.scale.setScalar(Math.max(b.life, 0.01));
-    if (b.life <= 0) { scene.remove(b.mesh); return false; }
-    return true;
+function boot() {
+  loadAll(["js/config.js", "js/traits.js", "js/chain.js", "js/metadata.js", "js/art.js", "js/game.js", "js/ui.js"], function () {
+    try { ChogUI.start(); } catch (e) { showError("Game failed to start: " + e.message); }
   });
-
-  // Jetpack flames flicker, bigger when boosting
-  const flameLen = (playing ? 1 + boostAmt * 0.8 : 0.7) * rand(0.8, 1.15);
-  flames.forEach(f => { f.scale.set(1, flameLen, 1); f.position.z = 0.78 + 0.175 * flameLen; });
-  flameMat.color.setHex(boostAmt > 0.5 ? 0x4fd1c5 : 0xffb84d);
-
-  if (state === "ready") {
-    player.position.y = Math.sin(now / 400) * 0.25;
-    player.rotation.z = Math.sin(now / 700) * 0.1;
-  }
-
-  if (playing) {
-    // Steering
-    let dx, dy;
-    if (steerMode === "keys") {
-      const ix = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
-      const iy = (keys.ArrowUp || keys.KeyW ? 1 : 0) - (keys.ArrowDown || keys.KeyS ? 1 : 0);
-      dx = ix * MOVE_SPEED; dy = iy * MOVE_SPEED;
-    } else {
-      dx = clamp((pointerTarget.x - player.position.x) * 6, -MOVE_SPEED, MOVE_SPEED);
-      dy = clamp((pointerTarget.y - player.position.y) * 6, -MOVE_SPEED, MOVE_SPEED);
-    }
-    const step = MOVE_ACCEL * dt;
-    vel.x += clamp(dx - vel.x, -step, step);
-    vel.y += clamp(dy - vel.y, -step, step);
-    player.position.x += vel.x * dt;
-    player.position.y += vel.y * dt;
-    if (Math.abs(player.position.x) > BOUND_X) { player.position.x = Math.sign(player.position.x) * BOUND_X; vel.x = 0; }
-    if (Math.abs(player.position.y) > BOUND_Y) { player.position.y = Math.sign(player.position.y) * BOUND_Y; vel.y = 0; }
-    player.rotation.z = -vel.x * 0.04;
-    player.rotation.x = vel.y * 0.03;
-
-    // Distance and HUD
-    distance += speed * dt;
-    hud.dist.textContent = meters() + " m";
-    hud.speed.textContent = "x" + (speed / BASE_SPEED).toFixed(1);
-
-    // Spawn obstacle groups by distance covered
-    sinceSpawn += speed * dt;
-    if (sinceSpawn >= nextSpacing) { sinceSpawn = 0; spawnGroup(SPAWN_Z); }
-  }
-  hud.boost.style.width = (boostMeter * 100) + "%";
-  hud.boost.style.opacity = boostLocked ? 0.4 : 1;
-
-  // Move obstacles, collide, clean up
-  if (state !== "dead") {
-    const p = player.position;
-    for (const o of obstacles) {
-      o.mesh.position.z += speed * dt;
-      o.mesh.position.x += o.vx * dt;
-      o.mesh.position.y += o.vy * dt;
-      o.mesh.rotation.x += o.spin.x * dt;
-      o.mesh.rotation.y += o.spin.y * dt;
-      o.mesh.rotation.z += o.spin.z * dt;
-      if (!playing) continue;
-      const ox = p.x - o.mesh.position.x, oy = p.y - o.mesh.position.y, oz = p.z - o.mesh.position.z;
-      const r = PLAYER_R + o.hitR;
-      if (ox * ox + oy * oy + oz * oz < r * r) { die(); break; }
-    }
-    obstacles = obstacles.filter(o => {
-      if (o.mesh.position.z > DESPAWN_Z) { scene.remove(o.mesh); return false; }
-      return true;
-    });
-  }
-
-  // Camera follows from behind; wider view at speed
-  const camX = player.position.x * 0.6, camY = player.position.y * 0.6 + 1.6;
-  camera.position.x += (camX - camera.position.x) * Math.min(1, dt * 6);
-  camera.position.y += (camY - camera.position.y) * Math.min(1, dt * 6);
-  camera.position.z = baseCamZ;
-  if (shake > 0) {
-    shake -= dt;
-    camera.position.x += rand(-0.3, 0.3);
-    camera.position.y += rand(-0.3, 0.3);
-  }
-  lookAt.set(player.position.x * 0.8, player.position.y * 0.8, -10);
-  camera.lookAt(lookAt);
-  const speedRatio = playing ? (baseSpeed() - BASE_SPEED) / (MAX_SPEED - BASE_SPEED) : 0;
-  const fov = 70 + speedRatio * 12 + boostAmt * 8;
-  if (Math.abs(camera.fov - fov) > 0.01) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix(); }
 }
-
-function frame() {
-  requestAnimationFrame(frame);
-  update(Math.min(clock.getDelta(), 0.05));
-  renderer.render(scene, camera);
-}
-
-camera.position.set(0, 1.6, baseCamZ);
-resetRun();
-frame();
-} catch (e) { showError("Game failed to start: " + e.message); }
-}
-
 // Load three.js from cdnjs, fall back to jsDelivr, otherwise tell the user why nothing shows.
-loadScript("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", bootGame, function () {
-  loadScript("https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js", bootGame, function () {
+loadScript("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js", boot, function () {
+  loadScript("https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js", boot, function () {
     showError("Could not load three.js from the internet. Check your connection or any ad/content blocker, then refresh.");
   });
 });

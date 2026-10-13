@@ -1,0 +1,23 @@
+{
+  "name": "chog-dash",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Chog Dash: a rocket-riding space dodge game for Chog Genesis NFT holders, with a practice mode for everyone.",
+  "scripts": {
+    "dev": "node server/dev.js",
+    "test": "node --test test/*.test.js",
+    "verify-contract": "node scripts/verify-contract.js",
+    "audit-metadata": "node scripts/audit-metadata.js",
+    "test:browser": "node test/browser/laser.e2e.js && node test/browser/nft-flow.e2e.js && node test/browser/nft-flow.e2e.js enum"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "viem": "2.21.54"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.0",
+    "three": "^0.128.0"
+  }
+}
