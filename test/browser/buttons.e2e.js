@@ -85,6 +85,14 @@ function ok(name, cond, detail) {
   ok('modeNft: hint explains NFT mode', /Ride a Chog you own/.test(await text('#modeHint')));
   await p.click('#modePractice');
   ok('modePractice: switch highlights PRACTICE', await p.evaluate(() => document.getElementById('modePractice').classList.contains('on')));
+  // Switching modes must not move or resize the big button (no bump)
+  const playBox = () => p.evaluate(() => { const r = document.getElementById('playBtn').getBoundingClientRect(); return [Math.round(r.top), Math.round(r.height), Math.round(r.width)].join(','); });
+  const boxPractice = await playBox();
+  await p.click('#modeNft'); await p.waitForTimeout(500);
+  const boxNft = await playBox();
+  ok('PLAY and PICK CHOG keep the same size and position', boxPractice === boxNft, boxPractice + ' vs ' + boxNft);
+  ok('mode pill slid under CHOG NFT', await p.evaluate(() => { const pill = document.getElementById('modePill').getBoundingClientRect(), b = document.getElementById('modeNft').getBoundingClientRect(); return Math.abs(pill.left - b.left) < 2 && Math.abs(pill.width - b.width) < 2; }));
+  await p.click('#modePractice'); await p.waitForTimeout(500);
   ok('modePractice: PLAY label back', (await text('#playBtn')) === 'PLAY');
   ok('modePractice: hint explains practice', /Rookie/.test(await text('#modeHint')));
 

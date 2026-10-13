@@ -90,7 +90,8 @@
     $("howBack").onclick = () => show("menuPanel");
     setupFullscreen();
     placeHero();
-    window.addEventListener("resize", () => setTimeout(placeHero, 50));
+    window.addEventListener("resize", () => setTimeout(() => { placeHero(); movePill(true); }, 50));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => movePill(true));
     // Space or Enter on the home screen plays
     window.addEventListener("keydown", e => {
       if (!$("menuPanel").classList.contains("show") || e.repeat) return;
@@ -160,26 +161,46 @@
   }
 
   // ---------- Home screen ----------
-  let homeMode = "practice";
+  let homeMode;   // "practice" or "nft"; set from the saved choice at start
   function setHomeMode(m) {
+    const changed = homeMode !== m && homeMode !== undefined;
     homeMode = m;
     try { localStorage.setItem("chogDashMode", m); } catch (e) {}
     $("modePractice").classList.toggle("on", m === "practice");
     $("modeNft").classList.toggle("on", m === "nft");
-    refreshHome();
+    movePill(!changed);
+    refreshHome(changed);
   }
-  function refreshHome() {
+  // Slides the pill behind the chosen mode button
+  function movePill(instant) {
+    const sw = document.querySelector(".mode-switch"), on = $(homeMode === "nft" ? "modeNft" : "modePractice"), pill = $("modePill");
+    if (!sw || !on.offsetWidth) return;
+    sw.classList.toggle("no-anim", !!instant);
+    pill.style.width = on.offsetWidth + "px";
+    pill.style.transform = "translateX(" + on.offsetLeft + "px)";
+    if (instant) requestAnimationFrame(() => sw.classList.remove("no-anim"));
+  }
+  // A quick fade-and-rise for text that changes when switching modes
+  function swapIn(el) {
+    if (el.animate && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches))
+      el.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 260, easing: "ease-out" });
+  }
+  function refreshHome(animate) {
     const nft = homeMode === "nft";
-    $("modeHint").textContent = nft
+    const hint = nft
       ? (S.chog ? "Ride " + S.chog.name + ". Abilities from its traits. Ranked." : "Ride a Chog you own. Abilities from its traits. Ranked.")
       : "Fly as Rookie, the practice pilot. No wallet. Not ranked.";
-    $("playBtn").textContent = nft && !S.chog ? "PICK CHOG" : "PLAY";
-    $("playBtn").style.fontSize = nft && !S.chog ? "30px" : "";
+    const label = nft && !S.chog ? "PICK CHOG" : "PLAY";
+    const lab = $("playBtn").querySelector(".play-label");
+    if ($("modeHint").textContent !== hint) { $("modeHint").textContent = hint; if (animate) swapIn($("modeHint")); }
+    if (lab.textContent !== label) { lab.textContent = label; if (animate) swapIn(lab); }
+    $("playBtn").classList.toggle("pick", label !== "PLAY");
     $("bestLabel").textContent = nft && S.chog ? "BEST TOTAL" : "BEST";
     $("bestValue").textContent = (nft && S.chog ? readNum("chogDashNftBest:" + S.chog.tokenId) : readNum(PRACTICE_BEST)).toLocaleString() + " m";
     $("walletChipText").textContent = S.account ? (S.username || short(S.account)) : "Connect wallet";
     $("walletDot").classList.toggle("on", !!S.account && S.chainId === cfg.collection.chainId);
     $("keyHint").textContent = "Press SPACE to " + (nft && !S.chog ? "pick a Chog" : "play") + "  ·  F for full screen";
+    if (!animate) movePill(true);   // e.g. the home screen was hidden while the pill moved
     placeHero();
   }
   // On tall screens, place the home screen rocket in the gap between PLAY and the bottom buttons

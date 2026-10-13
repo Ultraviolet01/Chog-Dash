@@ -358,3 +358,24 @@ th { color: var(--muted); font-weight: normal; }
 /* Keep the key hint hidden where it was before (touch screens, short landscape screens) */
 @media (pointer: coarse) { .key-hint { display: none; } }
 @media (max-height: 500px) and (min-aspect-ratio: 1/1) { .key-hint { display: none; } }
+
+/* ---------- Practice / Chog NFT switch: animated ---------- */
+/* A pill slides behind the chosen mode (like a segmented control) */
+.mode-switch { position: relative; }
+.mode-pill { position: absolute; top: 4px; bottom: 4px; left: 0; width: 0; border-radius: 999px; background: var(--ink);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35); z-index: 0; pointer-events: none;
+  transition: transform 0.38s cubic-bezier(.3,1.25,.5,1), width 0.38s cubic-bezier(.3,1.25,.5,1); }
+.mode-switch .mode { position: relative; z-index: 1; transition: color 0.25s ease; }
+.mode-switch .mode.on { background: transparent; color: #0b0f1c; }
+.mode-switch.no-anim .mode-pill { transition: none; }
+/* The hint keeps the same height whatever its text, so switching never moves PLAY */
+.mode-hint-slot { display: flex; align-items: center; min-height: 52px; margin: 6px 0 10px; }
+.mode-hint-slot .mode-hint { margin: 0; }
+@media (max-aspect-ratio: 1/1) { .mode-hint-slot { justify-content: center; } }
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) { .mode-hint-slot { min-height: 30px; margin: 2px 0 6px; } }
+/* PLAY and PICK CHOG: same button size in both modes; only the label changes */
+.play { height: 78px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.play-label { display: inline-block; white-space: nowrap; transition: font-size 0.2s ease; }
+.play.pick .play-label { font-size: 0.78em; }
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) { .play { height: 48px; padding: 0; } }
+@media (prefers-reduced-motion: reduce) { .mode-pill, .play-label { transition: none; } }
