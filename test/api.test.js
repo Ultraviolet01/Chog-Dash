@@ -226,29 +226,30 @@ test("quests: holders only, progress from validated runs, badges and streaks", a
   const tb = await signIn(bob, "Bob");
   assert.strictEqual(await status(h.questsGet({ token: tb })), 403);
 
-  // Finish a run whose stats complete every daily quest of the day
-  const big = { meters: 7000, durationMs: 0, stardust: 400, powerups: 9, horns: 2, nearMisses: 20, livesUsed: 0 };
+  // Runs big enough for any daily: 5-minute runs (5 runs finish even "Finish 5 runs today" and 15 minutes flown)
+  const big = { meters: 10000, durationMs: 0, stardust: 400, powerups: 9, horns: 4, nearMisses: 30, livesUsed: 0 };
   const run = async (body, secs) => {
     const s = await h.runStart({ body: { tokenId: "1" }, token: ta });
     advance(secs * 1000 + 1000);
     return h.runFinish({ body: Object.assign({ runId: s.runId }, body, { durationMs: secs * 1000 }), token: ta });
   };
-  // 140 s is not 5 minutes, so the day doesn't count yet; a second run takes the day past 5 minutes
-  const r0 = await run(big, 140);
-  assert.strictEqual(r0.quests.streak, 0, "dailies done but only 2:20 flown");
-  assert.strictEqual(r0.quests.streakDay, null);
-  const r1 = await run({ meters: 10, durationMs: 0 }, 170);
-  assert.strictEqual(r1.quests.streakDay, 1, "140 + 170 = 310 s flown: the day counts");
+  // A short first run can't make the day count (under 5 minutes); more runs finish the dailies and the minutes
+  const r0 = await run(Object.assign({}, big, { meters: 7000 }), 140);
+  assert.strictEqual(r0.quests.streakDay, null, "only 2:20 flown");
+  const earned = r0.quests.badges.slice(), completed = r0.quests.completed.slice();
+  let r1;
+  for (let i = 0; i < 5 && !(r1 && r1.quests.streakDay); i++) { r1 = await run(big, 300); earned.push(...r1.quests.badges); completed.push(...r1.quests.completed); }
   assert.strictEqual(r1.status, "validated");
-  const dailyIds = Quests.dailyFor(Date.UTC(2026, 9, 14, 12)).map(q => q.id);   // all reachable in one run
-  assert.deepStrictEqual(r0.quests.completed.filter(id => dailyIds.includes(id)).sort(), dailyIds.slice().sort());
+  assert.strictEqual(r1.quests.streakDay, 1, "all 3 dailies and 5+ minutes: the day counts");
+  const dailyIds = Quests.dailyFor(Date.UTC(2026, 9, 14, 12)).map(q => q.id);
+  assert.deepStrictEqual(completed.filter(id => dailyIds.includes(id)).sort(), dailyIds.slice().sort());
   assert.strictEqual(r1.quests.streak, 1);
   const q1 = await h.questsGet({ token: ta });
   assert.ok(q1.daily.every(q => q.done && q.progress === q.target));
-  assert.strictEqual(q1.badges.length, r0.quests.badges.length);
+  assert.strictEqual(q1.badges.length, earned.length);
   assert.ok(q1.badges.every(b => b.count === 1 && b.tier === 0 && b.next.at === 5 && b.color && b.glyph), "first completion: Bronze");
   assert.deepStrictEqual(q1.last7.map(d => d.done), [0, 0, 0, 0, 0, 0, 3]);
-  assert.deepStrictEqual([q1.last7[6].min, q1.last7[6].counted, q1.todayCounted], [5, true, true]);
+  assert.ok(q1.last7[6].min >= 5 && q1.last7[6].counted && q1.todayCounted);
   assert.deepStrictEqual([q1.bankLives, q1.nextLives], [0, { at: 7, lives: 1 }]);
   assert.strictEqual(q1.players, 1);
   assert.strictEqual(q1.rarity[dailyIds[0]], 100, "the only player has it");
@@ -258,8 +259,8 @@ test("quests: holders only, progress from validated runs, badges and streaks", a
   for (const day of [15, 16]) {
     setTime(Date.UTC(2026, 9, day, 12));
     ta = await signIn(alice);   // sign-ins last 12 hours
-    const done = [], badges = [];   // 3 runs: some dailies add up over runs ("finish 3 runs today")
-    for (let i = 0; i < 3; i++) { const r = await run(big, 140); done.push(...r.quests.completed); badges.push(...r.quests.badges); }
+    const done = [], badges = [];   // runs until the day counts: some dailies add up over runs ("finish 5 runs today")
+    for (let i = 0; i < 5; i++) { const r = await run(big, 300); done.push(...r.quests.completed); badges.push(...r.quests.badges); if (r.quests.streakDay) break; }
     assert.strictEqual(done.filter(id => Quests.ALL[id].kind === "daily").length, 3, day + ": " + done);
     if (day === 16) assert.ok(badges.some(b => b.id === "streak" && b.tier === 0), "3 days in a row: Streak Bronze");
   }
@@ -293,7 +294,9 @@ test("quests: holders only, progress from validated runs, badges and streaks", a
 
 test("quests: reported stats are capped by the run's length and rejected runs count for nothing", async () => {
   const { h, alice, signIn, advance, setTime } = setup();
-  setTime(Date.UTC(2026, 9, 14, 12));
+  let day = Date.UTC(2026, 9, 14, 12);   // a day whose hard daily is "Collect 150 Stardust in one run"
+  while (!require("../js/quests.js").dailyFor(day).some(q => q.id === "d-dust-150")) day += 86400000;
+  setTime(day);
   const ta = await signIn(alice, "Alice");
   const s = await h.runStart({ body: { tokenId: "1" }, token: ta });
   advance(21000);
@@ -335,7 +338,7 @@ test("quests: a badge levels up to Silver on its 5th completion, and rarity coun
 
 test("streak lives: 7 days in a row bank 1 life, runs spend it, a broken streak earns it again", async () => {
   const { h, alice, signIn, advance, setTime } = setup();
-  const big = { meters: 7000, stardust: 400, powerups: 9, horns: 2, nearMisses: 20, livesUsed: 0 };
+  const big = { meters: 10000, stardust: 400, powerups: 9, horns: 4, nearMisses: 30, livesUsed: 0 };
   let ta;
   const run = async (body, secs) => {
     const s = await h.runStart({ body: { tokenId: "1" }, token: ta });
@@ -343,11 +346,11 @@ test("streak lives: 7 days in a row bank 1 life, runs spend it, a broken streak 
     const r = await h.runFinish({ body: Object.assign({ runId: s.runId, durationMs: secs * 1000 }, body), token: ta });
     return { start: s, r };
   };
-  const playDay = async day => {   // 3 runs: every daily done, 7 minutes flown
+  const playDay = async day => {   // 5-minute runs until the day counts (every daily done)
     setTime(Date.UTC(2026, 9, day, 12));
     ta = await signIn(alice, "Alice");
     const out = [];
-    for (let i = 0; i < 3; i++) out.push((await run(big, 140)).r.quests);
+    for (let i = 0; i < 5 && !out.some(q => q.streakDay); i++) out.push((await run(big, 300)).r.quests);
     return out.find(q => q.streakDay) || {};
   };
   for (let day = 1; day <= 6; day++) assert.strictEqual((await playDay(day)).livesEarned, 0);

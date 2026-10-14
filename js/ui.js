@@ -1080,8 +1080,9 @@
     return d ? d + "d " + h + "h" : h ? h + "h " + (m % 60) + "m" : (m % 60) + "m";
   }
   function fmtProgress(q) {
-    const def = Q.ALL[q.id], unit = def.metric === "meters" ? " m" : def.metric === "cleanSeconds" ? " s" : "";
+    const def = Q.ALL[q.id], unit = def.metric === "meters" ? " m" : "";
     if (def.metric === "zone") return q.done ? "Reached" : "Not yet";
+    if (def.metric === "cleanSeconds" || def.metric === "flySeconds") return fmtClock(q.progress * 1000) + " / " + fmtClock(q.target * 1000);
     return q.progress.toLocaleString() + " / " + q.target.toLocaleString() + unit;
   }
   function questCard(q) {
@@ -1304,7 +1305,7 @@
     const have = streak ? b.best : b.count, k = b.tier + 1;
     const next = k < steps.length ? "Next: " + Q.TIERS[k].name + " at " + steps[k] + (streak ? " days in a row (best " + have + ")" : " completions (" + have + "/" + steps[k] + ")") : "Top tier reached";
     const pct = r.rarity[id] || 0;
-    const rare = r.players ? "Earned by " + (pct > 0 && pct < 1 ? "<1" : Math.round(pct)) + "% of pilots &middot; " + Q.rarity(pct) : "";
+    const rare = !r.players ? "" : pct > 0 ? "Earned by " + (pct < 1 ? "<1" : Math.round(pct)) + "% of pilots &middot; " + Q.rarity(pct) : "No pilot has earned this yet";
     $("qbInfo").innerHTML = '<div class="qi-top">' + badgeIcon(b, b.tier) + '<div><b>' + esc(b.name) + "</b>" +
       (b.tier >= 0 ? ' <span class="qi-tier" style="--m:' + Q.TIERS[b.tier].metal + '">' + tierName(b.tier).toUpperCase() + "</span>" : ' <span class="qi-lock">NOT EARNED</span>') +
       '<div class="qi-d">' + esc(b.desc) + "</div><div class=\"qi-d\">" + next + "</div>" + (rare ? '<div class="qi-r">' + rare + "</div>" : "") + "</div></div>";

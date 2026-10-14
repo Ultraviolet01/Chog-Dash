@@ -12,6 +12,19 @@ test("days and weeks change at 00:00 UTC, weeks start on Monday", () => {
   assert.strictEqual(Q.weekNumber(Date.UTC(2026, 9, 19)), Q.weekNumber(wed) + 1, "Monday starts the next week");
 });
 
+test("30 days in a row never repeat the same three dailies", () => {
+  const seen = new Set();
+  for (let i = 0; i < 30; i++) {
+    const key = Q.dailyFor(wed + i * DAY).map(q => q.id).join();
+    assert.ok(!seen.has(key), "day " + i + " repeats " + key);
+    seen.add(key);
+  }
+  // Every daily quest shows up within 11 days
+  const ids = new Set();
+  for (let i = 0; i < 11; i++) Q.dailyFor(wed + i * DAY).forEach(q => ids.add(q.id));
+  assert.strictEqual(ids.size, 10 + 11 + 9);
+});
+
 test("one easy, one medium and one hard daily, never repeating on back-to-back days", () => {
   for (let i = 0; i < 60; i++) {
     const t = wed + i * DAY, d = Q.dailyFor(t), next = Q.dailyFor(t + DAY);
@@ -25,7 +38,7 @@ test("one easy, one medium and one hard daily, never repeating on back-to-back d
 test("run quests take the best run, day and week quests add up, completed quests stop", () => {
   // A day whose dailies are d-dust-60 (adds up), d-horn-1 (adds up) and d-fly-5000 (best run)
   let t = wed;
-  while (Q.dailyFor(t).map(q => q.id).join() !== "d-dust-60,d-horn-1,d-fly-5000") t += DAY;
+  while (Q.dailyFor(t).map(q => q.id).join() !== "d-dust-60,d-horn-1,d-fly-5000" || Q.weekNumber(t + DAY) !== Q.weekNumber(t)) t += DAY;
   const stats = o => Object.assign(Q.runStats({ meters: 0, durationMs: 1000, livesUsed: 0 }), o);
   let r = Q.applyRun(null, stats({ stardust: 40, meters: 3000 }), t);
   assert.deepStrictEqual([r.state.daily["d-dust-60"], r.state.daily["d-fly-5000"]], [40, 3000]);
@@ -44,11 +57,11 @@ test("run quests take the best run, day and week quests add up, completed quests
 });
 
 test("weekly 'complete 12 dailies' counts finished dailies", () => {
-  let state = null, t = Date.UTC(2026, 9, 12, 1);   // Monday of a week whose quest is w-dailies-12
-  assert.strictEqual(Q.weeklyFor(t).id, "w-dailies-12");
-  const all = Q.runStats({ meters: 30000, stardust: 999, powerups: 9, horns: 3, nearMisses: 50, durationMs: 600000, livesUsed: 0 });
+  let state = null, t = Date.UTC(2026, 9, 12, 1);   // a Monday; move on to a week whose quest is w-dailies-12
+  while (Q.weeklyFor(t).id !== "w-dailies-12") t += 7 * DAY;
+  const all = Q.runStats({ meters: 30000, stardust: 999, powerups: 9, horns: 3, nearMisses: 50, durationMs: 1000000, livesUsed: 0 });
   const done = [];
-  for (let i = 0; i < 4; i++) { const r = Q.applyRun(state, Object.assign({}, all, { runs: 3 }), t + i * DAY); state = r.state; done.push(...r.completed); }
+  for (let i = 0; i < 4; i++) { const r = Q.applyRun(state, Object.assign({}, all, { runs: 5 }), t + i * DAY); state = r.state; done.push(...r.completed); }
   assert.strictEqual(state.dailiesThisWeek, 12);
   assert.ok(done.includes("w-dailies-12"));
 });
@@ -104,7 +117,7 @@ test("streak lives: every 7th day in a row banks 1, 3, 5, 7 ... lives", () => {
 
 test("every quest and the streak has a badge", () => {
   const all = Q.allBadges();
-  assert.strictEqual(all.length, 14 + 4 + 1);
+  assert.strictEqual(all.length, 10 + 11 + 9 + 6 + 1);
   all.forEach(b => assert.ok(b.name && b.desc && /^#[0-9a-f]{6}$/.test(b.color) && Q.GLYPH_PATHS[b.glyph], b.id));
   assert.strictEqual(Q.badgeFor("nope"), null);
   assert.strictEqual(Q.runStats({ meters: 500, durationMs: 90000, livesUsed: 1 }).cleanSeconds, 0);

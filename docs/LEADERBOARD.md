@@ -36,9 +36,9 @@
 ## Quests (Chog holders only)
 
 - Each day: 3 daily quests (one easy, one medium, one hard). Each week: 1 weekly quest.
-  - The same quests for every player, chosen from the date (`js/quests.js`). A quest never repeats on back-to-back days.
+  - The same quests for every player, chosen from the date (`js/quests.js`), automatically, with nothing to schedule. Pools of 10 easy, 11 medium and 9 hard dailies and 6 weeklies: a quest never repeats on back-to-back days, each returns every 9 to 11 days, and the same three dailies only come back after 990 days.
   - Dailies reset at 00:00 UTC. The weekly quest resets on Monday at 00:00 UTC.
-- Rewards are badges only. One badge per quest, plus one Streak badge (19 in total).
+- Rewards are badges only. One badge per quest, plus one Streak badge (37 in total).
   - Badges level up like trophies: Bronze, Silver, Gold, Platinum.
     - Quest badges: at 1, 5, 15 and 40 completions.
     - Streak badge: at 3, 7, 14 and 30 days in a row. Missing a full day restarts the streak; the badge keeps its tier.

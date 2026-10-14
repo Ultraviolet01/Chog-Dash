@@ -12,15 +12,23 @@
 })(typeof self !== "undefined" ? self : this, function (Traits) {
   // metric: what a run contributes. scope "run": one run must reach the target; "day"/"week": runs add up.
   // Run stats used: meters, zone (1 = Outer Space, 2 = Asteroid Belt, ...), stardust, powerups, horns,
-  // nearMisses, cleanSeconds (seconds flown if no life was used, else 0), runs (always 1).
+  // nearMisses, cleanSeconds (seconds flown if no life was used, else 0), flySeconds (seconds flown), runs (always 1).
   // Targets are tuned to the speed curve: about 1,000 m at 30 s, 3,000 m at 65 s, 5,000 m at 95 s, and
   // the Asteroid Belt at 2 minutes (6,754 m), Galactic Drift at 6 minutes (25,670 m).
+  // Pool sizes 10, 11 and 9 have no common factor, so the same three dailies come back only after 990 days,
+  // and each quest returns every 9 to 11 days. Keep the sizes coprime when adding quests.
   const DAILY = {
     easy: [
       { id: "d-fly-1000", title: "Warm-up flight", desc: "Fly 1,000 m in one run", metric: "meters", scope: "run", target: 1000 },
       { id: "d-dust-60", title: "Dust collector", desc: "Collect 60 Stardust today", metric: "stardust", scope: "day", target: 60 },
       { id: "d-power-2", title: "Power hungry", desc: "Grab 2 power-ups today", metric: "powerups", scope: "day", target: 2 },
       { id: "d-runs-3", title: "Frequent flyer", desc: "Finish 3 runs today", metric: "runs", scope: "day", target: 3 },
+      { id: "d-near-3", title: "Brush past", desc: "Get 3 near misses in one run", metric: "nearMisses", scope: "run", target: 3 },
+      { id: "d-time-3", title: "Flight time", desc: "Fly 3 minutes in total today", metric: "flySeconds", scope: "day", target: 180 },
+      { id: "d-total-3000", title: "Short hops", desc: "Fly 3,000 m in total today", metric: "meters", scope: "day", target: 3000 },
+      { id: "d-dust-30", title: "Pocket dust", desc: "Collect 30 Stardust in one run", metric: "stardust", scope: "run", target: 30 },
+      { id: "d-clean-30", title: "Clean start", desc: "Fly 30 seconds in one run without using a life", metric: "cleanSeconds", scope: "run", target: 30 },
+      { id: "d-runs-5", title: "Regular", desc: "Finish 5 runs today", metric: "runs", scope: "day", target: 5 },
     ],
     medium: [
       { id: "d-fly-3000", title: "Long haul", desc: "Fly 3,000 m in one run", metric: "meters", scope: "run", target: 3000 },
@@ -28,6 +36,12 @@
       { id: "d-horn-1", title: "Golden find", desc: "Collect a Golden Horn today", metric: "horns", scope: "day", target: 1 },
       { id: "d-total-8000", title: "Mileage", desc: "Fly 8,000 m in total today", metric: "meters", scope: "day", target: 8000 },
       { id: "d-clean-60", title: "Steady hands", desc: "Fly 1 minute in one run without using a life", metric: "cleanSeconds", scope: "run", target: 60 },
+      { id: "d-power-4", title: "Power surge", desc: "Grab 4 power-ups today", metric: "powerups", scope: "day", target: 4 },
+      { id: "d-dust-80", title: "Dust trail", desc: "Collect 80 Stardust in one run", metric: "stardust", scope: "run", target: 80 },
+      { id: "d-time-8", title: "Long shift", desc: "Fly 8 minutes in total today", metric: "flySeconds", scope: "day", target: 480 },
+      { id: "d-near-15", title: "Daredevil", desc: "Get 15 near misses today", metric: "nearMisses", scope: "day", target: 15 },
+      { id: "d-fly-4000", title: "Far out", desc: "Fly 4,000 m in one run", metric: "meters", scope: "run", target: 4000 },
+      { id: "d-dust-120", title: "Dust hoarder", desc: "Collect 120 Stardust today", metric: "stardust", scope: "day", target: 120 },
     ],
     hard: [
       { id: "d-zone-belt", title: "Belt runner", desc: "Reach the Asteroid Belt", metric: "zone", scope: "run", target: 2 },
@@ -35,6 +49,10 @@
       { id: "d-dust-150", title: "Stardust storm", desc: "Collect 150 Stardust in one run", metric: "stardust", scope: "run", target: 150 },
       { id: "d-clean-120", title: "Untouchable", desc: "Fly 2 minutes in one run without using a life", metric: "cleanSeconds", scope: "run", target: 120 },
       { id: "d-power-3", title: "Fully charged", desc: "Grab 3 power-ups in one run", metric: "powerups", scope: "run", target: 3 },
+      { id: "d-horn-2", title: "Twin horns", desc: "Collect 2 Golden Horns today", metric: "horns", scope: "day", target: 2 },
+      { id: "d-near-15run", title: "Thrill seeker", desc: "Get 15 near misses in one run", metric: "nearMisses", scope: "run", target: 15 },
+      { id: "d-total-20000", title: "Endurance", desc: "Fly 20,000 m in total today", metric: "meters", scope: "day", target: 20000 },
+      { id: "d-time-15", title: "Marathon session", desc: "Fly 15 minutes in total today", metric: "flySeconds", scope: "day", target: 900 },
     ],
   };
   const WEEKLY = [
@@ -42,6 +60,8 @@
     { id: "w-zone-drift", title: "Drifter", desc: "Reach Galactic Drift", metric: "zone", scope: "run", target: 3 },
     { id: "w-dust-1000", title: "Star hoarder", desc: "Collect 1,000 Stardust this week", metric: "stardust", scope: "week", target: 1000 },
     { id: "w-dailies-12", title: "Dedicated", desc: "Complete 12 daily quests this week", metric: "dailies", scope: "week", target: 12 },
+    { id: "w-time-60", title: "Frequent pilot", desc: "Fly 60 minutes in total this week", metric: "flySeconds", scope: "week", target: 3600 },
+    { id: "w-horns-5", title: "Horn hunter", desc: "Collect 5 Golden Horns this week", metric: "horns", scope: "week", target: 5 },
   ];
   const STREAKS = [3, 7, 14, 30];   // Streak badge tiers: days in a row
   // A day counts toward the streak when all 3 dailies are done AND validated Chog runs that day add up to 5 minutes
@@ -56,7 +76,7 @@
   // a quest badge by how many times the quest was completed, the Streak badge by the longest streak.
   // Colour says the quest's difficulty; the frame's shape and metal say the tier.
   const GLYPH = { meters: "arrow", zone: "planet", stardust: "star", powerups: "bolt", horns: "horn", runs: "rocket",
-    nearMisses: "swoosh", cleanSeconds: "shield", dailies: "calendar", streak: "flame" };
+    nearMisses: "swoosh", cleanSeconds: "shield", flySeconds: "clock", dailies: "calendar", streak: "flame" };
   const COLOR = { easy: "#6ee7a8", medium: "#4fa8ff", hard: "#ff5d73", weekly: "#ffcf4d", streak: "#ff7a3d" };
   const TIERS = [
     { id: "bronze", name: "Bronze", metal: "#d08a4e", shape: "circle" },
@@ -79,6 +99,7 @@
     swoosh: "M3 16c6 0 10-4 18-10M3 20c7 0 11-3 18-8",
     shield: "M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6zM9 12l2 2 4-4",
     calendar: "M4 6h16v14H4zM4 10h16M8 3v5M16 3v5M8 14h3",
+    clock: "M12 3a9 9 0 1 1 0 18a9 9 0 1 1 0-18M12 7v5l3.5 2",
     flame: "M12 3c.5 4 5 6 5 11a5 5 0 0 1-10 0c0-3 2-4.5 2-6.5 1.2 1 2 2.2 2 3.5 1.5-2.5 1-5.5 1-8z",
   };
   const star = (() => {   // 8-point star
@@ -101,7 +122,7 @@
   WEEKLY.forEach(q => { ALL[q.id] = Object.assign({ kind: "weekly", difficulty: "weekly" }, q); });
 
   function badgeFor(id) {
-    if (id === "streak") return { id, name: "Streak", desc: "Finish all 3 daily quests on days in a row", color: COLOR.streak, glyph: "flame", kind: "streak" };
+    if (id === "streak") return { id, name: "Streak", desc: "Days in a row with all 3 dailies done and 5 minutes flown", color: COLOR.streak, glyph: "flame", kind: "streak" };
     const q = ALL[id];
     return q ? { id, name: q.title, desc: q.desc, color: COLOR[q.difficulty], glyph: GLYPH[q.metric], kind: q.kind } : null;
   }
@@ -136,7 +157,7 @@
   const at = (list, n) => list[((n % list.length) + list.length) % list.length];
   function dailyFor(t) {
     const d = dayNumber(t);
-    return [at(DAILY.easy, d), at(DAILY.medium, d * 2 + 1), at(DAILY.hard, d * 3 + 2)].map(q => ALL[q.id]);
+    return [at(DAILY.easy, d * 3), at(DAILY.medium, d * 4 + 1), at(DAILY.hard, d * 2 + 2)].map(q => ALL[q.id]);
   }
   function weeklyFor(t) { return ALL[at(WEEKLY, weekNumber(t)).id]; }
 
@@ -152,6 +173,7 @@
       horns: Math.max(0, Math.floor(run.horns || 0)),
       nearMisses: Math.max(0, Math.floor(run.nearMisses || 0)),
       cleanSeconds: run.livesUsed ? 0 : Math.floor((run.durationMs || 0) / 1000),
+      flySeconds: Math.floor((run.durationMs || 0) / 1000),
       runs: 1,
       playMs: Math.max(0, Math.floor(run.durationMs || 0)),   // toward the streak's 5 minutes a day
     };

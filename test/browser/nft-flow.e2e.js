@@ -130,7 +130,7 @@ const chain = {
   // Today's quests show on the crash screen, refreshed with this run
   await p.waitForFunction(() => document.getElementById('questStrip').classList.contains('show') && document.querySelectorAll('#questStrip .qs-row').length === 3, null, { timeout: 5000 });
   console.log('quest strip:', await text('#questStrip'));
-  const flown = Number(end.match(/Distance: (\d+) m/)[1]), total = Math.floor(flown * 1.15);
+  const flown = Number(end.match(/Distance: (\d+) m/)[1]), total = require(R + 'js/traits.js').computeScore(flown, 1.15);
   await shot('end');
   // Run card
   assert.ok(await p.isVisible('#cardBtn'), 'share button shown after a run');
@@ -175,10 +175,10 @@ const chain = {
   }));
   console.log('quests:', JSON.stringify(q));
   assert.deepStrictEqual(q.cards.map(c => c.split(':')[0]), ['EASY', 'MEDIUM', 'HARD', 'WEEKLY']);
-  assert.strictEqual(q.badges, 19);
+  assert.strictEqual(q.badges, 37);
   assert.match(q.reset, /New quests in \d/);
   await p.click('#questBody .qb'); await p.waitForTimeout(100);
-  assert.match(await text('#qbInfo'), /Not earned yet|Earned/);
+  assert.match(await text('#qbInfo'), /NOT EARNED|Earned by|No pilot has earned/);
   await shot('quests');
   assert.deepStrictEqual(errs, [], 'no page errors');
   console.log('PASS nft flow');
