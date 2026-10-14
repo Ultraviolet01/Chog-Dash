@@ -173,6 +173,8 @@
     return c;
   }
 
+  const sfx = name => { if (root.ChogAudio) root.ChogAudio.play(name); };
+
   // ---------- Pickup system ----------
   // api: { player() -> Vector3, hitOffsetY, boundX, boundY, spawnZ, despawnZ, nova(), sparkle(pos, colorHex) }
   function create(scene, api) {
@@ -260,7 +262,7 @@
       let gained = false;
       while (meter >= P.stardustPerLife && lives < P.maxLives) { meter -= P.stardustPerLife; lives++; gained = true; }
       if (lives >= P.maxLives) meter = Math.min(meter, P.stardustPerLife);
-      if (gained) popup("EXTRA LIFE", "#6ee7a8");
+      if (gained) { popup("EXTRA LIFE", "#6ee7a8"); sfx("life"); }
     }
 
     function activate(type, zoneId, fromMystery) {
@@ -269,6 +271,8 @@
         return activate(pickType(pool), zoneId, true);
       }
       const label = (fromMystery ? "MYSTERY: " : "") + TYPES[type].name;
+      // Each power-up has its own tone; after a Mystery Box roll, the revealed power's tone follows
+      if (fromMystery) { sfx("mystery"); setTimeout(() => sfx(type), 260); } else sfx(type);
       if (type === "nova") { api.nova(); popup(label, TYPES.nova.color); return type; }
       const extending = (active[type] || 0) > 0;
       active[type] = (extending ? active[type] : 0) + TYPES[type].seconds;
@@ -278,9 +282,10 @@
     }
 
     function collect(item, zoneId) {
-      if (item.kind === "stardust") { addStardust(1); api.sparkle(item.sprite.position, 0xffd27a); }
-      else if (item.kind === "horn") { addStardust(P.hornStardust); popup("GOLDEN HORN +" + P.hornStardust, "#ffd45a"); api.sparkle(item.sprite.position, 0xffd45a); }
+      if (item.kind === "stardust") { sfx("stardust"); addStardust(1); api.sparkle(item.sprite.position, 0xffd27a); }
+      else if (item.kind === "horn") { sfx("horn"); addStardust(P.hornStardust); popup("GOLDEN HORN +" + P.hornStardust, "#ffd45a"); api.sparkle(item.sprite.position, 0xffd45a); }
       else {
+        sfx("bubble");
         activate(item.type, zoneId);
         // The bubble pops: an expanding ring plus a splash of droplets
         const ring = spriteOf(bubbleBacks[item.type], BUBBLE);
@@ -434,6 +439,7 @@
       tryUseLife() {
         if (lives <= 0) return false;
         lives--;
+        sfx("lifeUsed");
         revive = P.reviveSeconds;
         addStardust(0);
         popup("LIFE USED", "#6ee7a8");

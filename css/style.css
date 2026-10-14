@@ -453,3 +453,12 @@ th { color: var(--muted); font-weight: normal; }
 @media (max-width: 560px) { .how-head h2 { font-size: 20px; } .how-page { min-height: 0; } }
 @media (prefers-reduced-motion: reduce) { .how-track { transition: none; } .pk-ic, .how-finger .touch, .how-finger .touch-dot, .how-mouse .wheel { animation: none; } }
 .md-chog img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+
+/* Sound on/off */
+.mute-btn svg { width: 18px; height: 18px; fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.mute-btn .off { display: none; }
+body.muted .mute-btn .on { display: none; }
+body.muted .mute-btn .off { display: inline; }
+#hudMuteBtn { position: absolute; right: 64px; top: 52px; pointer-events: auto; padding: 6px 8px; line-height: 0; }
+body.flying #hudMuteBtn { display: none; }
+@media (pointer: coarse) { #hudMuteBtn { min-width: 44px; min-height: 44px; } }

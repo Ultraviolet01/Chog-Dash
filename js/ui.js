@@ -87,6 +87,7 @@
     $("lbBack").onclick = () => show("menuPanel");
     $("howBack").onclick = () => show("menuPanel");
     setupFullscreen();
+    setupSound();
     placeHero();
     window.addEventListener("resize", () => setTimeout(() => { placeHero(); movePill(true); }, 50));
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => movePill(true));
@@ -216,6 +217,26 @@
       const dx = e.clientX - sx; sx = null;
       if (Math.abs(dx) > 50) goHow(howPage + (dx < 0 ? 1 : -1));
     });
+  }
+
+  // ---------- Sound: mute buttons, M key, button clicks ----------
+  function setupSound() {
+    const A = root.ChogAudio;
+    if (!A) { ["muteBtn", "hudMuteBtn"].forEach(id => { $(id).style.display = "none"; }); return; }
+    const sync = () => {
+      document.body.classList.toggle("muted", A.isMuted());
+      ["muteBtn", "hudMuteBtn"].forEach(id => { $(id).title = (A.isMuted() ? "Sound off" : "Sound on") + " (M)"; });
+    };
+    const toggle = () => { A.unlock(); A.setMuted(!A.isMuted()); sync(); if (!A.isMuted()) A.play("click"); };
+    $("muteBtn").onclick = toggle;
+    $("hudMuteBtn").onclick = toggle;
+    window.addEventListener("keydown", e => { if (e.code === "KeyM" && !e.repeat && !/INPUT|TEXTAREA/.test(e.target.tagName)) toggle(); });
+    // A soft click on menu buttons (not while flying, and not the mute buttons themselves)
+    document.addEventListener("click", e => {
+      const b = e.target.closest && e.target.closest("button");
+      if (b && !b.classList.contains("mute-btn") && !document.body.classList.contains("flying")) A.play("click");
+    });
+    sync();
   }
 
   // ---------- Full screen (button, HUD button, F key) ----------

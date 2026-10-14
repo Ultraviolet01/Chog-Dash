@@ -110,6 +110,14 @@ function ok(name, cond, detail) {
   ok('zones page lists all five zones with lengths', /Outer Space 2 min/.test((await text('#howZones')).replace(/\s+/g, ' ')) && (await p.$$('#howZones .zn')).length === 5);
   await p.click('#howBack'); await p.waitForTimeout(200);
   ok('howBack returns home', await panelShown('menuPanel') && !(await panelShown('howPanel')));
+  // Sound: the mute button and M key toggle sound, and the choice is remembered
+  const muted0 = await p.evaluate(() => ChogAudio.isMuted());
+  await p.click('#muteBtn'); await p.waitForTimeout(100);
+  ok('muteBtn toggles sound', (await p.evaluate(() => ChogAudio.isMuted())) === !muted0 && (await p.evaluate(() => document.body.classList.contains('muted'))) === !muted0);
+  ok('mute choice is remembered', (await p.evaluate(() => localStorage.getItem('chogDashMuted'))) === (!muted0 ? '1' : '0'));
+  await p.keyboard.press('KeyM'); await p.waitForTimeout(100);
+  ok('M key toggles sound back', (await p.evaluate(() => ChogAudio.isMuted())) === muted0);
+  ok('audio engine running after a click', await p.evaluate(() => !!ChogAudio._ctx() && ChogAudio._ctx().state === 'running'));
 
   await p.click('#lbBtn'); await p.waitForTimeout(600);
   ok('lbBtn opens leaderboard', await panelShown('lbPanel'), await text('#lbStatus'));

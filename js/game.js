@@ -49,6 +49,9 @@
   const rand = (a, b) => a + Math.random() * (b - a);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
+  // Sound (js/audio.js); the game still runs if it's missing
+  const sfx = name => { if (root.ChogAudio) root.ChogAudio.play(name); };
+
   function init(hooks) {
     const isTouch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
     const $ = id => document.getElementById(id);
@@ -427,7 +430,10 @@
     });
 
     // Destroy an obstacle with a burst of pieces (Dash, Nova, revive)
+    let lastSmashSound = 0;
     function smash(o) {
+      // One crunch per burst (Nova can smash many at once)
+      if (performance.now() - lastSmashSound > 70) { lastSmashSound = performance.now(); sfx("smash"); }
       if (o.gone) return;
       o.gone = true;
       burst(o.mesh.position, [o.mesh.material], 10, 6);
@@ -438,7 +444,7 @@
     const keys = {};
     let steerMode = "keys";
     const pointerTarget = { x: 0, y: 0 };
-    let lastTouch = null;
+    let lastTouch = null, engineTimer = 0;
 
     window.addEventListener("keydown", e => {
       if (state === "menu" || e.target.tagName === "INPUT" || document.querySelector(".panel.show")) return;
@@ -522,6 +528,7 @@
     }
 
     function toMenu() {
+      if (root.ChogAudio) { root.ChogAudio.setEngine(false, 0, false); root.ChogAudio.setZone(0); }
       clearField();
       pickups.reset();
       state = "menu";
@@ -531,6 +538,7 @@
     }
 
     function start() {
+      sfx("launch");
       state = "playing";
       runStartedAt = performance.now();
       runTime = 0;
@@ -560,6 +568,8 @@
       bannerTimer = 0;
       hud.zoneBanner.style.opacity = 0;
       deadAt = performance.now();
+      sfx("crash");
+      if (root.ChogAudio) root.ChogAudio.setEngine(false, 0, false);
       shake = 0.35;
       player.visible = false;
       burst(player.position, [hullMat, trimMat], 28, 6);
@@ -576,6 +586,7 @@
     // ---------- Laser Eyes ----------
     function fireLaser() {
       if (state !== "playing" || laserCharges <= 0) return;
+      sfx("laser");
       laserCharges--;
       laserUsed++;
       const ox = player.position.x, oy = player.position.y + rider.position.y;
@@ -715,11 +726,13 @@
       const crossing = zoneKey !== null;   // null at the start of a run
       zoneKey = key;
       scenery.setZone(z.zone.id, false, crossing);
+      if (root.ChogAudio) root.ChogAudio.setZone(z.index);   // the ambient chord follows the zone
       hud.zoneBanner.innerHTML = "";
       if (crossing) {
         const pre = document.createElement("div"); pre.className = "pre"; pre.textContent = "ENTERING";
         hud.zoneBanner.append(pre);
         scenery.warp();
+        sfx("warp");
         shake = Math.max(shake, 0.25);
         hud.zoneFlash.style.background = "#" + scenery.accent(z.zone.id).toString(16).padStart(6, "0");
         zoneFlashTimer = 0.9;
@@ -800,6 +813,12 @@
       }
       updateExhaust(dt);
       updateTrail(dt, now, state !== "dead" && player.visible, state === "playing" || state === "ready");
+      // Engine hum follows speed (updated a few times a second)
+      engineTimer -= dt;
+      if (engineTimer <= 0 && root.ChogAudio) {
+        engineTimer = 0.12;
+        root.ChogAudio.setEngine(playing, (baseSpeed() - G.baseSpeed) / (G.rampSpeed * 2), playing && pickups.dashing());
+      }
       const halo = extras.getObjectByName("halo");
       if (halo) halo.position.y = 2.2 + Math.sin(now / 400) * 0.05;
 
@@ -899,6 +918,7 @@
             const near = r + NEAR_MISS_MARGIN;
             if (dx * dx + dy * dy < near * near) {
               nearMisses++;
+              sfx("nearMiss");
               nearTimer = 0.6;
               hud.near.style.opacity = 1;
               shake = Math.max(shake, 0.08);

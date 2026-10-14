@@ -36,6 +36,14 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 - Touch screens: drag to fly the rocket in any direction, on-screen LASER button.
 - There is no boost. Speed rises on its own as you travel further.
 
+## Sound
+
+- All sound is synthesised in the browser (`js/audio.js`, Web Audio API): no sound files.
+- Space ambience: a soft pad with a long reverb whose chord changes per zone, faint twinkles, and an engine hum that rises with speed (it roars while Dash is active).
+- Each pickup has its own tone: Stardust chimes climb in pitch along a streak; Golden Horn fanfare; Dash boost whoosh; Magnet wobble; Slow-Mo downward sweep; Nova boom; Radar sonar ping; Mystery Box roll, then the revealed power's tone.
+- Also: launch, crash, near miss, Laser Eyes, warp gate, extra life, life used, smash crunch, button clicks.
+- Sound button (top right) or M to mute; remembered on the device. Browsers start sound after the first click, tap or key.
+
 ## Run card
 
 - After every run, practice or Chog NFT, SHARE RUN makes a share card, laid out like other games' share cards:
