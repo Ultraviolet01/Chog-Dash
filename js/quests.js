@@ -43,7 +43,13 @@
     { id: "w-dust-1000", title: "Star hoarder", desc: "Collect 1,000 Stardust this week", metric: "stardust", scope: "week", target: 1000 },
     { id: "w-dailies-12", title: "Dedicated", desc: "Complete 12 daily quests this week", metric: "dailies", scope: "week", target: 12 },
   ];
-  const STREAKS = [3, 7, 14, 30];   // days in a row with all three dailies done
+  const STREAKS = [3, 7, 14, 30];   // Streak badge tiers: days in a row
+  // A day counts toward the streak when all 3 dailies are done AND validated Chog runs that day add up to 5 minutes
+  const STREAK_PLAY_MS = 5 * 60000;
+  // Streak lives: every 7th day in a row banks lives: 7 days -> 1, 14 -> 3, 21 -> 5, 28 -> 7 ... A broken streak
+  // starts counting again from day 1, so the rewards can be earned again.
+  const streakLives = n => (n >= 7 && n % 7 === 0 ? 2 * (n / 7) - 1 : 0);
+  const nextStreakLives = n => { const at = (Math.floor(n / 7) + 1) * 7; return { at, lives: streakLives(at) }; };
 
   // ---------- Badges ----------
   // One badge per quest, plus one Streak badge. Badges level up through four tiers, like trophies:
@@ -147,6 +153,7 @@
       nearMisses: Math.max(0, Math.floor(run.nearMisses || 0)),
       cleanSeconds: run.livesUsed ? 0 : Math.floor((run.durationMs || 0) / 1000),
       runs: 1,
+      playMs: Math.max(0, Math.floor(run.durationMs || 0)),   // toward the streak's 5 minutes a day
     };
   }
 
@@ -155,7 +162,8 @@
   function applyRun(prev, stats, t) {
     const day = dayNumber(t), week = weekNumber(t);
     const s = prev && prev.week === week ? JSON.parse(JSON.stringify(prev)) : { week, weekly: {}, weekDone: [], dailiesThisWeek: 0 };
-    if (s.day !== day) { s.day = day; s.daily = {}; s.done = []; }
+    if (s.day !== day) { s.day = day; s.daily = {}; s.done = []; s.playMs = 0; }
+    s.playMs = (s.playMs || 0) + (stats.playMs || 0);
     const completed = [];
     const step = (q, store, doneList) => {
       if (doneList.includes(q.id)) return;
@@ -181,17 +189,19 @@
     if (p.lastDay === day) return p;
     return { lastDay: day, count: p.lastDay === day - 1 ? p.count + 1 : 1 };
   }
-  // Daily log for the 7-day strip: { [day]: dailies done that day }, keeping the last 14 days
-  function logDay(log, day, done) {
+  // Does this day count toward the streak? state is applyRun's state for that day.
+  const dayCounts = st => !!st && st.done.length === 3 && (st.playMs || 0) >= STREAK_PLAY_MS;
+  // Daily log for the 7-day strip: { [day]: { done: dailies done, min: minutes flown, counted } }, last 14 days
+  function logDay(log, day, st) {
     const out = {};
     Object.keys(log || {}).forEach(k => { if (Number(k) > day - 14) out[k] = log[k]; });
-    out[day] = done;
+    out[day] = { done: st.done.length, min: Math.floor((st.playMs || 0) / 60000), counted: dayCounts(st) };
     return out;
   }
   // A streak is broken if yesterday's dailies weren't all done
   const currentStreak = (s, t) => (s && s.lastDay != null && s.lastDay >= dayNumber(t) - 1 ? s.count : 0);
 
-  return { DAILY, WEEKLY, STREAKS, ALL, TIERS, QUEST_TIER_AT, STREAK_TIER_AT, GLYPH_PATHS, SHAPE_PATHS,
+  return { DAILY, WEEKLY, STREAKS, STREAK_PLAY_MS, streakLives, nextStreakLives, dayCounts, ALL, TIERS, QUEST_TIER_AT, STREAK_TIER_AT, GLYPH_PATHS, SHAPE_PATHS,
     badgeFor, allBadges, tierIndex, nextTier, rarity, dayNumber, weekNumber, nextDayAt, nextWeekAt,
     dailyFor, weeklyFor, runStats, applyRun, bumpStreak, logDay, currentStreak };
 });

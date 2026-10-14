@@ -76,9 +76,30 @@ test("badges level up through Bronze, Silver, Gold and Platinum", () => {
 
 test("daily log keeps the last 14 days", () => {
   let log = null;
-  for (let d = 1; d <= 20; d++) log = Q.logDay(log, d, d % 4);
+  for (let d = 1; d <= 20; d++) log = Q.logDay(log, d, { done: [1, 2, 3].slice(0, d % 4), playMs: d * 60000 });
   assert.deepStrictEqual(Object.keys(log).map(Number), [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
-  assert.strictEqual(log[20], 0);
+  assert.deepStrictEqual(log[20], { done: 0, min: 20, counted: false });
+  assert.deepStrictEqual(log[19], { done: 3, min: 19, counted: true });
+});
+
+test("a streak day needs all 3 dailies and 5 minutes flown that day", () => {
+  assert.strictEqual(Q.dayCounts({ done: [1, 2, 3], playMs: 299999 }), false, "4:59 is not enough");
+  assert.strictEqual(Q.dayCounts({ done: [1, 2, 3], playMs: 300000 }), true);
+  assert.strictEqual(Q.dayCounts({ done: [1, 2], playMs: 900000 }), false, "all 3 dailies needed");
+  // Minutes add up over the day's runs and reset the next day
+  const t = Date.UTC(2026, 9, 14, 12), st = o => Object.assign(Q.runStats({ meters: 0, durationMs: 0, livesUsed: 1 }), o);
+  let r = Q.applyRun(null, st({ playMs: 200000 }), t);
+  r = Q.applyRun(r.state, st({ playMs: 150000 }), t + 600000);
+  assert.strictEqual(r.state.playMs, 350000);
+  r = Q.applyRun(r.state, st({ playMs: 1000 }), t + DAY);
+  assert.strictEqual(r.state.playMs, 1000);
+});
+
+test("streak lives: every 7th day in a row banks 1, 3, 5, 7 ... lives", () => {
+  assert.deepStrictEqual([1, 6, 7, 8, 13, 14, 21, 28, 35].map(Q.streakLives), [0, 0, 1, 0, 0, 3, 5, 7, 9]);
+  assert.deepStrictEqual(Q.nextStreakLives(0), { at: 7, lives: 1 });
+  assert.deepStrictEqual(Q.nextStreakLives(7), { at: 14, lives: 3 });
+  assert.deepStrictEqual(Q.nextStreakLives(16), { at: 21, lives: 5 });
 });
 
 test("every quest and the streak has a badge", () => {

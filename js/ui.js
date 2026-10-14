@@ -203,7 +203,7 @@
         "<li><b>Laser Eyes</b> (laser Eyes trait): " + cfg.abilities.laserEyes.charges + " shots that destroy what's in your path. " +
           (isTouch ? "Tap with a second finger to fire" : "Press " + keycap("E") + " to fire") + "</li>" +
         "<li><b>Total distance</b> = distance flown x tier:</li></ul><div class='tiers'>" + tiers + "</div>" +
-        "<ul><li>Your Chog's traits style the rocket and its aura trail</li><li>Ranked on the leaderboard under your username</li><li>Daily and weekly quests earn badges</li></ul></div>";
+        "<ul><li>Your Chog's traits style the rocket and its aura trail</li><li>Ranked on the leaderboard under your username</li><li>Daily and weekly quests earn badges</li><li>Quest streaks bank extra lives: 7 days +1, 14 days +3, 21 days +5</li></ul></div>";
     // Dots, buttons, keys and swipe
     $("howDots").innerHTML = Array.from({ length: HOW_PAGES }, (_, k) => '<button class="how-dot" role="tab" aria-label="Page ' + (k + 1) + '"></button>').join("");
     [...$("howDots").children].forEach((d, k) => { d.onclick = () => goHow(k); });
@@ -373,7 +373,8 @@
 
   function onReady() {
     // The best to beat this run (the same number as the BEST chip): distance in practice, total distance for this Chog
-    game.configure({ bestToBeat: S.mode === "nft" && S.chog ? readNum("chogDashNftBest:" + S.chog.tokenId) : readNum(PRACTICE_BEST) });
+    game.configure({ bestToBeat: S.mode === "nft" && S.chog ? readNum("chogDashNftBest:" + S.chog.tokenId) : readNum(PRACTICE_BEST), bankLives: 0 });
+    S.bankLives = 0;
     showEndBar(false);
     closeCard();
     setFlying(false);
@@ -445,7 +446,7 @@
     setMsg("CRASHED", lines(["Submitting to the leaderboard...", ""]));
     apiCall("/run/finish", { runId: S.activeRunId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed,
       stardust: result.stardust || 0, powerups: result.powerups || 0, horns: result.horns || 0, nearMisses: result.nearMisses || 0,
-      livesUsed: result.livesUsed || 0 }, S.auth && S.auth.token)
+      livesUsed: result.livesUsed || 0, bankLivesUsed: result.bankLivesUsed || 0 }, S.auth && S.auth.token)
       .then(r => {
         if (run !== S.runCounter || game.state !== "dead") return;
         if (r.status === "validated" && S.lastRun) { S.lastRun.rank = r.rank || null; S.lastRun.total = r.finalScore; }
@@ -454,6 +455,7 @@
           : ["Not validated: " + (r.reason || r.status), "warn"];
         setMsg("CRASHED", lines(st).concat(questLines(r.quests)));
         if (r.quests && r.quests.badges.length) revealBadges(r.quests.badges);
+        if (r.quests && r.quests.livesEarned) revealBadges([{ lives: r.quests.livesEarned, day: r.quests.streakDay }]);
         if (r.status === "validated") loadQuests();
       })
       .catch(e => {
@@ -601,6 +603,7 @@
       "Tier " + (g.tier || "unknown") + ": distance multiplier x" + g.multiplier.toFixed(2),
       laser ? "Laser Eyes: " + laser.charges + " charges this run" : "No ability from this Chog's traits",
       lookLines(c.look)[0],
+      S.bankLives ? ["Streak lives: " + S.bankLives + " banked. Used after your Stardust lives run out", "good"] : "",
       S.runStatus.text ? [S.runStatus.text, S.runStatus.kind] : "",
       controlsText(!!laser),
       portraitTip(),
@@ -624,6 +627,8 @@
       if (req !== S.sessionReq) return;
       S.runId = r.runId;
       S.runStatus = { text: "Eligible: this run will be submitted (server-verified Tier " + r.tier + ", x" + r.multiplier + ")", kind: "good" };
+      // Streak lives from the bank, only before the run starts
+      if (game.state === "ready") { S.bankLives = r.bankLives || 0; game.configure({ bankLives: S.bankLives }); }
     } catch (e) {
       if (req !== S.sessionReq) return;
       if (e.status === 401) S.auth = null;
@@ -1054,7 +1059,6 @@
   const GLYPHS = { lock: G("M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3M12 14.5v2"), pin: G("M9 3h6l-1 6 4 3v2H6v-2l4-3zM12 14v7") };
   Object.keys(Q.GLYPH_PATHS).forEach(k => { GLYPHS[k] = G(Q.GLYPH_PATHS[k]); });
   const DIFF = { easy: "EASY", medium: "MEDIUM", hard: "HARD", weekly: "WEEKLY" };
-  const WEEKDAY = ["S", "M", "T", "W", "T", "F", "S"];   // UTC day 0 (1970-01-01) was a Thursday
   let questTimer = null, liveTimer = null, revealTimer = null, revealQueue = [];
 
   // A badge: the tier's frame shape in its metal, the quest's glyph in its difficulty colour. Not earned: a dim outline.
@@ -1065,6 +1069,8 @@
       '<path class="gl" transform="translate(12 12)" d="' + Q.GLYPH_PATHS[b.glyph] + '"/></svg></span>';
   }
   const tierName = k => (Q.TIERS[k] ? Q.TIERS[k].name : "");
+  const fmtClock = ms => { const t = Math.max(0, Math.floor(ms / 1000)); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); };
+  const livesWord = n => n + " " + (n === 1 ? "life" : "lives");
   function fmtLeft(ms) {
     const m = Math.max(0, Math.floor(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60);
     return d ? d + "d " + h + "h" : h ? h + "h " + (m % 60) + "m" : (m % 60) + "m";
@@ -1090,6 +1096,8 @@
     const out = [];
     q.completed.forEach(id => { const b = Q.badgeFor(id); if (b) out.push(["Quest complete: " + b.name, "good"]); });
     q.badges.forEach(u => out.push([(u.id === "streak" ? "Streak" : Q.badgeFor(u.id).name) + ": " + tierName(u.tier) + " badge", "good"]));
+    if (q.streakDay) out.push(["Streak day " + q.streakDay + "!" + (q.livesEarned ? " +" + q.livesEarned + " streak " + (q.livesEarned === 1 ? "life" : "lives") + " banked" : ""), "good"]);
+    else if (q.today === 3 && q.playMsToday < Q.STREAK_PLAY_MS) out.push(["Dailies done. Fly " + fmtClock(Q.STREAK_PLAY_MS - q.playMsToday) + " more today to count it for your streak", ""]);
     if (out.length) $("questBtn").classList.add("has-new");
     return out;
   }
@@ -1111,7 +1119,10 @@
     el.innerHTML = '<div class="qs-h">TODAY\'S QUESTS <b>' + done + "/3</b></div>" + r.daily.map(q =>
       '<div class="qs-row' + (q.done ? " done" : "") + '" style="--c:' + q.badge.color + '">' + badgeIcon(q.badge, q.done ? Math.max(0, q.badge.tier) : -1, "mini") +
       '<div class="qs-txt"><div class="qs-t">' + esc(q.title) + '</div><div class="qbar"><i style="width:' + (q.done ? 100 : Math.round((q.progress / q.target) * 100)) + '%"></i></div>' +
-      '<div class="qs-p">' + (q.done ? "Complete" : fmtProgress(q)) + "</div></div></div>").join("");
+      '<div class="qs-p">' + (q.done ? "Complete" : fmtProgress(q)) + "</div></div></div>").join("") +
+      '<div class="qs-streak' + (r.todayCounted ? " done" : r.streak ? " risk" : "") + '">' + GLYPHS.flame + "<span>" + r.streak + "-day streak &middot; " +
+        (r.todayCounted ? "today counted" : (r.streak ? "ends in " + fmtLeft(r.dailyResetAt - r.serverTime) + " &middot; " : "") +
+          fmtClock(Math.min(r.playMsToday, r.streakPlayMs)) + " / " + fmtClock(r.streakPlayMs) + " flown") + "</span></div>";
   }
 
   // ----- During a run: "Quest complete" as soon as the live run reaches a target -----
@@ -1150,6 +1161,15 @@
   function nextReveal() {
     const el = $("badgeReveal"), u = revealQueue.shift();
     if (!u || game.state !== "dead") { el.classList.remove("show"); revealTimer = null; revealQueue = []; return; }
+    if (u.lives) {   // streak lives milestone: a big heart
+      el.style.setProperty("--c", "#ff7a3d"); el.style.setProperty("--m", "#ffb27a");
+      el.innerHTML = '<div class="br-ring"></div><div class="br-heart">' + G(HEART) + "<b>+" + u.lives + "</b></div>" +
+        '<div class="br-k">DAY ' + u.day + ' STREAK</div><div class="br-n">+' + u.lives + " STREAK " + (u.lives === 1 ? "LIFE" : "LIVES") + "</div>";
+      el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+      sfx("newBest");
+      revealTimer = setTimeout(nextReveal, 2600);
+      return;
+    }
     const b = Q.badgeFor(u.id);
     el.style.setProperty("--c", b.color);
     el.style.setProperty("--m", Q.TIERS[u.tier].metal);
@@ -1195,24 +1215,62 @@
     renderQuests(r);
   }
 
+  // ----- Streak card: a flame that grows with the streak, the road to the next streak lives, banked hearts -----
+  const HEART = "M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6a5.5 5.5 0 0 1 9.5 6c-2.5 4.5-9.5 9-9.5 9z";
+  const FLAME_BIG = "M24 4c1 8 10 12 10 22a10 10 0 0 1-20 0c0-6 4-9 4-13 2.4 2 4 4.4 4 7 3-5 2-11 2-16z";
+  const FLAME_CORE = "M24 24c.5 3 4 5 4 9a4 4 0 0 1-8 0c0-2.5 1.5-3.5 1.5-5 1 .8 1.6 1.7 1.6 2.7.9-1.7.9-4 .9-6.7z";
+  // Flame stages: grows at 7 days, burns hotter at 14, turns blue at 30. Grey when the streak is at risk or not started.
+  const flameStage = n => (n >= 30 ? "f4" : n >= 14 ? "f3" : n >= 7 ? "f2" : n >= 1 ? "f1" : "f0");
+  function bigFlame(n, risk) {
+    return '<div class="sflame ' + flameStage(n) + (risk ? " risk" : "") + '"><svg viewBox="0 0 48 48" aria-hidden="true"><path class="fo" d="' + FLAME_BIG +
+      '"/><path class="fi" d="' + FLAME_CORE + '"/></svg></div>';
+  }
+  function hearts(n, max) {
+    const shown = Math.min(n, max || 6);
+    return '<span class="hearts">' + Array.from({ length: shown }, () => G(HEART)).join("") + (n > shown ? '<b class="hx">+' + (n - shown) + "</b>" : "") + "</span>";
+  }
+  // The current 7-day block of the streak (days 1-7, 8-14 ...), with today and the reward box at its end
+  function streakRoad(r) {
+    const n = r.streak, counted = r.todayCounted;
+    const start = counted && n > 0 && n % 7 === 0 ? n - 7 : 7 * Math.floor(n / 7);
+    let out = "";
+    for (let d = start + 1; d <= start + 7; d++) {
+      const lit = d <= n, today = counted ? d === n : d === n + 1, reward = d === start + 7;
+      const lives = Q.streakLives(d);
+      out += '<div class="rd' + (lit ? " lit" : "") + (today ? " today" : "") + (reward ? " reward" : "") + '">' +
+        (reward ? '<div class="rd-gift">' + G(HEART) + "<b>+" + lives + "</b></div>" : G(Q.GLYPH_PATHS.flame)) +
+        '<span class="rd-d">' + (today ? "TODAY" : "DAY " + d) + "</span></div>";
+    }
+    return '<div class="road">' + out + "</div>";
+  }
+  function streakCard(r) {
+    const n = r.streak, risk = n > 0 && !r.todayCounted, doneToday = r.daily.filter(q => q.done).length;
+    const status = r.todayCounted ? "Today counts. Come back tomorrow to keep it going."
+      : risk ? 'Streak ends in <b id="qsRisk">' + fmtLeft(r.dailyResetAt - r.serverTime) + "</b>. Finish today to keep it."
+      : "Finish 3 dailies and fly 5 minutes today to start your streak.";
+    return '<div class="qstreak' + (n ? " on" : "") + (risk ? " at-risk" : "") + '">' +
+      '<div class="qs-hero">' + bigFlame(n, risk || !n) +
+        '<div class="qs-mid"><div class="qs-big">' + n + '<span>DAY STREAK</span></div><div class="qs-d">' + status + "</div></div>" +
+        '<div class="qs-best"><span>BEST</span><b>' + r.bestStreak + "</b><span>DAYS</span></div></div>" +
+      '<div class="qs-req"><div class="qr' + (doneToday === 3 ? " ok" : "") + '"><span>Dailies</span><b>' + doneToday + " / 3</b>" +
+          '<i style="width:' + Math.round((doneToday / 3) * 100) + '%"></i></div>' +
+        '<div class="qr' + (r.playMsToday >= r.streakPlayMs ? " ok" : "") + '"><span>Flown today</span><b>' + fmtClock(Math.min(r.playMsToday, r.streakPlayMs)) + " / " + fmtClock(r.streakPlayMs) + "</b>" +
+          '<i style="width:' + Math.min(100, Math.round((r.playMsToday / r.streakPlayMs) * 100)) + '%"></i></div></div>' +
+      streakRoad(r) +
+      '<div class="qs-lives" title="Every 7 days in a row banks streak lives: 7 days +1, 14 days +3, 21 days +5, and so on. They are used after your Stardust lives, in Chog NFT runs.">' +
+        '<div class="ql-h">STREAK LIVES</div>' + (r.bankLives ? hearts(r.bankLives) : '<span class="ql-none">None banked yet</span>') +
+        '<div class="ql-next">Next: ' + G(HEART) + "<b>+" + r.nextLives.lives + "</b> at day " + r.nextLives.at + "</div></div>" +
+      (r.nextStreakBadge ? '<div class="qs-d qs-badge-next">Streak badge: next tier at ' + r.nextStreakBadge + " days in a row.</div>" : "") +
+    "</div>";
+  }
+
   function renderQuests(r) {
     const skew = r.serverTime - Date.now();
     const doneToday = r.daily.filter(q => q.done).length;
     const mine = {};
     r.badges.forEach(b => { mine[b.id] = b; });
     const all = Q.allBadges().sort((a, b) => (a.id === "streak" ? -1 : b.id === "streak" ? 1 : 0));
-    const streakB = mine.streak || { tier: -1 };
-    const days = r.last7.map((d, k) => '<div class="fd' + (d.done >= 3 ? " lit" : d.done ? " part" : "") + (k === 6 ? " today" : "") + '">' +
-      GLYPHS.flame + '<span class="fd-w">' + WEEKDAY[(d.day + 4) % 7] + "</span>" + (d.done && d.done < 3 ? '<span class="fd-p">' + d.done + "/3</span>" : "") + "</div>").join("");
-    $("questBody").innerHTML =
-      '<div class="qstreak' + (r.streak ? " on" : "") + '">' +
-        '<div class="qs-top">' + badgeIcon(Q.badgeFor("streak"), streakB.tier) +
-          '<div class="qs-mid"><div class="qs-n">' + r.streak + "-day streak</div>" +
-          '<div class="qs-d">' + (doneToday === 3 ? "Today's dailies are done. Come back tomorrow to keep it going." :
-            "Finish all 3 dailies today to " + (r.streak ? "keep" : "start") + " your streak.") +
-            (r.nextStreakBadge ? " Next badge tier at " + r.nextStreakBadge + " days." : "") + "</div></div>" +
-          '<div class="qs-today">' + doneToday + "/3<span>TODAY</span></div></div>" +
-        '<div class="flames">' + days + "</div></div>" +
+    $("questBody").innerHTML = streakCard(r) +
       '<div class="qhead"><span>DAILY</span><span class="qreset" id="qResetDay"></span></div>' +
       r.daily.map(questCard).join("") +
       '<div class="qhead"><span>WEEKLY</span><span class="qreset" id="qResetWeek"></span></div>' +
@@ -1227,6 +1285,7 @@
     const tick = () => {
       const now = Date.now() + skew;
       if (now >= r.dailyResetAt) { openQuests(); return; }
+      if ($("qsRisk")) $("qsRisk").textContent = fmtLeft(r.dailyResetAt - now);
       $("qResetDay").textContent = "New quests in " + fmtLeft(r.dailyResetAt - now);
       $("qResetWeek").textContent = "Resets in " + fmtLeft(r.weeklyResetAt - now);
     };

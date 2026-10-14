@@ -36,7 +36,9 @@ const chain = {
 };
 
 (async () => {
-  const server = await startServer({ port: 3456, handlers: createHandlers({ store: memoryStore(), chain, secret: 's' }) });
+  const store = memoryStore();
+  await store.set('lives:' + ME, 2);   // 2 streak lives banked from an earlier 7-day streak
+  const server = await startServer({ port: 3456, handlers: createHandlers({ store, chain, secret: 's' }) });
   const b = await chromium.launch(launchOpts);
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
@@ -107,6 +109,8 @@ const chain = {
   await p.click('#rideBtn');
   await p.waitForFunction(() => document.getElementById('msg').textContent.includes('Eligible'), null, { timeout: 15000 });
   assert.match(await text('#msg'), /Laser Eyes: 10 charges/);
+  await p.waitForFunction(() => /Streak lives: 2 banked/.test(document.getElementById('msg').textContent), null, { timeout: 5000 });
+  assert.strictEqual(await text('#livesCount'), '0 +2', 'HUD shows the streak lives');
   console.log('badge:', await text('#modeBadge'));
   await shot('ready');
   await p.keyboard.down('Space'); await p.waitForTimeout(500); await p.keyboard.up('Space');
@@ -117,6 +121,10 @@ const chain = {
   await p.waitForFunction(() => document.getElementById('msg').textContent.includes('CRASHED'), null, { timeout: 60000 });
   await p.waitForFunction(() => !document.getElementById('msg').textContent.includes('Submitting'), null, { timeout: 15000 });
   const end = await text('#msg');
+  const used = await p.evaluate(() => ChogUI._game()._debug.pickups.stats());
+  console.log('streak lives used:', used.bankUsed, 'left:', used.bankLives);
+  assert.strictEqual(used.bankUsed, 2, 'both streak lives spent before the crash');
+  assert.strictEqual(await store.get('lives:' + ME), 0, 'server took them out of the bank');
   console.log('end:', end);
   assert.match(end, /Validated\. Total distance \d+ m \(x1\.15\), rank 1/);
   // Today's quests show on the crash screen, refreshed with this run

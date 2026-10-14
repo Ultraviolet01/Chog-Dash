@@ -192,6 +192,9 @@
     const active = {}, activeMax = {};
     let lives = 0, meter = 0, runDust = 0, revive = 0;
     let runPowerups = 0, runHorns = 0, livesUsed = 0;   // counted for quests
+    // Streak lives (Chog holders): a banked stock from quest streaks, on top of the Stardust lives and the cap.
+    // Spent only after the run's Stardust lives are gone; what's left stays in the bank.
+    let bankStart = 0, bankLives = 0, bankUsed = 0;
     let nextDust = 0, nextPower = 0, nextHorn = 0;
 
     // HUD
@@ -312,6 +315,7 @@
       Object.keys(active).forEach(k => { active[k] = 0; });
       lives = 0; meter = 0; runDust = 0; revive = 0;
       runPowerups = 0; runHorns = 0; livesUsed = 0;
+      bankLives = bankStart; bankUsed = 0;
       nextDust = P.firstAt; nextPower = P.firstAt + rand(0, 3); nextHorn = P.firstAt + rand(30, 60);
       popTimer = 0; hud.pop.style.opacity = 0;
       updateHud();
@@ -319,12 +323,12 @@
 
     let lastHud = "";
     function updateHud() {
-      const key = runDust + "|" + meter + "|" + lives;
+      const key = runDust + "|" + meter + "|" + lives + "|" + bankLives;
       if (key !== lastHud) {
         lastHud = key;
         hud.dust.textContent = (lives >= P.maxLives ? "MAX" : meter + "/" + P.stardustPerLife);
         hud.bar.style.width = (Math.min(1, meter / P.stardustPerLife) * 100) + "%";
-        hud.lives.textContent = lives;
+        hud.lives.innerHTML = lives + (bankLives > 0 ? ' <span class="bank" title="Streak lives">+' + bankLives + "</span>" : "");
       }
       // Active power-up icons with countdown rings
       ["dash", "magnet", "slow", "radar"].forEach(t => {
@@ -440,16 +444,19 @@
       reviving: () => revive > 0,
       // Used when the rocket hits something it can't smash: spends a life if one is in stock
       tryUseLife() {
-        if (lives <= 0) return false;
-        lives--;
+        if (lives <= 0 && bankLives <= 0) return false;
+        const fromBank = lives <= 0;
+        if (fromBank) { bankLives--; bankUsed++; } else lives--;
         livesUsed++;
         sfx("lifeUsed");
         revive = P.reviveSeconds;
         addStardust(0);
-        popup("LIFE USED", "#6ee7a8");
+        popup(fromBank ? "STREAK LIFE USED" : "LIFE USED", fromBank ? "#ff9a5a" : "#6ee7a8");
         return true;
       },
-      stats: () => ({ stardust: runDust, lives, meter, powerups: runPowerups, horns: runHorns, livesUsed }),
+      stats: () => ({ stardust: runDust, lives, meter, powerups: runPowerups, horns: runHorns, livesUsed, bankLives, bankUsed }),
+      // Streak lives available for the next run
+      setBank(n) { bankStart = Math.max(0, Math.floor(n) || 0); bankLives = bankStart; bankUsed = 0; updateHud(); },
       // Test hooks
       _debug: {
         items: () => items, active, spawn: (kind, type, x, y, z) => addItem(kind, type, x, y, z),

@@ -599,6 +599,7 @@
         laserUsed, nearMisses,
         stardust: pickups.stats().stardust,
         powerups: pickups.stats().powerups, horns: pickups.stats().horns, livesUsed: pickups.stats().livesUsed,
+        bankLivesUsed: pickups.stats().bankUsed,
       });
     }
 
@@ -1038,11 +1039,12 @@
     frame();
 
     return {
-      // opts: { riderCanvas, riderPoses: { side, back }, look, laserCharges, multiplier, modeLabel, showScore, bestToBeat }
+      // opts: { riderCanvas, riderPoses: { side, back }, look, laserCharges, multiplier, modeLabel, showScore, bestToBeat, bankLives }
       configure(opts) {
         setup = Object.assign({}, setup, opts);
         if (opts.riderCanvas) setRiderCanvas(opts.riderCanvas, opts.riderPoses);
         if ("look" in opts) applyLook(opts.look);
+        if ("bankLives" in opts) pickups.setBank(opts.bankLives);
       },
       toReady, toMenu, start,
       setHeroScreenY(f) { heroScreenY = f; },

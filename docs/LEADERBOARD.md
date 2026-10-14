@@ -41,7 +41,12 @@
 - Rewards are badges only. One badge per quest, plus one Streak badge (19 in total).
   - Badges level up like trophies: Bronze, Silver, Gold, Platinum.
     - Quest badges: at 1, 5, 15 and 40 completions.
-    - Streak badge: at 3, 7, 14 and 30 days in a row (finishing all 3 dailies each day). Missing a full day restarts the streak; the badge keeps its tier.
+    - Streak badge: at 3, 7, 14 and 30 days in a row. Missing a full day restarts the streak; the badge keeps its tier.
+- Streak:
+  - A day counts when all 3 dailies are done AND validated Chog runs that day add up to at least 5 minutes.
+  - Streak lives: every 7th day in a row banks lives (7 days +1, 14 days +3, 21 days +5, 28 days +7 ...). A broken streak counts again from day 1, so the rewards can be earned again.
+  - Banked lives are a stock (`lives:<wallet>`). Each Chog run gets them at run start (`bankLives`), on top of the 3-life cap. They are spent only after the run's Stardust lives are gone; what's left stays banked.
+  - `/run/finish` reports `bankLivesUsed`; the server takes that many out of the bank (never more than the run was given), even if the score is rejected.
   - The frame's shape and metal show the tier (circle, shield, hexagon, star); the glyph's colour shows the quest's difficulty.
   - Rarity: "Earned by 8% of pilots", the share of quest players who own the badge, with a label (Ultra rare under 5%, Very rare, Rare, Uncommon, Common). The counters are approximate if two runs finish at the same instant.
   - Pin: a player can pin one earned badge (`POST /api/badge/pin`). It shows next to their name on the leaderboard and on their run card.
@@ -58,7 +63,7 @@
   - Distance and run time are the validated values.
   - If saving quest progress fails, the run still counts on the leaderboard.
 - Leaderboard rows show each player's badge count.
-- Storage, all in `chog_kv` (no schema change): `quest:`, `badges:`, `streak:`, `qlog:` (last 14 days), `pin:` and `holder:` per wallet, and the rarity counters `bstat:players` and `bstat:<badge>`.
+- Storage, all in `chog_kv` (no schema change): `quest:`, `badges:`, `streak:`, `qlog:` (last 14 days), `pin:`, `lives:` and `holder:` per wallet, and the rarity counters `bstat:players` and `bstat:<badge>`.
 
 ## Limits (honest)
 
