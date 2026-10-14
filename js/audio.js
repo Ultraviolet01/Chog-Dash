@@ -1,11 +1,13 @@
 /*
  * Chog Dash sound: everything is synthesised with the Web Audio API (no sound files).
  *
- * - Space ambience: a soft detuned pad whose chord changes per zone, distant "twinkles" through a long
- *   reverb, and a low engine hum that rises with speed.
+ * - Space ambience: a deep slowly-beating drone, soft swelling chord tones (the chord changes per zone), a faint
+ *   shimmer, cosmic "wind" drifting across the speakers, a low rumble, and rare distant signals and twinkles
+ *   through a long reverb. A low engine hum rises with speed during a run.
  * - Each pickup has its own tone (Stardust chimes climb in pitch along a streak, like rings in other games).
  * - Dash: a boost whoosh with a rising zap, a roaring engine while it lasts, and a crunch per smash.
- * - Events: launch, crash, near miss, Laser Eyes, warp gate, extra life, life used, UI clicks.
+ * - Events: launch, crash, near miss, Laser Eyes (zap, then a blast when it destroys something or a clang when a
+ *   huge asteroid blocks it), warp gate, extra life, life used, UI clicks.
  * - Browsers only allow sound after the player interacts, so the context starts on the first input.
  * - Mute is remembered on the device (localStorage).
  */
@@ -196,9 +198,26 @@
       tone({ type: "square", freq: 140, to: 60, peak: 0.2, decay: 0.15, filter: 800, verb: 0 });
     },
     nearMiss() { hiss({ peak: 0.9, attack: 0.02, decay: 0.3, type: "bandpass", freq: 900, to: 2600, q: 1.2, verb: 0.2 }); },
-    laser() {
-      tone({ type: "sawtooth", freq: 1800, to: 220, peak: 0.4, attack: 0.003, decay: 0.28, filter: 4000, verb: 0.3 });
-      tone({ type: "square", freq: 2400, to: 400, peak: 0.1, decay: 0.2, filter: 5000, verb: 0.1 });
+    laser() {   // Laser Eyes: a sharp zap with a punch, then a short humming beam
+      tone({ type: "square", freq: 2600, to: 320, peak: 0.32, attack: 0.002, decay: 0.16, filter: 5200, verb: 0.25 });
+      tone({ type: "sawtooth", freq: 1300, to: 160, peak: 0.3, attack: 0.002, decay: 0.22, filter: 3200, verb: 0.3, detune: 8 });
+      tone({ type: "sine", freq: 180, to: 55, peak: 0.6, attack: 0.002, decay: 0.18, verb: 0 });   // punch
+      hiss({ peak: 0.3, attack: 0.001, decay: 0.08, type: "highpass", freq: 3000, verb: 0.1 });   // crack
+      // The beam: a buzzing two-tone hum while it's on screen
+      tone({ type: "sawtooth", freq: 520, peak: 0.1, attack: 0.02, decay: 0.32, filter: 1800, verb: 0.35 });
+      tone({ type: "sawtooth", freq: 523, peak: 0.1, attack: 0.02, decay: 0.32, filter: 1800, verb: 0.35, detune: 15 });
+    },
+    laserHit() {   // the beam destroys something: a blast, a sizzle and falling debris
+      tone({ type: "sine", freq: 140, to: 35, peak: 0.7, attack: 0.002, decay: 0.45, verb: 0.25 });
+      hiss({ peak: 0.6, attack: 0.002, decay: 0.5, type: "lowpass", freq: 3500, to: 250, verb: 0.45 });
+      hiss({ t: 0.02, peak: 0.25, attack: 0.005, decay: 0.3, type: "bandpass", freq: 5000, to: 1500, q: 2, verb: 0.2 });   // sizzle
+      [0.08, 0.15, 0.24, 0.31].forEach((t, i) => tone({ type: "triangle", freq: 900 - i * 140, to: 500 - i * 80, t, peak: 0.08, attack: 0.002, decay: 0.09, verb: 0.3 }));
+    },
+    laserBlock() {   // a huge asteroid stops the beam: a dull metallic clang
+      tone({ type: "triangle", freq: 330, peak: 0.5, attack: 0.002, decay: 0.55, verb: 0.4 });
+      tone({ type: "sine", freq: 330 * 2.71, peak: 0.2, attack: 0.002, decay: 0.4, verb: 0.4 });
+      tone({ type: "sine", freq: 110, to: 70, peak: 0.35, attack: 0.002, decay: 0.2, verb: 0 });
+      hiss({ peak: 0.35, attack: 0.002, decay: 0.12, type: "bandpass", freq: 1200, q: 1.5, verb: 0.2 });
     },
     warp() {   // zone gate: rising swell into a shimmer
       hiss({ peak: 0.4, attack: 0.3, decay: 1.0, type: "bandpass", freq: 300, to: 5000, q: 0.7, verb: 0.6 });
@@ -211,8 +230,10 @@
     try { SFX[name](); } catch (e) {}
   }
 
-  // ---------- Ambient pad: one chord per zone, slowly breathing ----------
-  // Zone chords (MIDI): spacious, slightly mysterious voicings
+  // ---------- Space ambience: one chord per zone, slowly breathing ----------
+  // Layers: a deep drone that beats slowly, soft swelling chord tones, a faint high shimmer, a cosmic "wind"
+  // (filtered noise sweeping and drifting left and right), a low rumble, and now and then a distant signal
+  // or a twinkle echoing through the long reverb. Everything moves slowly so it never sounds like a loop.
   const CHORDS = [
     [45, 52, 57, 64, 71],   // Outer Space: A sus/add9
     [43, 50, 55, 62, 69],   // Asteroid Belt: G sus/add9
@@ -220,41 +241,96 @@
     [38, 45, 50, 57, 65],   // Deep Cosmic Zone: D minor, darker
     [40, 47, 52, 59, 68],   // Milky Way: E major, bright finale
   ];
+  // Which chord note each voice plays: [chord index, octave shift in semitones]
+  const VOICES = [
+    { kind: "drone", n: 0, shift: -12, type: "sine", gain: 0.11 },
+    { kind: "drone", n: 0, shift: -5, type: "sine", gain: 0.05, detuneHz: 0.23 },   // the fifth, beating slowly
+    { kind: "pad", n: 1, shift: 0, type: "triangle", gain: 0.035 },
+    { kind: "pad", n: 2, shift: 0, type: "triangle", gain: 0.03 },
+    { kind: "pad", n: 3, shift: 0, type: "triangle", gain: 0.026 },
+    { kind: "pad", n: 4, shift: 0, type: "triangle", gain: 0.022 },
+    { kind: "shimmer", n: 3, shift: 24, type: "sine", gain: 0.012 },
+    { kind: "shimmer", n: 4, shift: 24, type: "sine", gain: 0.01 },
+  ];
   let zoneIndex = 0, twinkleTimer = null;
+  // A slow oscillator moving an AudioParam around its value
+  function lfo(rate, depth, param, type) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || "sine"; o.frequency.value = rate; g.gain.value = depth;
+    o.connect(g); g.connect(param); o.start(now() + Math.random() * 0.1);
+    return o;
+  }
+  const voiceHz = v => hz(CHORDS[zoneIndex][v.n] + v.shift) + (v.detuneHz || 0);
   function startPad() {
     if (pad || !ctx) return;
     pad = { voices: [] };
-    const filter = ctx.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = 900; filter.Q.value = 0.5;
-    const lfo = ctx.createOscillator(), lfoGain = ctx.createGain();
-    lfo.frequency.value = 0.07; lfoGain.gain.value = 350; lfo.connect(lfoGain); lfoGain.connect(filter.frequency); lfo.start();
     const out = ctx.createGain(); out.gain.value = 0;
-    filter.connect(out); out.connect(musicBus);
-    const v = ctx.createGain(); v.gain.value = 0.6; out.connect(v); v.connect(reverb);
-    out.gain.linearRampToValueAtTime(1, now() + 4);
-    for (let i = 0; i < 5; i++) {
-      [-7, 7].forEach(det => {
-        const o = ctx.createOscillator(); o.type = "sawtooth"; o.detune.value = det;
-        const g = ctx.createGain(); g.gain.value = i === 0 ? 0.06 : 0.035;
-        o.connect(g); g.connect(filter); o.start();
-        pad.voices.push({ o, i });
-      });
-    }
-    pad.filter = filter;
+    out.connect(musicBus);
+    const send = ctx.createGain(); send.gain.value = 0.75; out.connect(send); send.connect(reverb);
+    out.gain.linearRampToValueAtTime(1, now() + 6);   // fades in over 6 seconds
+    const padFilter = ctx.createBiquadFilter(); padFilter.type = "lowpass"; padFilter.frequency.value = 700; padFilter.Q.value = 0.3;
+    lfo(0.05, 250, padFilter.frequency);
+    padFilter.connect(out);
+    VOICES.forEach((v, k) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = v.type; o.frequency.value = voiceHz(v);
+      // Each voice swells and fades on its own slow cycle
+      g.gain.value = v.gain * 0.6;
+      lfo(0.03 + k * 0.013, v.gain * 0.4, g.gain);
+      o.connect(g); g.connect(v.kind === "pad" ? padFilter : out);
+      o.start();
+      pad.voices.push({ o, v });
+    });
+    // Cosmic wind: noise through a narrow band that sweeps slowly, drifting between the speakers
+    const wind = noise(); wind.loop = true;
+    const band = ctx.createBiquadFilter(); band.type = "bandpass"; band.frequency.value = 550; band.Q.value = 7;
+    lfo(0.023, 380, band.frequency);
+    const wg = ctx.createGain(); wg.gain.value = 0.11;
+    lfo(0.041, 0.05, wg.gain);
+    let windOut = wg;
+    if (ctx.createStereoPanner) { const pan = ctx.createStereoPanner(); lfo(0.031, 0.7, pan.pan); wg.connect(pan); windOut = pan; }
+    wind.connect(band); band.connect(wg); windOut.connect(out);
+    wind.start();
+    // Deep rumble far below
+    const rum = noise(); rum.loop = true;
+    const rf = ctx.createBiquadFilter(); rf.type = "lowpass"; rf.frequency.value = 70; rf.Q.value = 0.7;
+    const rg = ctx.createGain(); rg.gain.value = 0.16;
+    lfo(0.017, 0.06, rg.gain);
+    rum.connect(rf); rf.connect(rg); rg.connect(out);
+    rum.start(now() + 0.5);
     setZone(zoneIndex, true);
-    // Distant twinkles: random notes of the current chord, high up, through the reverb
+    // Now and then: a twinkle, or a distant signal
+    let nextSignal = now() + 8 + Math.random() * 6;
     twinkleTimer = setInterval(() => {
-      if (muted || !ctx || ctx.state !== "running" || Math.random() < 0.35) return;
-      const ch = CHORDS[zoneIndex], m = ch[Math.floor(Math.random() * ch.length)] + 24 + (Math.random() < 0.5 ? 12 : 0);
-      tone({ freq: hz(m), peak: 0.03, attack: 0.01, decay: 1.4, verb: 0.9 });
-    }, 1400);
+      if (muted || !ctx || ctx.state !== "running") return;
+      if (Math.random() < 0.3) twinkle(0);
+      if (now() > nextSignal) { signal(0); nextSignal = now() + 10 + Math.random() * 10; }
+    }, 1600);
+  }
+  function twinkle(t) {
+    const ch = CHORDS[zoneIndex], m = ch[Math.floor(Math.random() * ch.length)] + 24 + (Math.random() < 0.5 ? 12 : 0);
+    tone({ freq: hz(m), t, peak: 0.022, attack: 0.01, decay: 1.6, verb: 1 });
+  }
+  // A faint, far-away radio-like call: a slow sliding tone with a wobble, almost all reverb
+  function signal(t) {
+    const t0 = now() + t, ch = CHORDS[zoneIndex];
+    const from = hz(ch[2 + Math.floor(Math.random() * 3)] + 12), to = from * (Math.random() < 0.5 ? 0.75 : 1.33);
+    const o = ctx.createOscillator(), g = ctx.createGain(), vib = ctx.createOscillator(), vg = ctx.createGain();
+    o.type = "sine"; o.frequency.setValueAtTime(from, t0); o.frequency.exponentialRampToValueAtTime(to, t0 + 2.6);
+    vib.frequency.value = 5.5; vg.gain.value = from * 0.012; vib.connect(vg); vg.connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.linearRampToValueAtTime(0.025, t0 + 0.8); g.gain.exponentialRampToValueAtTime(0.0001, t0 + 3);
+    const dry = ctx.createGain(); dry.gain.value = 0.3;
+    o.connect(g); g.connect(dry); dry.connect(musicBus);
+    const wet = ctx.createGain(); wet.gain.value = 1; g.connect(wet); wet.connect(reverb);
+    o.start(t0); vib.start(t0); o.stop(t0 + 3.1); vib.stop(t0 + 3.1);
   }
   function setZone(index, instant) {
     zoneIndex = ((index % CHORDS.length) + CHORDS.length) % CHORDS.length;
     if (!pad) return;
-    const ch = CHORDS[zoneIndex], t = now();
-    pad.voices.forEach(({ o, i }) => {
-      if (instant) o.frequency.setValueAtTime(hz(ch[i]), t);
-      else o.frequency.setTargetAtTime(hz(ch[i]), t, 0.8);   // glide to the new chord
+    const t = now();
+    pad.voices.forEach(({ o, v }) => {
+      if (instant) o.frequency.setValueAtTime(voiceHz(v), t);
+      else o.frequency.setTargetAtTime(voiceHz(v), t, 1.2);   // glide to the new chord
     });
   }
 
@@ -288,13 +364,14 @@
     ({ ctx, master, sfxBus, musicBus, reverb, noiseBuf, muted } = live);
     return [buf.getChannelData(0), buf.getChannelData(1)];
   }
-  // Records the ambient pad for one zone (plus a few twinkles)
+  // Records the space ambience for one zone (with a few twinkles and one distant signal)
   async function _recordAmbient(zone, seconds) {
     const live = { ctx, master, sfxBus, musicBus, reverb, noiseBuf, muted, pad, zoneIndex };
     const off = new OfflineAudioContext(2, Math.ceil(44100 * seconds), 44100);
     build(off); muted = false; master.gain.value = 0.8; pad = null; zoneIndex = zone;
     const tw = twinkleTimer; startPad(); clearInterval(twinkleTimer); twinkleTimer = tw;
-    [0.6, 1.9, 3.1, 4.4].forEach(t => { const ch = CHORDS[zone], m = ch[Math.floor(Math.random() * ch.length)] + 24; tone({ freq: hz(m), t, peak: 0.03, attack: 0.01, decay: 1.4, verb: 0.9 }); });
+    for (let t = 1.2; t < seconds - 2; t += 2.7) twinkle(t);
+    if (seconds > 8) signal(seconds * 0.45);
     const buf = await off.startRendering();
     ({ ctx, master, sfxBus, musicBus, reverb, noiseBuf, muted, pad, zoneIndex } = live);
     return [buf.getChannelData(0), buf.getChannelData(1)];

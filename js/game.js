@@ -635,6 +635,9 @@
       impact.position.set(ox, oy, stopZ); impact.visible = true;
       impact.userData.big = hits > 0 || stopZ > -G.laserRange;   // a bigger burst when it hit something
       beamLife = BEAM_LIFE;
+      // What the beam hit: something destroyed (blast), a huge asteroid blocking it (clang), or nothing
+      const blocked = stopZ > -G.laserRange;
+      if (hits || blocked) setTimeout(() => sfx(hits ? "laserHit" : "laserBlock"), 60);
       shake = Math.max(shake, 0.07);   // a small kick
       hud.laserFlash.classList.remove("on"); void hud.laserFlash.offsetWidth; hud.laserFlash.classList.add("on");
       updateLaserHud();

@@ -53,9 +53,10 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 ## Sound
 
 - All sound is synthesised in the browser (`js/audio.js`, Web Audio API): no sound files.
-- Space ambience: a soft pad with a long reverb whose chord changes per zone, faint twinkles, and an engine hum that rises with speed (it roars while Dash is active).
+- Space ambience: a deep slowly-beating drone, soft swelling chord tones (the chord changes per zone), a faint shimmer, cosmic wind drifting between the speakers, a low rumble, and rare distant signals and twinkles through a long reverb. In a run, an engine hum rises with speed (it roars while Dash is active).
 - Each pickup has its own tone: Stardust chimes climb in pitch along a streak; Golden Horn fanfare; Dash boost whoosh; Magnet wobble; Slow-Mo downward sweep; Nova boom; Radar sonar ping; Mystery Box roll, then the revealed power's tone.
-- Also: launch, crash, near miss, Laser Eyes, warp gate, extra life, life used, smash crunch, button clicks.
+- Also: launch, crash, near miss, warp gate, extra life, life used, smash crunch, button clicks.
+- Laser Eyes: a zap with a short buzzing beam, then a blast when it destroys something, or a metallic clang when a huge asteroid blocks it.
 - Sound button (top right) or M to mute; remembered on the device. Browsers start sound after the first click, tap or key.
 
 ## Run card

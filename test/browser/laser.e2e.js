@@ -48,6 +48,7 @@ const R = path.join(__dirname, '../../');
     d.obstacles().forEach(o => { o.mesh.position.z = -500; });
     window.__rock = d.spawnAt(d.player.position.x, d.player.position.y + 0.92, -25, false); window.__rock.hitR = 1;
   });
+  await p.evaluate(() => { window.__snd = []; const play = ChogAudio.play; ChogAudio.play = n => { window.__snd.push(n); play(n); }; });
   await p.keyboard.press('KeyE');
   await p.waitForTimeout(60);
   const k = await p.evaluate(() => { const d = ChogUI._game()._debug; return { beam: d.beamOn(), destroyed: !d.obstacles().includes(window.__rock), hud: document.getElementById('laserCount').textContent, flash: document.getElementById('laserBox').classList.contains('fire') }; });
@@ -55,6 +56,15 @@ const R = path.join(__dirname, '../../');
   assert.deepStrictEqual(k, { beam: true, destroyed: true, hud: '9/10', flash: true }, 'E fires the laser');
   await p.waitForTimeout(400);
   assert.strictEqual(await p.evaluate(() => ChogUI._game()._debug.beamOn()), false, 'beam fades');
+  assert.deepStrictEqual(await p.evaluate(() => window.__snd.filter(n => /^laser/.test(n))), ['laser', 'laserHit'], 'zap, then a blast for the rock it destroyed');
+  // A huge asteroid blocks the beam: a clang instead
+  await p.evaluate(() => {
+    const d = ChogUI._game()._debug; window.__snd = [];
+    d.obstacles().forEach(o => { o.mesh.position.z = -500; });
+    const big = d.spawnAt(d.player.position.x, d.player.position.y + 0.92, -60, true); big.hitR = 2.5;
+  });
+  await p.keyboard.press('KeyE'); await p.waitForTimeout(200);
+  assert.deepStrictEqual(await p.evaluate(() => window.__snd.filter(n => /^laser/.test(n))), ['laser', 'laserBlock'], 'zap, then a clang off the huge asteroid');
 
   // Phone: one finger flies, a second finger's tap fires
   const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
