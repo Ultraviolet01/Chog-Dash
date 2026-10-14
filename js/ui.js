@@ -170,7 +170,7 @@
     // Page 3: the real in-game pickup icons
     const I = root.ChogPickups.icons, P = cfg.game.pickups, TYPES = root.ChogPickups.TYPES;
     const bubble = type => { const c = document.createElement("canvas"); c.width = c.height = 128; const g = c.getContext("2d");
-      g.drawImage(I.bubbleCanvas(false), 0, 0, 128, 128); g.drawImage(I.iconCanvas(type, true), 22, 22, 84, 84); g.drawImage(I.bubbleCanvas(true), 0, 0, 128, 128); return c; };
+      g.drawImage(I.bubbleCanvas(false, TYPES[type].color), 0, 0, 128, 128); g.drawImage(I.iconCanvas(type, false), 12, 12, 104, 104); g.drawImage(I.bubbleCanvas(true), 0, 0, 128, 128); return c; };
     const items = [
       [canvasImg(I.stardustCanvas(), "pk-ic"), "Stardust", "Every " + P.stardustPerLife + " = an extra life (max " + P.maxLives + ")."],
       [canvasImg(I.hornCanvas(), "pk-ic"), "Golden Horn", "Rare. Worth " + P.hornStardust + " Stardust."],

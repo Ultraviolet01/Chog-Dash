@@ -36,77 +36,78 @@
 
   // ---------- Icon art (used for the 3D pickups and the HUD) ----------
   // disk: true for the HUD badge (dark disk and ring); false for the symbol floating inside a bubble
+  // Power-up icons, sticker style like other games' power-ups: a bold solid glyph with a thick dark
+  // outline, filling most of the bubble so its shape reads from far away.
+  // disk: the small HUD version (coloured glyph on a dark disk).
   function iconCanvas(type, disk) {
     const S = 128, c = document.createElement("canvas");
     c.width = c.height = S;
     const g = c.getContext("2d"), col = TYPES[type].color;
+    const INK = "#0d1020", FILL = disk ? col : "#ffffff";
     if (disk) {
       const glow = g.createRadialGradient(64, 64, 30, 64, 64, 64);
       glow.addColorStop(0, col); glow.addColorStop(1, "rgba(0,0,0,0)");
       g.globalAlpha = 0.45; g.fillStyle = glow; g.fillRect(0, 0, S, S); g.globalAlpha = 1;
       g.fillStyle = "#0b1020"; g.beginPath(); g.arc(64, 64, 46, 0, Math.PI * 2); g.fill();
       g.lineWidth = 6; g.strokeStyle = col; g.stroke();
-    } else {
-      g.shadowColor = col; g.shadowBlur = 14;
+      g.translate(64, 64); g.scale(0.62, 0.62); g.translate(-64, -64);   // glyph fits inside the disk
     }
-    g.fillStyle = col; g.strokeStyle = col; g.lineCap = "round"; g.lineJoin = "round";
-    if (type === "dash") {
-      g.beginPath();
-      [[72, 30], [44, 70], [62, 70], [54, 100], [86, 56], [68, 56], [80, 30]].forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-      g.closePath(); g.fill();
-    } else if (type === "magnet") {
-      g.lineWidth = 14;
-      g.beginPath(); g.moveTo(44, 38); g.lineTo(44, 64); g.arc(64, 64, 20, Math.PI, 0, true); g.lineTo(84, 38); g.stroke();
-      g.fillStyle = "#ffffff"; g.fillRect(37, 32, 14, 12); g.fillRect(77, 32, 14, 12);
-    } else if (type === "slow") {
-      g.lineWidth = 5;
-      g.beginPath(); g.moveTo(44, 34); g.lineTo(84, 34); g.lineTo(64, 64); g.closePath(); g.fill();
-      g.beginPath(); g.moveTo(44, 94); g.lineTo(84, 94); g.lineTo(64, 64); g.closePath(); g.stroke();
-      g.beginPath(); g.moveTo(40, 30); g.lineTo(88, 30); g.moveTo(40, 98); g.lineTo(88, 98); g.stroke();
-    } else if (type === "nova") {
-      g.lineWidth = 6;
-      for (let i = 0; i < 8; i++) {
-        const a = (i / 8) * Math.PI * 2, r = i % 2 ? 22 : 34;
-        g.beginPath(); g.moveTo(64 + Math.cos(a) * 10, 64 + Math.sin(a) * 10); g.lineTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r); g.stroke();
-      }
-      g.beginPath(); g.arc(64, 64, 9, 0, Math.PI * 2); g.fill();
-    } else if (type === "radar") {
-      g.lineWidth = 6;
-      [16, 28, 40].forEach(r => { g.beginPath(); g.arc(46, 84, r, -Math.PI / 2, 0); g.stroke(); });
-      g.beginPath(); g.arc(46, 84, 6, 0, Math.PI * 2); g.fill();
-    } else if (type === "mystery") {
-      g.font = "bold 64px Arial"; g.textAlign = "center"; g.textBaseline = "middle";
-      g.fillText("?", 64, 68);
+    g.lineCap = "round"; g.lineJoin = "round";
+    // Filled shape: dark outline first, then the fill
+    const solid = path => { path(); if (!disk) { g.lineWidth = 12; g.strokeStyle = INK; g.stroke(); } g.fillStyle = FILL; path(); g.fill(); };
+    // Thick line: dark outline first, then the line
+    const line = (path, w) => { if (!disk) { path(); g.lineWidth = w + 12; g.strokeStyle = INK; g.stroke(); } path(); g.lineWidth = w; g.strokeStyle = FILL; g.stroke(); };
+    const poly = pts => () => { g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); };
+    if (type === "dash") {   // lightning bolt
+      solid(poly([[78, 12], [32, 72], [60, 72], [46, 116], [98, 50], [70, 50], [88, 12]]));
+    } else if (type === "magnet") {   // horseshoe magnet with silver tips
+      line(() => { g.beginPath(); g.moveTo(36, 26); g.lineTo(36, 64); g.arc(64, 64, 28, Math.PI, 0, true); g.lineTo(92, 26); }, 22);
+      const tip = x => () => { g.beginPath(); g.rect(x - 13, 16, 26, 20); };
+      [36, 92].forEach(x => { if (!disk) { tip(x)(); g.lineWidth = 8; g.strokeStyle = INK; g.stroke(); } g.fillStyle = disk ? "#ffffff" : "#c9d6e6"; tip(x)(); g.fill(); });
+    } else if (type === "slow") {   // hourglass with sand
+      line(() => { g.beginPath(); g.moveTo(30, 18); g.lineTo(98, 18); g.moveTo(30, 110); g.lineTo(98, 110); }, 10);
+      solid(() => { g.beginPath(); g.moveTo(38, 22); g.lineTo(90, 22); g.lineTo(68, 64); g.lineTo(90, 106); g.lineTo(38, 106); g.lineTo(60, 64); g.closePath(); });
+      g.fillStyle = disk ? "#ffffff" : col;
+      g.beginPath(); g.moveTo(44, 102); g.lineTo(84, 102); g.lineTo(64, 80); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(52, 32); g.lineTo(76, 32); g.lineTo(64, 50); g.closePath(); g.fill();
+    } else if (type === "nova") {   // starburst
+      solid(() => { g.beginPath(); for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2 - Math.PI / 2, r = i % 2 ? 20 : 52; g.lineTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r); } g.closePath(); });
+      g.fillStyle = disk ? "#ffffff" : col; g.beginPath(); g.arc(64, 64, 11, 0, Math.PI * 2); g.fill();
+    } else if (type === "radar") {   // radar screen with a sweep
+      line(() => { g.beginPath(); g.arc(64, 64, 44, 0, Math.PI * 2); }, 10);
+      line(() => { g.beginPath(); g.arc(64, 64, 22, 0, Math.PI * 2); }, 7);
+      solid(() => { g.beginPath(); g.moveTo(64, 64); g.arc(64, 64, 42, -Math.PI / 2, -Math.PI / 8); g.closePath(); });
+      g.fillStyle = disk ? "#ffffff" : col; g.beginPath(); g.arc(88, 84, 6, 0, Math.PI * 2); g.fill();
+    } else if (type === "mystery") {   // bold question mark
+      g.font = "900 104px 'Arial Black', Arial, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+      if (!disk) { g.lineWidth = 14; g.strokeStyle = INK; g.strokeText("?", 64, 70); }
+      g.fillStyle = FILL; g.fillText("?", 64, 70);
     }
     return c;
   }
 
-  // Water bubble, in two layers: the body (behind the icon) and the shine (in front of it)
-  function bubbleCanvas(front) {
+  // Water bubble tinted in the power-up's colour, in two layers: the body (behind the icon) and the
+  // shine (in front of it). The colour alone tells you which power-up it is from far away.
+  function bubbleCanvas(front, color) {
     const S = 256, c = document.createElement("canvas");
     c.width = c.height = S;
-    const g = c.getContext("2d"), r = 118;
+    const g = c.getContext("2d"), r = 118, col = color || "#78c8ff";
+    const rgba = a => { const n = parseInt(col.slice(1), 16); return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")"; };
     if (!front) {
-      const body = g.createRadialGradient(128, 128, 20, 128, 128, r);
-      body.addColorStop(0, "rgba(150,215,255,0.05)");
-      body.addColorStop(0.7, "rgba(120,200,255,0.12)");
-      body.addColorStop(0.92, "rgba(140,215,255,0.35)");
-      body.addColorStop(1, "rgba(200,240,255,0)");
+      const body = g.createRadialGradient(110, 100, 10, 128, 128, r);
+      body.addColorStop(0, rgba(0.28)); body.addColorStop(0.65, rgba(0.42)); body.addColorStop(0.9, rgba(0.7)); body.addColorStop(1, rgba(0.15));
       g.fillStyle = body; g.beginPath(); g.arc(128, 128, r, 0, Math.PI * 2); g.fill();
-      g.lineWidth = 3; g.strokeStyle = "rgba(210,245,255,0.75)";
-      g.beginPath(); g.arc(128, 128, r - 3, 0, Math.PI * 2); g.stroke();
+      g.lineWidth = 9; g.strokeStyle = rgba(0.95); g.beginPath(); g.arc(128, 128, r - 5, 0, Math.PI * 2); g.stroke();
+      g.lineWidth = 3; g.strokeStyle = "rgba(255,255,255,0.7)"; g.beginPath(); g.arc(128, 128, r - 11, 0, Math.PI * 2); g.stroke();
       return c;
     }
-    // Rainbow sheen around the rim, like a soap or water bubble
-    [["rgba(120,255,240,0.45)", -0.3, 1.1], ["rgba(255,140,230,0.4)", 1.0, 1.0], ["rgba(255,230,120,0.35)", 2.2, 0.9], ["rgba(140,170,255,0.4)", 3.3, 1.3]]
-      .forEach(([col, a0, len]) => { g.lineWidth = 7; g.strokeStyle = col; g.beginPath(); g.arc(128, 128, r - 9, a0, a0 + len); g.stroke(); });
-    // Highlights
-    g.fillStyle = "rgba(255,255,255,0.75)";
-    g.beginPath(); g.ellipse(88, 74, 30, 16, -0.7, 0, Math.PI * 2); g.fill();
-    g.fillStyle = "rgba(255,255,255,0.5)";
-    g.beginPath(); g.arc(178, 184, 8, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = "rgba(255,255,255,0.45)"; g.lineWidth = 4;
-    g.beginPath(); g.arc(128, 128, r - 18, 2.3, 2.9); g.stroke();
+    // Glassy highlights
+    g.fillStyle = "rgba(255,255,255,0.8)";
+    g.beginPath(); g.ellipse(86, 70, 32, 15, -0.7, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "rgba(255,255,255,0.55)";
+    g.beginPath(); g.arc(180, 186, 9, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "rgba(255,255,255,0.5)"; g.lineWidth = 6;
+    g.beginPath(); g.arc(128, 128, r - 20, 2.25, 2.95); g.stroke();
     return c;
   }
 
@@ -137,19 +138,28 @@
     return c;
   }
 
+  // Golden Horn: the rare prize. A chunky ridged horn with a thick outline and a shine.
   function hornCanvas() {
     const S = 128, c = document.createElement("canvas");
     c.width = c.height = S;
     const g = c.getContext("2d");
     const glow = g.createRadialGradient(64, 64, 10, 64, 64, 64);
-    glow.addColorStop(0, "rgba(255,215,90,0.7)"); glow.addColorStop(1, "rgba(255,190,60,0)");
+    glow.addColorStop(0, "rgba(255,215,90,0.75)"); glow.addColorStop(1, "rgba(255,190,60,0)");
     g.fillStyle = glow; g.fillRect(0, 0, S, S);
-    // A curved golden horn
-    const grad = g.createLinearGradient(30, 100, 90, 20);
-    grad.addColorStop(0, "#a8660c"); grad.addColorStop(0.5, "#ffd45a"); grad.addColorStop(1, "#fff1b8");
-    g.fillStyle = grad;
-    g.beginPath(); g.moveTo(38, 104); g.quadraticCurveTo(30, 52, 86, 22); g.quadraticCurveTo(58, 62, 66, 104); g.closePath(); g.fill();
-    g.strokeStyle = "#7a4a08"; g.lineWidth = 3; g.stroke();
+    g.lineJoin = "round"; g.lineCap = "round";
+    const horn = () => { g.beginPath(); g.moveTo(26, 110); g.quadraticCurveTo(18, 44, 104, 12); g.quadraticCurveTo(64, 50, 78, 110); g.quadraticCurveTo(52, 118, 26, 110); g.closePath(); };
+    horn(); g.lineWidth = 11; g.strokeStyle = "#3a2203"; g.stroke();
+    const grad = g.createLinearGradient(26, 110, 104, 12);
+    grad.addColorStop(0, "#b8730f"); grad.addColorStop(0.45, "#ffcf3d"); grad.addColorStop(1, "#fff4c2");
+    horn(); g.fillStyle = grad; g.fill();
+    // Ridges around the horn
+    g.save(); horn(); g.clip();
+    g.strokeStyle = "rgba(120,70,5,0.55)"; g.lineWidth = 5;
+    [[32, 86, 74, 92], [36, 62, 76, 70], [48, 40, 84, 48]].forEach(([x1, y1, x2, y2]) => { g.beginPath(); g.moveTo(x1, y1); g.quadraticCurveTo((x1 + x2) / 2, y1 + 14, x2, y2); g.stroke(); });
+    g.restore();
+    // Shine
+    g.strokeStyle = "rgba(255,255,255,0.85)"; g.lineWidth = 6;
+    g.beginPath(); g.moveTo(36, 96); g.quadraticCurveTo(32, 52, 82, 26); g.stroke();
     return c;
   }
 
@@ -169,8 +179,9 @@
     const tex = c => new THREE.CanvasTexture(c);
     const symbols = {}, iconUrls = {};
     Object.keys(TYPES).forEach(t => { symbols[t] = tex(iconCanvas(t, false)); iconUrls[t] = iconCanvas(t, true).toDataURL(); });
-    const bubbleBack = tex(bubbleCanvas(false)), bubbleFront = tex(bubbleCanvas(true)), glowTex = tex(glowCanvas());
-    const BUBBLE = 3.0, SYMBOL = 2.1;
+    const bubbleBacks = {}; Object.keys(TYPES).forEach(t => { bubbleBacks[t] = tex(bubbleCanvas(false, TYPES[t].color)); });
+    const bubbleFront = tex(bubbleCanvas(true)), glowTex = tex(glowCanvas());
+    const BUBBLE = 3.0, SYMBOL = 2.45, HORN_SIZE = 2.9;
     const DUST_SIZE = 1.5;   // Stardust sprite size up close (it is drawn larger further away, see animate)
     let pops = [];
     const dustTex = tex(stardustCanvas()), hornTex = tex(hornCanvas());
@@ -204,16 +215,16 @@
       if (kind === "power") {
         // Power-ups float inside a water bubble: body behind, symbol in the middle, shine in front
         sprite = new THREE.Group();
-        parts = { glow: spriteOf(glowTex, BUBBLE * 2.4, true), back: spriteOf(bubbleBack, BUBBLE), icon: spriteOf(symbols[type], SYMBOL), front: spriteOf(bubbleFront, BUBBLE) };
+        parts = { glow: spriteOf(glowTex, BUBBLE * 2.4, true), back: spriteOf(bubbleBacks[type], BUBBLE), icon: spriteOf(symbols[type], SYMBOL), front: spriteOf(bubbleFront, BUBBLE) };
         parts.glow.material.color.set(TYPES[type].color);
         parts.glow.position.z = -0.1; parts.back.position.z = -0.05; parts.front.position.z = 0.05;
         sprite.add(parts.glow, parts.back, parts.icon, parts.front);
       } else {
-        sprite = spriteOf(kind === "horn" ? hornTex : dustTex, kind === "horn" ? 2.4 : DUST_SIZE, kind !== "horn");
+        sprite = spriteOf(kind === "horn" ? hornTex : dustTex, kind === "horn" ? HORN_SIZE : DUST_SIZE, kind !== "horn");
       }
       sprite.position.set(x, y, z);
       scene.add(sprite);
-      const item = { kind, type, sprite, parts, baseY: y, phase: Math.random() * 6, size: kind === "horn" ? 2.4 : DUST_SIZE };
+      const item = { kind, type, sprite, parts, baseY: y, phase: Math.random() * 6, size: kind === "horn" ? HORN_SIZE : DUST_SIZE };
       items.push(item);
       return item;
     }
@@ -272,7 +283,7 @@
       else {
         activate(item.type, zoneId);
         // The bubble pops: an expanding ring plus a splash of droplets
-        const ring = spriteOf(bubbleBack, BUBBLE);
+        const ring = spriteOf(bubbleBacks[item.type], BUBBLE);
         ring.position.copy(item.sprite.position);
         scene.add(ring);
         pops.push({ ring, life: 0.3 });
@@ -347,14 +358,15 @@
         if (!item.homing) s.scale.setScalar(1 + Math.min(4, Math.max(0, -s.position.z) / 60));
       } else if (item.kind === "horn") {
         if (!item.homing) s.position.y = item.baseY + Math.sin(t * 2.2) * 0.2;
-        s.material.rotation = Math.sin(t * 2) * 0.3;
-        s.scale.setScalar(item.size * (1 + Math.sin(t * 4) * 0.08));
+        // Turns like a spinning coin: narrows to its edge and back
+        const pulse = item.size * (1 + Math.sin(t * 4) * 0.06);
+        s.scale.set(pulse * (0.3 + 0.7 * Math.abs(Math.cos(t * 2.2))), pulse, 1);
       } else {
         // Stardust: slow spin and a gentle twinkle. Far away it is drawn larger so it can be spotted early;
         // it shrinks back to its normal size as it reaches the rocket.
-        s.material.rotation += dt * 1.2;
         const far = 1 + Math.min(3, Math.max(0, -s.position.z) / 100);
-        s.scale.setScalar(item.size * far * (1 + Math.sin(t * 5) * 0.12));
+        const k = item.size * far * (1 + Math.sin(t * 5) * 0.1);
+        s.scale.set(k * (0.55 + 0.45 * Math.abs(Math.cos(t * 3))), k, 1);   // coin-like turn
       }
     }
 
@@ -390,7 +402,7 @@
             item.sprite.traverse(o => { if (o.material) o.material.opacity = Math.min(o.material.opacity, fade); });
           }
         }
-        const r = item.kind === "power" ? 1.4 : item.kind === "horn" ? 1.3 : 1.2;   // Stardust radius matches its bigger look
+        const r = item.kind === "power" ? 1.4 : item.kind === "horn" ? 1.45 : 1.2;   // Stardust radius matches its bigger look
         // Closest approach along this frame's move, so fast flying can't skip over a pickup
         const zc = prevZ <= p.z && s.z >= p.z ? p.z : (Math.abs(p.z - s.z) < Math.abs(p.z - prevZ) ? s.z : prevZ);
         if (playing && Math.hypot(s.x - p.x, s.y - py, zc - p.z) < r) { collect(item, zoneId); removeItem(item); return false; }
