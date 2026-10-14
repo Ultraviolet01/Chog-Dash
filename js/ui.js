@@ -25,8 +25,9 @@
   const short = a => (a ? a.slice(0, 6) + "..." + a.slice(-4) : "");
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function show(panelId) {
-    ["menuPanel", "nftPanel", "lbPanel", "howPanel"].forEach(id => $(id).classList.toggle("show", id === panelId));
-    if (panelId === "menuPanel") refreshHome();
+    ["menuPanel", "nftPanel", "lbPanel", "howPanel", "questPanel"].forEach(id => $(id).classList.toggle("show", id === panelId));
+    if (panelId !== "questPanel") clearInterval(questTimer);
+    if (panelId === "menuPanel") { refreshHome(); $("questStrip").classList.remove("show"); stopReveal(); }
   }
   function setStatus(el, text, kind) { el.textContent = text; el.className = "status" + (kind ? " " + kind : ""); }
   function readNum(key) { try { return Number(localStorage.getItem(key)) || 0; } catch (e) { return 0; } }
@@ -47,7 +48,7 @@
     const base = isTouch
       ? "Drag to fly the rocket up, down, left and right."
       : "Move the mouse to fly the rocket. Or use the keyboard: W/A/S/D or the arrow keys. The rocket stays put when you let go. F for full screen.";
-    return base + (laser ? (isTouch ? " LASER button fires Laser Eyes." : " E fires Laser Eyes.") : "");
+    return base + (laser ? (isTouch ? " Tap with a second finger to fire Laser Eyes." : " Press E to fire Laser Eyes.") : "");
   }
   const startText = () => (isTouch ? "Tap to start" : "Press Space or click to start");
   const portraitTip = () => (window.innerHeight > window.innerWidth ? "Tip: turn your phone sideways for a bigger view." : "");
@@ -86,6 +87,9 @@
     $("nftBack").onclick = () => show("menuPanel");
     $("lbBack").onclick = () => show("menuPanel");
     $("howBack").onclick = () => show("menuPanel");
+    $("questBtn").onclick = openQuests;
+    $("questBack").onclick = () => show("menuPanel");
+    $("questRefresh").onclick = openQuests;
     setupFullscreen();
     setupSound();
     placeHero();
@@ -159,14 +163,14 @@
     if (isTouch) {
       $("howControls").innerHTML = '<div class="ctl-touch">' + fingerSvg + "</div>";
       $("howControlsText").innerHTML = "<li><b>Drag anywhere</b> to fly up, down, left and right. Your finger never covers the rocket.</li>" +
-        "<li><b>Tap</b> to start a run.</li><li><b>LASER</b> button fires Laser Eyes (Chogs with that trait).</li><li>Turn your phone sideways for a bigger view.</li>";
+        "<li><b>Tap</b> to start a run.</li><li><b>Laser Eyes</b> (Chogs with that trait): while one finger flies, <b>tap with a second finger</b> to fire.</li><li>Turn your phone sideways for a bigger view.</li>";
     } else {
       $("howControls").innerHTML = '<div class="ctl-row"><div class="ctl-keys"><div>' + keycap("W") + '</div><div>' + keycap("A") + keycap("S") + keycap("D") +
         '</div></div><span class="ctl-or">or</span><div class="ctl-keys"><div>' + keycap("&uarr;") + '</div><div>' + keycap("&larr;") + keycap("&darr;") + keycap("&rarr;") +
         '</div></div><span class="ctl-or">or</span>' + mouseSvg + "</div>";
       $("howControlsText").innerHTML = "<li><b>Mouse:</b> the rocket follows it. <b>Keys:</b> it stays where you leave it.</li>" +
         "<li>" + keycap("Space", true) + " or click to start. " + keycap("R") + " to play again after a crash.</li>" +
-        "<li>" + keycap("E") + " fires Laser Eyes (Chogs with that trait). " + keycap("F") + " full screen.</li>";
+        "<li>" + keycap("E") + " fires <b>Laser Eyes</b> (Chogs with that trait). The counter bottom left shows your shots. " + keycap("F") + " full screen.</li>";
     }
     // Page 3: the real in-game pickup icons
     const I = root.ChogPickups.icons, P = cfg.game.pickups, TYPES = root.ChogPickups.TYPES;
@@ -196,9 +200,10 @@
         "<li>Fly as Rookie, the practice pilot</li><li>No wallet needed</li><li>Best distance saved on this device</li><li>Never on the leaderboard</li></ul></div>" +
       '<div class="md md-nft"><div class="md-face md-chog">CHOG</div><div class="md-n">CHOG NFT</div><ul>' +
         "<li>Connect your wallet, sign, and pick a Chog you own</li>" +
-        "<li><b>Laser Eyes</b> (laser Eyes trait): " + cfg.abilities.laserEyes.charges + " shots that destroy what's in your path</li>" +
+        "<li><b>Laser Eyes</b> (laser Eyes trait): " + cfg.abilities.laserEyes.charges + " shots that destroy what's in your path. " +
+          (isTouch ? "Tap with a second finger to fire" : "Press " + keycap("E") + " to fire") + "</li>" +
         "<li><b>Total distance</b> = distance flown x tier:</li></ul><div class='tiers'>" + tiers + "</div>" +
-        "<ul><li>Your Chog's traits style the rocket and its aura trail</li><li>Ranked on the leaderboard under your username</li></ul></div>";
+        "<ul><li>Your Chog's traits style the rocket and its aura trail</li><li>Ranked on the leaderboard under your username</li><li>Daily and weekly quests earn badges</li></ul></div>";
     // Dots, buttons, keys and swipe
     $("howDots").innerHTML = Array.from({ length: HOW_PAGES }, (_, k) => '<button class="how-dot" role="tab" aria-label="Page ' + (k + 1) + '"></button>').join("");
     [...$("howDots").children].forEach((d, k) => { d.onclick = () => goHow(k); });
@@ -382,6 +387,8 @@
       renderNftReady();
       requestRunSession();
     }
+    stopReveal();
+    if (S.mode === "nft") loadQuests(); else { S.quests = null; renderQuestStrip(); }
   }
 
   function onStart() {
@@ -394,10 +401,16 @@
     S.runCounter++;
     S.activeRunId = S.runId;
     S.runId = null;
+    stopReveal();
+    renderQuestStrip();
+    startLiveQuests();
   }
 
   function onEnd(result) {
     setFlying(false);
+    clearInterval(liveTimer);
+    $("questToast").classList.remove("show");
+    renderQuestStrip();
     rememberRun(result);
     if (S.mode === "practice") {
       const best = Math.max(readNum(PRACTICE_BEST), result.meters);
@@ -428,14 +441,18 @@
       return;
     }
     setMsg("CRASHED", lines(["Submitting to the leaderboard...", ""]));
-    apiCall("/run/finish", { runId: S.activeRunId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed }, S.auth && S.auth.token)
+    apiCall("/run/finish", { runId: S.activeRunId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed,
+      stardust: result.stardust || 0, powerups: result.powerups || 0, horns: result.horns || 0, nearMisses: result.nearMisses || 0,
+      livesUsed: result.livesUsed || 0 }, S.auth && S.auth.token)
       .then(r => {
         if (run !== S.runCounter || game.state !== "dead") return;
         if (r.status === "validated" && S.lastRun) { S.lastRun.rank = r.rank || null; S.lastRun.total = r.finalScore; }
         const st = r.status === "validated"
           ? ["Validated. Total distance " + r.finalScore + " m (x" + r.multiplier + ")" + (r.rank ? ", rank " + r.rank : ""), "good"]
           : ["Not validated: " + (r.reason || r.status), "warn"];
-        setMsg("CRASHED", lines(st));
+        setMsg("CRASHED", lines(st).concat(questLines(r.quests)));
+        if (r.quests && r.quests.badges.length) revealBadges(r.quests.badges);
+        if (r.status === "validated") loadQuests();
       })
       .catch(e => {
         if (run !== S.runCounter || game.state !== "dead") return;
@@ -463,6 +480,7 @@
       newBest: (nft ? result.score : result.meters) > prevBest && result.meters > 0,
       url: /^https?:$/.test(location.protocol) ? location.host : null,
       rank: null,
+      pin: nft ? myPin() : null,
     };
     $("cardBtn").style.display = result.meters > 0 ? "" : "none";
     showEndBar(true);
@@ -947,7 +965,9 @@
     return img;
   }
   function entryNames(e) {
-    return '<div class="who">' + esc(e.username || short(e.wallet)) + '</div><div class="chog">' +
+    const pin = e.pin && Q.badgeFor(e.pin.id) ? badgeIcon(Q.badgeFor(e.pin.id), e.pin.tier, "mini lb-pin") : "";
+    const badges = e.badges ? '<span class="lb-badges" title="Quest badges">' + GLYPHS.star + e.badges + "</span>" : "";
+    return '<div class="who"><span class="nm">' + esc(e.username || short(e.wallet)) + "</span>" + pin + badges + '</div><div class="chog">' +
       esc((e.name || "Token " + e.tokenId) + (e.tier ? " · " + e.tier + " x" + Number(e.multiplier).toFixed(2) : "")) + "</div>";
   }
 
@@ -1022,6 +1042,227 @@
       st.className = "lb-status err";
       st.textContent = e.offline ? "The leaderboard server isn't reachable from here. It runs on the deployed site (see README)." : e.message;
     }
+  }
+
+  // ---------- Quests (Chog NFT holders only) ----------
+  // The server decides all progress from validated Chog NFT runs. The page shows it, and during a run
+  // predicts completions from the live run so it can celebrate straight away.
+  const Q = root.ChogQuests;
+  const G = d => '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' + d + '"/></svg>';
+  const GLYPHS = { lock: G("M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3M12 14.5v2"), pin: G("M9 3h6l-1 6 4 3v2H6v-2l4-3zM12 14v7") };
+  Object.keys(Q.GLYPH_PATHS).forEach(k => { GLYPHS[k] = G(Q.GLYPH_PATHS[k]); });
+  const DIFF = { easy: "EASY", medium: "MEDIUM", hard: "HARD", weekly: "WEEKLY" };
+  const WEEKDAY = ["S", "M", "T", "W", "T", "F", "S"];   // UTC day 0 (1970-01-01) was a Thursday
+  let questTimer = null, liveTimer = null, revealTimer = null, revealQueue = [];
+
+  // A badge: the tier's frame shape in its metal, the quest's glyph in its difficulty colour. Not earned: a dim outline.
+  function badgeIcon(b, tier, cls) {
+    const t = Q.TIERS[tier];
+    return '<span class="qbadge' + (t ? " on t-" + t.id : "") + (cls ? " " + cls : "") + '" style="--c:' + b.color + (t ? ";--m:" + t.metal : "") + '">' +
+      '<svg viewBox="0 0 48 48" aria-hidden="true"><path class="fr" d="' + Q.SHAPE_PATHS[t ? t.shape : "circle"] + '"/>' +
+      '<path class="gl" transform="translate(12 12)" d="' + Q.GLYPH_PATHS[b.glyph] + '"/></svg></span>';
+  }
+  const tierName = k => (Q.TIERS[k] ? Q.TIERS[k].name : "");
+  function fmtLeft(ms) {
+    const m = Math.max(0, Math.floor(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60);
+    return d ? d + "d " + h + "h" : h ? h + "h " + (m % 60) + "m" : (m % 60) + "m";
+  }
+  function fmtProgress(q) {
+    const def = Q.ALL[q.id], unit = def.metric === "meters" ? " m" : def.metric === "cleanSeconds" ? " s" : "";
+    if (def.metric === "zone") return q.done ? "Reached" : "Not yet";
+    return q.progress.toLocaleString() + " / " + q.target.toLocaleString() + unit;
+  }
+  function questCard(q) {
+    const pct = Math.round((q.progress / q.target) * 100);
+    return '<div class="qcard d-' + q.difficulty + (q.done ? " done" : "") + '" style="--c:' + q.badge.color + '">' +
+      badgeIcon(q.badge, q.badge.tier) +
+      '<div class="qmain"><div class="qtop"><span class="qtitle">' + esc(q.title) + '</span><span class="qdiff">' + DIFF[q.difficulty] + "</span></div>" +
+      '<div class="qdesc">' + esc(q.desc) + "</div>" +
+      '<div class="qbar"><i style="width:' + (q.done ? 100 : pct) + '%"></i></div>' +
+      '<div class="qprog">' + (q.done ? "Complete" + (q.badge.tier >= 0 ? " &middot; " + tierName(q.badge.tier) + " badge" : "") : fmtProgress(q)) + "</div></div></div>";
+  }
+
+  // Lines for the crash screen after a validated run
+  function questLines(q) {
+    if (!q) return [];
+    const out = [];
+    q.completed.forEach(id => { const b = Q.badgeFor(id); if (b) out.push(["Quest complete: " + b.name, "good"]); });
+    q.badges.forEach(u => out.push([(u.id === "streak" ? "Streak" : Q.badgeFor(u.id).name) + ": " + tierName(u.tier) + " badge", "good"]));
+    if (out.length) $("questBtn").classList.add("has-new");
+    return out;
+  }
+
+  // ----- Loading, and today's quests on the ready and crash screens -----
+  async function loadQuests() {
+    if (S.mode !== "nft" || !authValid()) { S.quests = null; renderQuestStrip(); return null; }
+    try { S.quests = await apiCall("/quests", null, S.auth.token); }
+    catch (e) { if (e.status === 403 || e.status === 401 || e.offline) S.quests = null; }
+    renderQuestStrip();
+    return S.quests;
+  }
+  function renderQuestStrip() {
+    const el = $("questStrip"), r = S.quests;
+    const on = !!r && S.mode === "nft" && (game.state === "ready" || game.state === "dead");
+    el.classList.toggle("show", on);
+    if (!r) { el.innerHTML = ""; return; }
+    const done = r.daily.filter(q => q.done).length;
+    el.innerHTML = '<div class="qs-h">TODAY\'S QUESTS <b>' + done + "/3</b></div>" + r.daily.map(q =>
+      '<div class="qs-row' + (q.done ? " done" : "") + '" style="--c:' + q.badge.color + '">' + badgeIcon(q.badge, q.done ? Math.max(0, q.badge.tier) : -1, "mini") +
+      '<div class="qs-txt"><div class="qs-t">' + esc(q.title) + '</div><div class="qbar"><i style="width:' + (q.done ? 100 : Math.round((q.progress / q.target) * 100)) + '%"></i></div>' +
+      '<div class="qs-p">' + (q.done ? "Complete" : fmtProgress(q)) + "</div></div></div>").join("");
+  }
+
+  // ----- During a run: "Quest complete" as soon as the live run reaches a target -----
+  function startLiveQuests() {
+    clearInterval(liveTimer);
+    S.liveDone = new Set();
+    if (!S.quests || S.mode !== "nft") return;
+    liveTimer = setInterval(checkLiveQuests, 400);
+  }
+  function checkLiveQuests() {
+    const live = game.live(), r = S.quests;
+    if (!live || !r) return;
+    const stats = Q.runStats(live);
+    const dailiesNow = r.daily.filter(q => q.done || S.liveDone.has(q.id)).length - r.daily.filter(q => q.done).length;
+    r.daily.concat([r.weekly]).forEach(q => {
+      const def = Q.ALL[q.id];
+      if (q.done || S.liveDone.has(q.id) || def.metric === "runs") return;   // a run counts once it ends
+      const v = def.metric === "dailies" ? q.progress + dailiesNow : def.scope === "run" ? stats[def.metric] : q.progress + stats[def.metric];
+      if (v >= q.target) { S.liveDone.add(q.id); questToast(q); }
+    });
+  }
+  function questToast(q) {
+    const el = $("questToast");
+    el.style.setProperty("--c", q.badge.color);
+    el.innerHTML = badgeIcon(q.badge, Math.max(0, q.badge.tier), "mini") + '<div><div class="qt-k">QUEST COMPLETE</div><div class="qt-n">' + esc(q.title) + "</div></div>";
+    el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+    sfx("quest");
+  }
+  function sfx(name) { if (root.ChogAudio) root.ChogAudio.play(name); }
+
+  // ----- After the run: each new badge or tier is revealed in turn -----
+  function revealBadges(list) {
+    revealQueue = revealQueue.concat(list);
+    if (!revealTimer) nextReveal();
+  }
+  function nextReveal() {
+    const el = $("badgeReveal"), u = revealQueue.shift();
+    if (!u || game.state !== "dead") { el.classList.remove("show"); revealTimer = null; revealQueue = []; return; }
+    const b = Q.badgeFor(u.id);
+    el.style.setProperty("--c", b.color);
+    el.style.setProperty("--m", Q.TIERS[u.tier].metal);
+    el.innerHTML = '<div class="br-ring"></div>' + badgeIcon(b, u.tier, "big") +
+      '<div class="br-k">' + (u.tier === 0 ? "NEW BADGE" : tierName(u.tier).toUpperCase() + " BADGE") + '</div><div class="br-n">' + esc(b.name) + "</div>";
+    el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+    sfx("badge");
+    revealTimer = setTimeout(nextReveal, 2600);
+  }
+  function stopReveal() { clearTimeout(revealTimer); revealTimer = null; revealQueue = []; $("badgeReveal").classList.remove("show"); }
+
+  // ----- The Quests panel -----
+  function questLocked(text, action) {
+    $("questBody").innerHTML = '<div class="lb-empty q-locked">' + GLYPHS.lock + '<div class="t">Holders only</div><p>' + esc(text) + "</p></div>";
+    if (action) {
+      const b = document.createElement("button");
+      b.textContent = action[0]; b.onclick = action[1];
+      $("questBody").firstChild.appendChild(b);
+    }
+  }
+
+  async function openQuests() {
+    show("questPanel");
+    $("questBtn").classList.remove("has-new");
+    const st = $("questStatus");
+    st.textContent = ""; st.className = "lb-status";
+    if (!S.account || !authValid()) {
+      questLocked("Quests are for Chog Genesis holders. Connect and sign in with the wallet that holds your Chog to see today's quests.",
+        ["Connect wallet", () => { setHomeMode("nft"); openNft(); }]);
+      return;
+    }
+    $("questBody").innerHTML = '<div class="lb-row skeleton"></div>'.repeat(4);
+    let r;
+    try { r = await apiCall("/quests", null, S.auth.token); }
+    catch (e) {
+      if (e.status === 403) return questLocked("This wallet holds no Chog Genesis NFTs. Quests and badges are for holders. You can still fly in practice mode.");
+      $("questBody").innerHTML = "";
+      st.className = "lb-status err";
+      st.textContent = e.offline ? "The quest server isn't reachable from here. It runs on the deployed site (see README)." : e.message;
+      return;
+    }
+    S.quests = r;
+    renderQuests(r);
+  }
+
+  function renderQuests(r) {
+    const skew = r.serverTime - Date.now();
+    const doneToday = r.daily.filter(q => q.done).length;
+    const mine = {};
+    r.badges.forEach(b => { mine[b.id] = b; });
+    const all = Q.allBadges().sort((a, b) => (a.id === "streak" ? -1 : b.id === "streak" ? 1 : 0));
+    const streakB = mine.streak || { tier: -1 };
+    const days = r.last7.map((d, k) => '<div class="fd' + (d.done >= 3 ? " lit" : d.done ? " part" : "") + (k === 6 ? " today" : "") + '">' +
+      GLYPHS.flame + '<span class="fd-w">' + WEEKDAY[(d.day + 4) % 7] + "</span>" + (d.done && d.done < 3 ? '<span class="fd-p">' + d.done + "/3</span>" : "") + "</div>").join("");
+    $("questBody").innerHTML =
+      '<div class="qstreak' + (r.streak ? " on" : "") + '">' +
+        '<div class="qs-top">' + badgeIcon(Q.badgeFor("streak"), streakB.tier) +
+          '<div class="qs-mid"><div class="qs-n">' + r.streak + "-day streak</div>" +
+          '<div class="qs-d">' + (doneToday === 3 ? "Today's dailies are done. Come back tomorrow to keep it going." :
+            "Finish all 3 dailies today to " + (r.streak ? "keep" : "start") + " your streak.") +
+            (r.nextStreakBadge ? " Next badge tier at " + r.nextStreakBadge + " days." : "") + "</div></div>" +
+          '<div class="qs-today">' + doneToday + "/3<span>TODAY</span></div></div>" +
+        '<div class="flames">' + days + "</div></div>" +
+      '<div class="qhead"><span>DAILY</span><span class="qreset" id="qResetDay"></span></div>' +
+      r.daily.map(questCard).join("") +
+      '<div class="qhead"><span>WEEKLY</span><span class="qreset" id="qResetWeek"></span></div>' +
+      questCard(r.weekly) +
+      '<div class="qhead"><span>BADGES</span><span class="qreset">' + r.badges.length + " / " + all.length + "</span></div>" +
+      '<div class="qtiers">' + Q.TIERS.map((t, k) => badgeIcon({ color: "#a9b1c2", glyph: "star" }, k, "mini") + "<span>" + t.name + "</span>").join("") + "</div>" +
+      '<div class="qbadges">' + all.map(b => '<button class="qb' + (mine[b.id] ? " on" : "") + (r.pin === b.id ? " pinned" : "") + '" data-id="' + b.id + '" title="' + esc(b.name) + '">' +
+        badgeIcon(b, mine[b.id] ? mine[b.id].tier : -1) + (r.pin === b.id ? '<span class="qpin">' + GLYPHS.pin + "</span>" : "") + "</button>").join("") + "</div>" +
+      '<div class="qbinfo" id="qbInfo">Tap a badge to see how to earn it and how rare it is.</div>' +
+      '<p class="lb-rule">Only validated Chog NFT runs count. Dailies reset at 00:00 UTC, the weekly quest on Monday. Badges level up: Bronze, Silver, Gold, Platinum.</p>';
+    [...document.querySelectorAll("#questBody .qb")].forEach(el => { el.onclick = () => badgeInfo(r, el.dataset.id); });
+    const tick = () => {
+      const now = Date.now() + skew;
+      if (now >= r.dailyResetAt) { openQuests(); return; }
+      $("qResetDay").textContent = "New quests in " + fmtLeft(r.dailyResetAt - now);
+      $("qResetWeek").textContent = "Resets in " + fmtLeft(r.weeklyResetAt - now);
+    };
+    clearInterval(questTimer);
+    tick();
+    questTimer = setInterval(tick, 30000);
+  }
+
+  function badgeInfo(r, id) {
+    const b = r.badges.find(x => x.id === id) || Object.assign(Q.badgeFor(id), { tier: -1, count: 0, best: 0 });
+    const streak = id === "streak", steps = streak ? Q.STREAK_TIER_AT : Q.QUEST_TIER_AT;
+    const have = streak ? b.best : b.count, k = b.tier + 1;
+    const next = k < steps.length ? "Next: " + Q.TIERS[k].name + " at " + steps[k] + (streak ? " days in a row (best " + have + ")" : " completions (" + have + "/" + steps[k] + ")") : "Top tier reached";
+    const pct = r.rarity[id] || 0;
+    const rare = r.players ? "Earned by " + (pct > 0 && pct < 1 ? "<1" : Math.round(pct)) + "% of pilots &middot; " + Q.rarity(pct) : "";
+    $("qbInfo").innerHTML = '<div class="qi-top">' + badgeIcon(b, b.tier) + '<div><b>' + esc(b.name) + "</b>" +
+      (b.tier >= 0 ? ' <span class="qi-tier" style="--m:' + Q.TIERS[b.tier].metal + '">' + tierName(b.tier).toUpperCase() + "</span>" : ' <span class="qi-lock">NOT EARNED</span>') +
+      '<div class="qi-d">' + esc(b.desc) + "</div><div class=\"qi-d\">" + next + "</div>" + (rare ? '<div class="qi-r">' + rare + "</div>" : "") + "</div></div>";
+    if (b.tier >= 0) {
+      const btn = document.createElement("button");
+      btn.className = "ghost qi-pin";
+      btn.textContent = r.pin === id ? "Unpin from my name" : "Pin next to my name";
+      btn.onclick = async () => {
+        btn.disabled = true;
+        try {
+          const out = await apiCall("/badge/pin", { id: r.pin === id ? null : id }, S.auth.token);
+          r.pin = out.pin;
+          renderQuests(r);
+          badgeInfo(r, id);
+        } catch (e) { btn.disabled = false; btn.textContent = e.message; }
+      };
+      $("qbInfo").appendChild(btn);
+    }
+  }
+  // The pinned badge with its tier, for the leaderboard and the run card
+  function myPin() {
+    const r = S.quests, b = r && r.pin && r.badges.find(x => x.id === r.pin);
+    return b ? { id: b.id, tier: b.tier } : null;
   }
 
   root.ChogUI = { start, _state: S, _game: () => game };

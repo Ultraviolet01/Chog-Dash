@@ -58,7 +58,7 @@
     const hud = {
       root: $("hud"), dist: $("dist"), score: $("score"), speed: $("speed"), mode: $("modeBadge"),
       laser: $("laserCount"), laserBox: $("laserBox"), near: $("nearMiss"),
-      laserBtn: $("laserBtn"), zoneLabel: $("zoneLabel"), zoneBanner: $("zoneBanner"), flash: $("flash"), zoneFlash: $("zoneFlash"),
+      laserFlash: $("laserFlash"), zoneLabel: $("zoneLabel"), zoneBanner: $("zoneBanner"), flash: $("flash"), zoneFlash: $("zoneFlash"),
     };
 
     // ---------- Renderer, scene, camera ----------
@@ -386,21 +386,33 @@
     const bitGeo = new THREE.TetrahedronGeometry(0.12);
 
     // ---------- Laser beam visuals ----------
-    const beamMat = new THREE.MeshBasicMaterial({ color: 0xff3b3b, transparent: true, opacity: 0.9,
-      blending: THREE.AdditiveBlending, depthWrite: false });
-    const glowMat = new THREE.MeshBasicMaterial({ color: 0xff6b6b, transparent: true, opacity: 0.25,
-      blending: THREE.AdditiveBlending, depthWrite: false });
-    const beamGeo = new THREE.CylinderGeometry(1, 1, 1, 8, 1, true);
+    // Seen from behind the rocket the beam points straight away from the camera, so it needs to be bright and
+    // thick near the rocket, with a flash at the Chog's eyes and a burst where it ends, to read as a shot.
+    const BEAM_LIFE = 0.35;
+    // Drawn over the rider (no depth test): the beam leaves the Chog's eyes, which face away from the camera
+    const fx = { transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, fog: false };
+    const beamMat = new THREE.MeshBasicMaterial(Object.assign({ color: 0xffe4e4, opacity: 1 }, fx));
+    const glowMat = new THREE.MeshBasicMaterial(Object.assign({ color: 0xff2a2a, opacity: 0.5 }, fx));
+    const hazeMat = new THREE.MeshBasicMaterial(Object.assign({ color: 0xff4d4d, opacity: 0.16 }, fx));
+    const beamGeo = new THREE.CylinderGeometry(1, 1, 1, 10, 1, true);
     const beams = new THREE.Group();
     [-0.14, 0.14].forEach(x => {
-      const core = new THREE.Mesh(beamGeo, beamMat); core.scale.set(0.05, 1, 0.05); core.position.x = x;
+      const core = new THREE.Mesh(beamGeo, beamMat); core.scale.set(0.08, 1, 0.08); core.position.x = x;
       beams.add(core);
+      const glow = new THREE.Mesh(beamGeo, glowMat); glow.scale.set(0.22, 1, 0.22); glow.position.x = x;
+      beams.add(glow);
     });
-    const glow = new THREE.Mesh(beamGeo, glowMat); glow.scale.set(G.laserRadius * 0.6, 1, G.laserRadius * 0.6);
-    beams.add(glow);
+    const haze = new THREE.Mesh(beamGeo, hazeMat); haze.scale.set(G.laserRadius * 0.75, 1, G.laserRadius * 0.75);
+    beams.add(haze);
     beams.rotation.x = Math.PI / 2;
     beams.visible = false;
+    beams.traverse(o => { o.renderOrder = 20; });
     scene.add(beams);
+    const flashMat = () => new THREE.SpriteMaterial(Object.assign({ map: dotTex, color: 0xff4040, opacity: 0 }, fx));
+    const muzzle = new THREE.Sprite(flashMat()), impact = new THREE.Sprite(flashMat());
+    muzzle.visible = impact.visible = false;
+    muzzle.renderOrder = impact.renderOrder = 21;
+    scene.add(muzzle); scene.add(impact);
     let beamLife = 0;
 
     // ---------- Pickups (js/pickups.js), Radar outlines, Dash ram glow ----------
@@ -457,9 +469,15 @@
     window.addEventListener("keyup", e => { keys[e.code] = false; });
     window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
 
+    // Touch: one finger drags the rocket; a second finger tapping fires Laser Eyes
+    const fingers = new Set();
     renderer.domElement.addEventListener("pointerdown", e => {
       if (state === "menu") return;
-      if (e.pointerType !== "mouse") lastTouch = { x: e.clientX, y: e.clientY };
+      if (e.pointerType !== "mouse") {
+        fingers.add(e.pointerId);
+        if (fingers.size >= 2) { fireLaser(); return; }
+        lastTouch = { x: e.clientX, y: e.clientY };
+      }
       onPress();
     });
     window.addEventListener("pointermove", e => {
@@ -476,11 +494,9 @@
         lastTouch = { x: e.clientX, y: e.clientY };
       }
     });
-    const release = () => { lastTouch = null; };
+    const release = e => { fingers.delete(e.pointerId); if (!fingers.size) lastTouch = null; };
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
-
-    hud.laserBtn.addEventListener("pointerdown", e => { e.stopPropagation(); fireLaser(); });
 
     // ---------- Run state ----------
     let state = "menu", deadAt = 0, runStartedAt = 0;
@@ -580,6 +596,7 @@
         score: root.ChogTraits.computeScore(m, setup.multiplier),
         laserUsed, nearMisses,
         stardust: pickups.stats().stardust,
+        powerups: pickups.stats().powerups, horns: pickups.stats().horns, livesUsed: pickups.stats().livesUsed,
       });
     }
 
@@ -597,8 +614,10 @@
         return o.mesh.position.z < 1 && o.mesh.position.z > -G.laserRange && dx * dx + dy * dy < r * r;
       };
       obstacles.forEach(o => { if (o.huge && inPath(o) && o.mesh.position.z > stopZ) stopZ = o.mesh.position.z; });
+      let hits = 0;
       obstacles = obstacles.filter(o => {
         if (!o.huge && inPath(o) && o.mesh.position.z > stopZ) {
+          hits++;
           burst(o.mesh.position, [o.mesh.material], 10, 5);
           scene.remove(o.mesh);
           return false;
@@ -609,16 +628,22 @@
       beams.scale.set(1, len, 1);
       beams.position.set(ox, oy, -0.3 - len / 2);
       beams.visible = true;
-      beamLife = 0.25;
+      muzzle.position.set(ox, oy, -0.5); muzzle.visible = true;
+      impact.position.set(ox, oy, stopZ); impact.visible = true;
+      impact.userData.big = hits > 0 || stopZ > -G.laserRange;   // a bigger burst when it hit something
+      beamLife = BEAM_LIFE;
+      shake = Math.max(shake, 0.07);   // a small kick
+      hud.laserFlash.classList.remove("on"); void hud.laserFlash.offsetWidth; hud.laserFlash.classList.add("on");
       updateLaserHud();
+      // The HUD counter flashes so the shot is felt even when nothing is in the path
+      hud.laserBox.classList.remove("fire"); void hud.laserBox.offsetWidth; hud.laserBox.classList.add("fire");
     }
 
     function updateLaserHud() {
       const on = setup.laserCharges > 0;
-      setDisplay(hud.laserBox, on);
-      setDisplay(hud.laserBtn, on);
+      hud.laserBox.style.display = on ? "flex" : "none";
       setText(hud.laser, laserCharges + "/" + setup.laserCharges);
-      if (hud.laserBtn.disabled !== (laserCharges <= 0)) hud.laserBtn.disabled = laserCharges <= 0;
+      hud.laserBox.classList.toggle("empty", laserCharges <= 0);
     }
 
     // ---------- Obstacles ----------
@@ -825,9 +850,16 @@
       // Laser beam fade
       if (beamLife > 0) {
         beamLife -= dt;
-        beamMat.opacity = 0.9 * Math.max(0, beamLife / 0.25);
-        glowMat.opacity = 0.25 * Math.max(0, beamLife / 0.25);
-        if (beamLife <= 0) beams.visible = false;
+        const k = Math.max(0, beamLife / BEAM_LIFE), age = 1 - k;
+        beamMat.opacity = Math.min(1, k * 1.4);
+        glowMat.opacity = 0.5 * k;
+        hazeMat.opacity = 0.16 * k;
+        beams.children.forEach(c => { c.scale.x = c.scale.z = (c.material === hazeMat ? G.laserRadius * 0.75 : c.material === glowMat ? 0.22 : 0.08) * (0.6 + 0.4 * k); });
+        muzzle.scale.setScalar(1.2 + age * 2.2); muzzle.material.opacity = k;
+        const s0 = impact.userData.big ? 7 : 3.5;
+        impact.scale.setScalar(s0 * (0.5 + age)); impact.material.opacity = k * (impact.userData.big ? 1 : 0.6);
+        impact.position.z += speed * dt;   // the hit point travels with the world
+        if (beamLife <= 0) beams.visible = muzzle.visible = impact.visible = false;
       }
 
       if (state === "ready" || state === "menu") {
@@ -1004,8 +1036,14 @@
       toReady, toMenu, start,
       setHeroScreenY(f) { heroScreenY = f; },
       get state() { return state; },
+      // The run so far (for live quest progress), or null when not flying
+      live() {
+        if (state !== "playing") return null;
+        const p = pickups.stats();
+        return { meters: meters(), durationMs: performance.now() - runStartedAt, nearMisses, stardust: p.stardust, powerups: p.powerups, horns: p.horns, livesUsed: p.livesUsed };
+      },
       // Test hooks, used by the automated browser tests only
-      _debug: { camera, rider, look: () => look, trailLive: () => Array.from(trailLife).filter(l => l > 0).length, extras, gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, pickups, runTime: () => runTime,
+      _debug: { camera, rider, look: () => look, trailLive: () => Array.from(trailLife).filter(l => l > 0).length, extras, gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, beamOn: () => beams.visible, pickups, runTime: () => runTime,
         speed: () => (state === "playing" ? baseSpeed() * pickups.speedFactor() : 0),
         setMeters(m) { distance = m * G.unitsPerMeter; }, spawnAt(x, y, z, huge) {
         const o = makeObstacle(); o.vx = o.vy = 0; o.huge = !!huge; o.mesh.position.set(x, y, z); scene.add(o.mesh); obstacles.push(o); return o;

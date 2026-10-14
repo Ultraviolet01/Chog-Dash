@@ -102,6 +102,7 @@ test("full game flow on the Supabase schema: sign in, username, runs, leaderboar
     chain: {
       ownerOf: async id => owners[id],
       tokenURI: async id => "ipfs://cid/" + id,
+      balanceOf: async w => BigInt(Object.values(owners).filter(o => o === w.toLowerCase()).length),
       fetchMetadata: async uri => metas[uri.split("/").pop()],
       verifySignature: a => viem.verifyMessage(a),
     },
@@ -132,6 +133,10 @@ test("full game flow on the Supabase schema: sign in, username, runs, leaderboar
 
   const lb = await h.leaderboard();
   assert.deepStrictEqual(lb.entries.map(e => [e.rank, e.username, e.totalMeters, e.meters]), [[1, "Alice", 910, 650], [2, "Bob", 800, 800]]);
+  // Quest progress and badges are stored in chog_kv too
+  const q = await h.questsGet({ token: a.token });
+  assert.strictEqual(q.daily.length, 3);
+  assert.ok(Array.isArray(q.badges));
 });
 
 test("supabase store: one player's best record", async () => {

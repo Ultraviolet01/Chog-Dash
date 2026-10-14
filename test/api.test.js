@@ -19,6 +19,7 @@ function setup() {
   const chain = {
     async ownerOf(id) { if (!owners[id]) throw new Error("revert"); return owners[id]; },
     async tokenURI(id) { return "ipfs://cid/" + id; },
+    async balanceOf(w) { return BigInt(Object.values(owners).filter(o => o === w.toLowerCase()).length); },
     async fetchMetadata(uri) { return metadata[uri.split("/").pop()]; },
     verifySignature: args => viem.verifyMessage(args),
   };
@@ -33,7 +34,7 @@ function setup() {
       await h.profileSet({ body: { username: name || "P" + acct.address.slice(2, 10) }, token });
     return token;
   }
-  return { h, store, owners, alice, bob, signIn, advance: ms => { t += ms; } };
+  return { h, store, owners, alice, bob, signIn, advance: ms => { t += ms; }, setTime: v => { t = v; } };
 }
 
 const status = async (p) => { try { await p; return 200; } catch (e) { return e.status; } };
@@ -202,4 +203,123 @@ test("leaderboard shows the Chog image and, when signed in, the player's own ran
   const degraded = await h.leaderboard({ token: ta });
   assert.strictEqual(degraded.entries.length, 1, "board still loads if the own-rank lookup fails");
   assert.strictEqual(degraded.me, null);
+});
+
+test("quests: holders only, progress from validated runs, badges and streaks", async () => {
+  const Quests = require("../js/quests.js");
+  const { h, store, owners, alice, bob, signIn, advance, setTime } = setup();
+  setTime(Date.UTC(2026, 9, 14, 12));   // a Wednesday
+  let ta = await signIn(alice, "Alice");
+  assert.strictEqual(await status(h.questsGet({ token: null })), 401);
+  const q0 = await h.questsGet({ token: ta });
+  assert.strictEqual(q0.daily.length, 3);
+  assert.deepStrictEqual(q0.daily.map(q => q.difficulty), ["easy", "medium", "hard"]);
+  assert.ok(q0.daily.every(q => q.progress === 0 && !q.done));
+  assert.strictEqual(q0.weekly.kind, "weekly");
+  assert.strictEqual(q0.streak, 0);
+  assert.deepStrictEqual(q0.badges, []);
+  assert.strictEqual(q0.dailyResetAt, Date.UTC(2026, 9, 15));
+  assert.strictEqual(q0.weeklyResetAt, Date.UTC(2026, 9, 19));
+
+  // A wallet with no Chog is refused (Bob's only Chog moves to Alice)
+  owners["3"] = alice.address.toLowerCase();
+  const tb = await signIn(bob, "Bob");
+  assert.strictEqual(await status(h.questsGet({ token: tb })), 403);
+
+  // Finish a run whose stats complete every daily quest of the day
+  const big = { meters: 7000, durationMs: 0, stardust: 400, powerups: 9, horns: 2, nearMisses: 20, livesUsed: 0 };
+  const run = async (body, secs) => {
+    const s = await h.runStart({ body: { tokenId: "1" }, token: ta });
+    advance(secs * 1000 + 1000);
+    return h.runFinish({ body: Object.assign({ runId: s.runId }, body, { durationMs: secs * 1000 }), token: ta });
+  };
+  const r1 = await run(big, 140);
+  assert.strictEqual(r1.status, "validated");
+  const dailyIds = Quests.dailyFor(Date.UTC(2026, 9, 14, 12)).map(q => q.id);   // all reachable in one run
+  assert.deepStrictEqual(r1.quests.completed.filter(id => dailyIds.includes(id)).sort(), dailyIds.slice().sort());
+  assert.strictEqual(r1.quests.streak, 1);
+  const q1 = await h.questsGet({ token: ta });
+  assert.ok(q1.daily.every(q => q.done && q.progress === q.target));
+  assert.strictEqual(q1.badges.length, r1.quests.badges.length);
+  assert.ok(q1.badges.every(b => b.count === 1 && b.tier === 0 && b.next.at === 5 && b.color && b.glyph), "first completion: Bronze");
+  assert.deepStrictEqual(q1.last7.map(d => d.done), [0, 0, 0, 0, 0, 0, 3]);
+  assert.strictEqual(q1.players, 1);
+  assert.strictEqual(q1.rarity[dailyIds[0]], 100, "the only player has it");
+  assert.strictEqual(q1.rarity["w-zone-drift"], 0);
+
+  // Two more days in a row: a 3-day streak badge
+  for (const day of [15, 16]) {
+    setTime(Date.UTC(2026, 9, day, 12));
+    ta = await signIn(alice);   // sign-ins last 12 hours
+    const done = [], badges = [];   // 3 runs: some dailies add up over runs ("finish 3 runs today")
+    for (let i = 0; i < 3; i++) { const r = await run(big, 140); done.push(...r.quests.completed); badges.push(...r.quests.badges); }
+    assert.strictEqual(done.filter(id => Quests.ALL[id].kind === "daily").length, 3, day + ": " + done);
+    if (day === 16) assert.ok(badges.some(b => b.id === "streak" && b.tier === 0), "3 days in a row: Streak Bronze");
+  }
+  const q3 = await h.questsGet({ token: ta });
+  assert.strictEqual(q3.streak, 3);
+  assert.strictEqual(q3.nextStreakBadge, 7);
+  assert.strictEqual(q3.badges.find(b => b.id === "streak").best, 3);
+  assert.deepStrictEqual(q3.last7.slice(-3).map(d => d.done), [3, 3, 3]);
+
+  // Pin a badge: only one you've earned; it shows on the leaderboard
+  assert.strictEqual(await status(h.badgePin({ body: { id: "w-zone-drift" }, token: ta })), 403);
+  assert.strictEqual(await status(h.badgePin({ body: { id: "nope" }, token: ta })), 400);
+  assert.deepStrictEqual(await h.badgePin({ body: { id: "streak" }, token: ta }), { pin: "streak" });
+  assert.strictEqual((await h.questsGet({ token: ta })).pin, "streak");
+  assert.deepStrictEqual((await h.leaderboard()).entries[0].pin, { id: "streak", tier: 0 });
+  assert.deepStrictEqual(await h.badgePin({ body: { id: null }, token: ta }), { pin: null });
+  assert.strictEqual((await h.leaderboard()).entries[0].pin, null);
+
+  // Missing a day breaks the streak
+  setTime(Date.UTC(2026, 9, 18, 12));
+  ta = await signIn(alice);
+  assert.strictEqual((await h.questsGet({ token: ta })).streak, 0);
+
+  // Leaderboard rows carry the badge count
+  const lb = await h.leaderboard();
+  assert.strictEqual(lb.entries[0].badges, q3.badges.length);
+  await store.del("holder:" + alice.address.toLowerCase());
+});
+
+test("quests: reported stats are capped by the run's length and rejected runs count for nothing", async () => {
+  const { h, alice, signIn, advance, setTime } = setup();
+  setTime(Date.UTC(2026, 9, 14, 12));
+  const ta = await signIn(alice, "Alice");
+  const s = await h.runStart({ body: { tokenId: "1" }, token: ta });
+  advance(21000);
+  // 20 s run: at most 1 horn, 1 power-up, (4 + 1) x 10 + 50 Stardust, 60 near misses
+  const r = await h.runFinish({ body: { runId: s.runId, meters: 300, durationMs: 20000, stardust: 99999, powerups: 50, horns: 9, nearMisses: 999, livesUsed: 0 }, token: ta });
+  assert.strictEqual(r.status, "validated");
+  const q = await h.questsGet({ token: ta });
+  const dust = q.daily.find(x => x.id === "d-dust-150");
+  assert.ok(dust.progress <= 100, "stardust capped: " + dust.progress);
+  const s2 = await h.runStart({ body: { tokenId: "1" }, token: ta });
+  advance(21000);
+  const bad = await h.runFinish({ body: { runId: s2.runId, meters: 100000, durationMs: 20000, stardust: 150 }, token: ta });
+  assert.strictEqual(bad.status, "rejected");
+  assert.strictEqual(bad.quests, undefined);
+});
+
+test("quests: a badge levels up to Silver on its 5th completion, and rarity counts owners", async () => {
+  const Quests = require("../js/quests.js");
+  const { h, store, alice, bob, signIn, advance, setTime } = setup();
+  setTime(Date.UTC(2026, 9, 14, 12));
+  const easy = Quests.dailyFor(Date.UTC(2026, 9, 14, 12))[0].id;   // d-fly-1000: one run of 1,000 m
+  const ta = await signIn(alice, "Alice");
+  await store.set("badges:" + alice.address.toLowerCase(), { [easy]: { count: 4, first: 1 } });
+  const s = await h.runStart({ body: { tokenId: "1" }, token: ta });
+  advance(61000);
+  const r = await h.runFinish({ body: { runId: s.runId, meters: 1200, durationMs: 60000, livesUsed: 1 }, token: ta });
+  assert.deepStrictEqual(r.quests.badges, [{ id: easy, tier: 1 }], "Bronze to Silver");
+  const tb = await signIn(bob, "Bob");
+  const s2 = await h.runStart({ body: { tokenId: "3" }, token: tb });
+  advance(61000);
+  const rb = await h.runFinish({ body: { runId: s2.runId, meters: 1100, durationMs: 60000, livesUsed: 1 }, token: tb });
+  assert.deepStrictEqual(rb.quests.badges, [{ id: easy, tier: 0 }], "Bob's first: Bronze");
+  const q = await h.questsGet({ token: ta });
+  assert.strictEqual(q.players, 2);
+  // Alice's badge was seeded before the counters (only badges first earned through a run are counted), so 1 of 2 players
+  assert.strictEqual(q.rarity[easy], 50);
+  assert.strictEqual(q.badges.find(b => b.id === easy).tier, 1);
 });

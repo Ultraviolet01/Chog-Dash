@@ -30,6 +30,7 @@ const rpc = mockContract(owners);
 const chain = {
   ownerOf: async id => { if (!owners[id]) throw new Error('revert'); return owners[id]; },
   tokenURI: async id => 'ipfs://metacid/' + id,
+  balanceOf: async w => BigInt(Object.values(owners).filter(o => o === w.toLowerCase()).length),
   fetchMetadata: async uri => metas[uri.split('/').pop()],
   verifySignature: args => viem.verifyMessage(args),
 };
@@ -66,6 +67,11 @@ const chain = {
 
   await p.goto('http://localhost:3456/');
   await p.waitForTimeout(800);
+  // Quests are locked until a holder signs in
+  await p.click('#questBtn'); await p.waitForTimeout(300);
+  assert.match(await text('#questBody'), /Holders only/);
+  await shot('quests-locked');
+  await p.click('#questBack');
   await p.click('#modeNft'); await p.click('#playBtn'); await p.waitForTimeout(500);
   await p.click('#walletButtons button'); await p.waitForTimeout(800);
   // First signature request is declined: no Chogs shown, a Sign in button appears
@@ -113,6 +119,9 @@ const chain = {
   const end = await text('#msg');
   console.log('end:', end);
   assert.match(end, /Validated\. Total distance \d+ m \(x1\.15\), rank 1/);
+  // Today's quests show on the crash screen, refreshed with this run
+  await p.waitForFunction(() => document.getElementById('questStrip').classList.contains('show') && document.querySelectorAll('#questStrip .qs-row').length === 3, null, { timeout: 5000 });
+  console.log('quest strip:', await text('#questStrip'));
   const flown = Number(end.match(/Distance: (\d+) m/)[1]), total = Math.floor(flown * 1.15);
   await shot('end');
   // Run card
@@ -143,11 +152,26 @@ const chain = {
   await p.click('#cardClose');
   assert.ok(!(await p.isVisible('#cardPanel')), 'card closes');
   await p.click('#endLbBtn'); await p.waitForTimeout(600);
-  const lb = await p.evaluate(() => [...document.querySelectorAll('#lbPanel .lb-entry')].map(e => ({ rank: (e.querySelector('.medal') || e.querySelector('.rk')).textContent, who: e.querySelector('.who').textContent, chog: e.querySelector('.chog').textContent, total: e.querySelector('.big').textContent, mine: e.classList.contains('mine') })));
+  const lb = await p.evaluate(() => [...document.querySelectorAll('#lbPanel .lb-entry')].map(e => ({ rank: (e.querySelector('.medal') || e.querySelector('.rk')).textContent, who: e.querySelector('.who').firstChild.textContent, chog: e.querySelector('.chog').textContent, total: e.querySelector('.big').textContent, mine: e.classList.contains('mine') })));
   console.log('lb:', JSON.stringify(lb), '| me:', await text('#lbMe'));
   await shot('lb');
   assert.strictEqual(lb.length, 1, 'one leaderboard entry');
   assert.deepStrictEqual([lb[0].rank, lb[0].who, lb[0].total], ['1', 'Test_Pilot', total.toLocaleString() + 'm'], 'leaderboard shows the username and total distance');
+  // Quests: today's 3 dailies and the weekly quest, with the run's progress, and the badge collection
+  await p.click('#lbBack'); await p.waitForTimeout(300);
+  await p.click('#questBtn');
+  await p.waitForFunction(() => document.querySelectorAll('#questBody .qcard').length === 4, null, { timeout: 5000 });
+  const q = await p.evaluate(() => ({
+    cards: [...document.querySelectorAll('#questBody .qcard')].map(c => c.querySelector('.qdiff').textContent + ': ' + c.querySelector('.qtitle').textContent + ' (' + c.querySelector('.qprog').textContent + ')'),
+    badges: document.querySelectorAll('#questBody .qb').length, reset: document.getElementById('qResetDay').textContent,
+  }));
+  console.log('quests:', JSON.stringify(q));
+  assert.deepStrictEqual(q.cards.map(c => c.split(':')[0]), ['EASY', 'MEDIUM', 'HARD', 'WEEKLY']);
+  assert.strictEqual(q.badges, 19);
+  assert.match(q.reset, /New quests in \d/);
+  await p.click('#questBody .qb'); await p.waitForTimeout(100);
+  assert.match(await text('#qbInfo'), /Not earned yet|Earned/);
+  await shot('quests');
   assert.deepStrictEqual(errs, [], 'no page errors');
   console.log('PASS nft flow');
   await b.close(); server.close();

@@ -165,6 +165,15 @@
     life() {   // extra life: uplifting three notes
       [72, 76, 79, 84].forEach((m, i) => bell(m, i * 0.09, 0.16));
     },
+    quest() {   // quest complete: bright rising chime
+      [76, 79, 83, 88].forEach((m, i) => bell(m, i * 0.07, 0.2));
+      tone({ type: "triangle", freq: hz(64), t: 0.28, peak: 0.12, attack: 0.02, decay: 0.9, verb: 0.6 });
+    },
+    badge() {   // badge reveal: shimmer swell, then a chord
+      hiss({ peak: 0.25, attack: 0.25, decay: 0.5, type: "bandpass", freq: 1500, to: 6000, q: 0.8, verb: 0.6 });
+      [72, 76, 79, 84, 88].forEach((m, i) => tone({ type: "triangle", freq: hz(m), t: 0.3 + i * 0.03, peak: 0.09, attack: 0.02, decay: 1.4, verb: 0.7 }));
+      [96, 100, 103].forEach((m, i) => bell(m, 0.35 + i * 0.08, 0.08));
+    },
     lifeUsed() {   // shield flare
       tone({ type: "triangle", freq: 330, to: 990, peak: 0.25, attack: 0.01, decay: 0.5, verb: 0.5 });
       hiss({ peak: 0.2, decay: 0.4, type: "highpass", freq: 2000, verb: 0.4 });

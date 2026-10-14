@@ -132,11 +132,33 @@
     g.textAlign = "left";
   }
 
+  // A quest badge (see js/quests.js): the tier's frame in its metal, the glyph in the quest's colour
+  function drawBadge(g, pin, cx, cy, size) {
+    const Q = root.ChogQuests, b = Q && Q.badgeFor(pin.id), t = Q && Q.TIERS[pin.tier];
+    if (!b || !t) return;
+    g.save();
+    g.translate(cx - size / 2, cy - size / 2); g.scale(size / 48, size / 48);
+    const frame = new Path2D(Q.SHAPE_PATHS[t.shape]);
+    g.shadowColor = b.color; g.shadowBlur = 16;
+    g.fillStyle = "#121a2e"; g.fill(frame);
+    g.shadowBlur = 0;
+    g.lineWidth = 3; g.strokeStyle = t.metal; g.stroke(frame);
+    g.translate(12, 12); g.lineWidth = 2.2; g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = b.color;
+    g.stroke(new Path2D(Q.GLYPH_PATHS[b.glyph]));
+    g.restore();
+  }
+
   // Name, sub line, the big number and how it was made. Returns the y below the block.
   function headline(g, run, x, y, w, scale, align) {
     const at = align === "center" ? x + w / 2 : x;
     g.textAlign = align || "left";
-    g.fillStyle = INK; fitText(g, run.username, BUNGEE, Math.round(46 * scale), w); g.fillText(run.username, at, y);
+    const pinSize = run.pin ? Math.round(52 * scale) : 0, gap = pinSize ? 14 : 0;
+    g.fillStyle = INK; const ns = fitText(g, run.username, BUNGEE, Math.round(46 * scale), w - pinSize - gap);
+    const nw = g.measureText(run.username).width;
+    const nx = align === "center" ? at - (pinSize + gap) / 2 : at;
+    g.fillText(run.username, nx, y);
+    // The player's pinned quest badge, right after their name
+    if (pinSize) drawBadge(g, run.pin, (align === "center" ? nx + nw / 2 : nx + nw) + gap + pinSize / 2, y - ns * 0.36, pinSize);
     const sub = run.practice ? "Rookie, the practice pilot" : (run.chogName || "") + (run.tier ? "  ·  " + run.tier : "");
     g.fillStyle = MUTED; fitText(g, sub, CHAKRA, Math.round(24 * scale), w, "700"); g.fillText(sub, at, y + 38 * scale);
     g.fillStyle = TEAL; g.font = "700 " + Math.round(20 * scale) + "px " + CHAKRA;
@@ -171,7 +193,7 @@
   }
 
   // run: { portrait, username, chogName, practice, meters, total, multiplier, tier, zoneIndex, zoneName, loop,
-  //        durationMs, stardust, nearMisses, newBest, rank, url, date }
+  //        durationMs, stardust, nearMisses, newBest, rank, url, date, pin: { id, tier } | null }
   function render(run, format) {
     const [W, H] = FORMATS[format] || FORMATS.wide;
     const c = document.createElement("canvas");

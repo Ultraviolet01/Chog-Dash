@@ -1,7 +1,7 @@
 /*
  * Clicks every button in the game and checks each does what it should.
  * Runs against the real dev server, with a MOCK wallet (starting on the wrong network),
- * MOCK contract and MOCK IPFS. Static buttons: hudMenuBtn, laserBtn, walletChip, modePractice,
+ * MOCK contract and MOCK IPFS. Static buttons: hudMenuBtn, walletChip, modePractice,
  * modeNft, playBtn, lbBtn, howBtn, howBack, nftBack, switchNet, signInBtn (via auto sign-in), pilotSave, rideBtn, lbBack.
  * Dynamic buttons: wallet connect buttons and Chog tiles.
  */
@@ -129,7 +129,7 @@ function ok(name, cond, detail) {
   // ---------- Practice: PLAY, HUD menu button, Space shortcuts ----------
   await p.click('#playBtn'); await p.waitForTimeout(400);
   ok('playBtn (practice) opens the ready screen', (await state()) === 'ready' && /PRACTICE MODE/.test(await text('#msg')));
-  ok('practice HUD has no LASER button', !(await visible('#laserBtn')));
+  ok('practice HUD has no laser counter', !(await visible('#laserBox')));
   ok('hudMenuBtn visible on ready screen', await visible('#hudMenuBtn'));
   await p.click('#hudMenuBtn'); await p.waitForTimeout(300);
   ok('hudMenuBtn (ready) returns home', await panelShown('menuPanel') && (await state()) === 'menu');
@@ -183,14 +183,15 @@ function ok(name, cond, detail) {
   await p.click('#rideBtn');
   await p.waitForFunction(() => /Eligible/.test(document.getElementById('msg').textContent), null, { timeout: 15000 });
   ok('rideBtn opens an eligible NFT run', /CHOG NFT MODE/.test(await text('#msg')));
-  ok('LASER button shown for a Laser Eyes Chog', await visible('#laserBtn'));
+  ok('no on-screen LASER button', !(await p.$('#laserBtn')));
+  ok('laser counter with its E key shown for a Laser Eyes Chog', await visible('#laserBox .lz-key'));
 
   await p.click('#gameCanvas'); await p.waitForTimeout(300);
   ok('click on the game starts the run', (await state()) === 'playing');
-  await p.click('#laserBtn'); await p.waitForTimeout(200);
-  ok('laserBtn fires (10 -> 9)', (await text('#laserCount')) === '9/10');
-  await p.click('#laserBtn'); await p.waitForTimeout(200);
-  ok('laserBtn fires again (9 -> 8)', (await text('#laserCount')) === '8/10');
+  await p.keyboard.press('KeyE'); await p.waitForTimeout(200);
+  ok('E fires (10 -> 9)', (await text('#laserCount')) === '9/10');
+  await p.keyboard.press('KeyE'); await p.waitForTimeout(200);
+  ok('E fires again (9 -> 8)', (await text('#laserCount')) === '8/10');
   await p.evaluate(() => { const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -1, true); });
   await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 5000 });
   await p.waitForFunction(() => !/Submitting/.test(document.getElementById('msg').textContent), null, { timeout: 15000 });

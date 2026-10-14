@@ -38,7 +38,17 @@ input { font: 15px Arial, sans-serif; padding: 9px 10px; border-radius: 8px; bor
 #modeBadge.practice { color: var(--accent); }
 #modeBadge.nft { color: var(--accent2); }
 #laserBox { position: absolute; left: 16px; bottom: 16px; font-size: 16px; font-weight: bold; color: #ff8a8a;
-  text-shadow: 0 2px 4px #000; display: none; }
+  text-shadow: 0 2px 4px #000; display: none; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 12px;
+  background: rgba(10,15,30,0.7); border: 1px solid rgba(255,107,107,0.45); }
+.lz-key { display: inline-grid; place-items: center; min-width: 30px; height: 30px; border-radius: 7px; background: #1a2236; color: var(--ink);
+  border: 1px solid #ff8a8a; box-shadow: 0 3px 0 #7a2d2d; font: 15px 'Bungee', Impact, sans-serif; }
+.lz-touch { display: none; font-size: 11px; letter-spacing: 1px; color: var(--ink); background: #1a2236; border: 1px solid #ff8a8a; border-radius: 7px; padding: 5px 7px; }
+.lz-name { letter-spacing: 1px; }
+#laserBox.fire { animation: laserFire 0.35s ease-out; }
+#laserBox.fire .lz-key { transform: translateY(3px); box-shadow: 0 0 0 #7a2d2d; transition: transform 0.05s; }
+@keyframes laserFire { 0% { box-shadow: 0 0 0 rgba(255,80,80,0); } 30% { box-shadow: 0 0 22px rgba(255,80,80,0.9); border-color: #ff6b6b; } 100% { box-shadow: 0 0 0 rgba(255,80,80,0); } }
+#laserBox.empty { opacity: 0.45; }
+@media (hover: none) and (pointer: coarse) { .lz-key { display: none; } .lz-touch { display: inline-block; } }
 #dustBox { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: 220px; text-align: center;
   font-weight: 700; font-size: 14px; text-shadow: 0 2px 4px #000; }
 .dust-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
@@ -72,9 +82,6 @@ body.dashing::after { box-shadow: inset 0 0 140px rgba(255,184,77,0.4); }
 #msg .warn { color: var(--danger); }
 #msg .good { color: var(--ok); }
 #hudMenuBtn { position: absolute; left: 16px; top: 72px; pointer-events: auto; padding: 6px 12px; font-size: 13px; }
-#laserBtn { position: fixed; bottom: 16px; width: 84px; height: 84px; border-radius: 50%;
-  font: bold 14px Arial, sans-serif; display: none; color: var(--ink); }
-#laserBtn { right: 16px; border: 2px solid #ff6b6b; background: rgba(255,107,107,0.15); }
 
 /* ---------- Panels (modal cards over the live scene) ---------- */
 .panel { position: fixed; inset: 0; display: none; overflow-y: auto; touch-action: pan-y;
@@ -462,3 +469,147 @@ body.muted .mute-btn .off { display: inline; }
 #hudMuteBtn { position: absolute; right: 64px; top: 52px; pointer-events: auto; padding: 6px 8px; line-height: 0; }
 body.flying #hudMuteBtn { display: none; }
 @media (pointer: coarse) { #hudMuteBtn { min-width: 44px; min-height: 44px; } }
+
+/* ---------- Quests ---------- */
+.icon-btn { position: relative; }
+.new-dot { display: none; position: absolute; top: 6px; right: 8px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.icon-btn.has-new .new-dot { display: block; }
+.quests { padding-bottom: 24px; }
+
+/* Badges: the frame's shape and metal show the tier, the glyph's colour the quest's difficulty */
+.qbadge { --c: #888; --m: #3a4560; flex: none; display: inline-block; width: 48px; height: 48px; }
+.qbadge svg { width: 100%; height: 100%; overflow: visible; display: block; }
+.qbadge .fr { fill: #0b1020; stroke: color-mix(in srgb, var(--c) 30%, #2a3348); stroke-width: 2; stroke-dasharray: 4 3; }
+.qbadge .gl { fill: none; stroke: color-mix(in srgb, var(--c) 38%, #3a4560); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.qbadge.on .fr { fill: color-mix(in srgb, var(--c) 16%, #0b1020); stroke: var(--m); stroke-width: 3; stroke-dasharray: none; }
+.qbadge.on .gl { stroke: var(--c); stroke-width: 2.2; }
+.qbadge.on svg { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--c) 60%, transparent)); }
+.qbadge.t-platinum svg { animation: platGlow 2.4s ease-in-out infinite; }
+@keyframes platGlow { 50% { filter: drop-shadow(0 0 12px var(--m)) drop-shadow(0 0 4px var(--c)); } }
+.qbadge.mini { width: 30px; height: 30px; }
+.qbadge.big { width: 132px; height: 132px; }
+@media (prefers-reduced-motion: reduce) { .qbadge.t-platinum svg { animation: none; } }
+
+.qstreak { background: rgba(13,19,34,0.92); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; margin-bottom: 8px; }
+.qstreak.on { border-color: #ff7a3d; box-shadow: 0 0 18px rgba(255,122,61,0.25); }
+.qs-top { display: flex; align-items: center; gap: 14px; }
+.qs-mid { flex: 1; min-width: 0; }
+.qs-n { font: 20px 'Bungee', Impact, sans-serif; }
+.qs-d { font-size: 13px; color: var(--muted); }
+.qs-today { font: 24px 'Bungee', Impact, sans-serif; color: var(--accent); text-align: center; line-height: 1; }
+.qs-today span { display: block; font: 700 10px 'Chakra Petch', Arial, sans-serif; letter-spacing: 2px; color: var(--muted); margin-top: 4px; }
+.flames { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 12px; }
+.fd { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 4px; border-radius: 10px; background: #0b1020; border: 1px solid #1d2740; }
+.fd svg { width: 24px; height: 24px; fill: none; stroke: #2e3a55; stroke-width: 2; stroke-linejoin: round; }
+.fd.part svg { stroke: #8a5a3e; }
+.fd.lit { border-color: rgba(255,122,61,0.6); background: rgba(255,122,61,0.12); }
+.fd.lit svg { fill: #ff7a3d; stroke: #ffb27a; filter: drop-shadow(0 0 6px rgba(255,122,61,0.8)); }
+.fd.today { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fd-w { font-size: 11px; font-weight: 700; color: var(--muted); }
+.fd-p { position: absolute; top: 2px; right: 4px; font-size: 9px; font-weight: 700; color: #c98a62; }
+
+.qhead { display: flex; justify-content: space-between; align-items: baseline; margin: 18px 2px 8px; font: 15px 'Bungee', Impact, sans-serif; letter-spacing: 2px; color: var(--accent2); }
+.qreset { font: 700 12px 'Chakra Petch', Arial, sans-serif; letter-spacing: 1px; color: var(--muted); }
+.qcard { --c: #888; display: flex; align-items: center; gap: 14px; background: rgba(13,19,34,0.92); border: 1px solid var(--line);
+  border-left: 4px solid var(--c); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+.qcard.done { border-color: var(--c); box-shadow: 0 0 16px color-mix(in srgb, var(--c) 30%, transparent); }
+.qmain { flex: 1; min-width: 0; }
+.qtop { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.qtitle { font-weight: 700; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qdiff { flex: none; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 2px 8px; }
+.qdesc { font-size: 13px; color: var(--muted); margin: 2px 0 8px; }
+.qbar { height: 8px; border-radius: 999px; background: #1a2338; overflow: hidden; }
+.qbar i { display: block; height: 100%; background: var(--c); border-radius: 999px; transition: width 0.6s ease-out; }
+.qprog { font-size: 12px; color: var(--ink); margin-top: 5px; font-weight: 700; }
+.qcard.done .qprog { color: var(--c); }
+.qtiers { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0 2px 8px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.qtiers span:not(.qbadge) { margin-right: 8px; }
+.qtiers .qbadge.mini { width: 24px; height: 24px; }
+.qbadges { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 10px 8px; background: rgba(13,19,34,0.92);
+  border: 1px solid var(--line); border-radius: 14px; padding: 14px 12px; }
+.qb { position: relative; background: transparent; border: 0; padding: 0; display: grid; place-items: center; cursor: pointer; min-height: 0; }
+.qb .qbadge { width: 52px; height: 52px; transition: transform 0.15s; }
+.qb:hover .qbadge { transform: scale(1.08); }
+.qpin { position: absolute; top: -4px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; }
+.qpin svg { width: 12px; height: 12px; fill: none; stroke: #1a1205; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.qbinfo { font-size: 13px; color: var(--muted); text-align: center; margin: 10px 0 0; min-height: 18px; }
+.qi-top { display: flex; gap: 12px; align-items: flex-start; text-align: left; background: rgba(13,19,34,0.92); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.qi-top .qbadge { width: 56px; height: 56px; }
+.qi-top b { color: var(--ink); font-size: 15px; }
+.qi-tier { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--m); border: 1px solid var(--m); border-radius: 999px; padding: 1px 7px; margin-left: 4px; }
+.qi-lock { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); border: 1px dashed var(--line); border-radius: 999px; padding: 1px 7px; margin-left: 4px; }
+.qi-d { margin-top: 3px; }
+.qi-r { margin-top: 5px; color: var(--accent2); font-weight: 700; }
+.qi-pin { margin-top: 10px; }
+.q-locked svg { width: 40px; height: 40px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 6px; }
+.lb-badges { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-size: 12px; color: var(--accent); vertical-align: 1px; }
+.lb-badges svg { width: 12px; height: 12px; fill: var(--accent); stroke: none; }
+.who .lb-pin { width: 22px; height: 22px; margin-left: 6px; vertical-align: -5px; }
+
+/* Today's quests on the ready and crash screens */
+#questStrip { position: absolute; left: 16px; top: 128px; width: 230px; display: none; background: rgba(10,15,30,0.82); border: 1px solid var(--line);
+  border-radius: 14px; padding: 10px 12px; pointer-events: none; }
+#questStrip.show { display: block; animation: fadeIn 0.3s ease-out; }
+.qs-h { font: 12px 'Bungee', Impact, sans-serif; letter-spacing: 1.5px; color: var(--accent2); margin-bottom: 6px; display: flex; justify-content: space-between; }
+.qs-h b { color: var(--accent); font-weight: normal; }
+.qs-row { --c: #888; display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+.qs-txt { flex: 1; min-width: 0; }
+.qs-t { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qs-row .qbar { height: 5px; margin: 3px 0 2px; }
+.qs-p { font-size: 11px; color: var(--muted); font-weight: 700; }
+.qs-row.done .qs-p { color: var(--c); }
+@media (max-width: 760px), (max-height: 520px) {
+  #questStrip { top: auto; bottom: 86px; left: 10px; width: auto; padding: 6px 8px; }
+  #questStrip .qs-h { display: none; }
+  #questStrip .qs-txt { display: none; }
+  #questStrip .qs-row { padding: 2px 0; }
+}
+body.flying #questStrip { display: none; }
+
+/* In-run "Quest complete" */
+#questToast { --c: var(--ok); position: absolute; top: 92px; left: 50%; display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 10px;
+  background: rgba(10,15,30,0.88); border: 2px solid var(--c); border-radius: 14px; box-shadow: 0 0 22px color-mix(in srgb, var(--c) 45%, transparent);
+  opacity: 0; transform: translate(-50%, -12px); pointer-events: none; white-space: nowrap; }
+#questToast.show { animation: qToast 2.8s ease-out forwards; }
+@keyframes qToast { 0% { opacity: 0; transform: translate(-50%, -12px) scale(0.9); } 8% { opacity: 1; transform: translate(-50%, 0) scale(1.04); }
+  14% { transform: translate(-50%, 0) scale(1); } 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -8px); } }
+.qt-k { font: 11px 'Bungee', Impact, sans-serif; letter-spacing: 2px; color: var(--c); }
+.qt-n { font-weight: 700; font-size: 16px; color: var(--ink); }
+
+/* Badge reveal after a run */
+#badgeReveal { --c: #fff; --m: #fff; position: fixed; right: 16px; top: 190px; width: 260px; display: none; flex-direction: column;
+  align-items: center; text-align: center; pointer-events: none; z-index: 6; }
+#badgeReveal.show { display: flex; animation: brIn 2.6s ease-out forwards; }
+#badgeReveal .qbadge.big { animation: brPop 0.6s cubic-bezier(.2,1.5,.4,1) both; }
+#badgeReveal .qbadge.big svg { filter: drop-shadow(0 0 18px var(--c)) drop-shadow(0 0 6px var(--m)); }
+.br-ring { position: absolute; top: 66px; left: 50%; width: 132px; height: 132px; margin: -66px 0 0 -66px; border-radius: 50%; border: 3px solid var(--m);
+  animation: brRing 0.9s ease-out 0.15s both; }
+.br-k { margin-top: 10px; font: 14px 'Bungee', Impact, sans-serif; letter-spacing: 3px; color: var(--m); text-shadow: 0 2px 6px #000; }
+.br-n { font: 24px 'Bungee', Impact, sans-serif; color: var(--ink); text-shadow: 0 3px 0 #000, 0 0 16px color-mix(in srgb, var(--c) 60%, transparent); }
+@keyframes brIn { 0% { opacity: 0; } 6% { opacity: 1; } 86% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes brPop { 0% { transform: scale(0.2) rotate(-20deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes brRing { 0% { transform: scale(0.6); opacity: 1; } 100% { transform: scale(2.2); opacity: 0; } }
+@media (max-width: 760px), (max-height: 520px) {
+  #badgeReveal { right: auto; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  #badgeReveal .qbadge.big, .br-ring { width: 96px; height: 96px; }
+  .br-ring { top: 48px; margin: -48px 0 0 -48px; }
+}
+@media (prefers-reduced-motion: reduce) { #badgeReveal .qbadge.big, .br-ring { animation: none; } .br-ring { display: none; } }
+
+@media (max-width: 520px) {
+  .qcard { gap: 10px; padding: 10px; }
+  .qcard .qbadge { width: 42px; height: 42px; }
+  .qtitle { font-size: 14px; }
+  .qbadges { grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); }
+  .qb .qbadge { width: 46px; height: 46px; }
+  .fd svg { width: 20px; height: 20px; }
+  .fd-p { display: none; }
+  .qbadge.big { width: 108px; height: 108px; }
+}
+
+/* Laser shot: a quick red glow at the screen edges */
+#laserFlash { position: fixed; inset: 0; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(255,50,50,0.45) 100%); }
+#laserFlash.on { animation: laserEdge 0.32s ease-out; }
+@keyframes laserEdge { 0% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #laserFlash.on { animation-duration: 0.15s; } }

@@ -191,6 +191,7 @@
     let items = [];
     const active = {}, activeMax = {};
     let lives = 0, meter = 0, runDust = 0, revive = 0;
+    let runPowerups = 0, runHorns = 0, livesUsed = 0;   // counted for quests
     let nextDust = 0, nextPower = 0, nextHorn = 0;
 
     // HUD
@@ -283,8 +284,9 @@
 
     function collect(item, zoneId) {
       if (item.kind === "stardust") { sfx("stardust"); addStardust(1); api.sparkle(item.sprite.position, 0xffd27a); }
-      else if (item.kind === "horn") { sfx("horn"); addStardust(P.hornStardust); popup("GOLDEN HORN +" + P.hornStardust, "#ffd45a"); api.sparkle(item.sprite.position, 0xffd45a); }
+      else if (item.kind === "horn") { runHorns++; sfx("horn"); addStardust(P.hornStardust); popup("GOLDEN HORN +" + P.hornStardust, "#ffd45a"); api.sparkle(item.sprite.position, 0xffd45a); }
       else {
+        runPowerups++;
         sfx("bubble");
         activate(item.type, zoneId);
         // The bubble pops: an expanding ring plus a splash of droplets
@@ -309,6 +311,7 @@
       pops = [];
       Object.keys(active).forEach(k => { active[k] = 0; });
       lives = 0; meter = 0; runDust = 0; revive = 0;
+      runPowerups = 0; runHorns = 0; livesUsed = 0;
       nextDust = P.firstAt; nextPower = P.firstAt + rand(0, 3); nextHorn = P.firstAt + rand(30, 60);
       popTimer = 0; hud.pop.style.opacity = 0;
       updateHud();
@@ -439,13 +442,14 @@
       tryUseLife() {
         if (lives <= 0) return false;
         lives--;
+        livesUsed++;
         sfx("lifeUsed");
         revive = P.reviveSeconds;
         addStardust(0);
         popup("LIFE USED", "#6ee7a8");
         return true;
       },
-      stats: () => ({ stardust: runDust, lives, meter }),
+      stats: () => ({ stardust: runDust, lives, meter, powerups: runPowerups, horns: runHorns, livesUsed }),
       // Test hooks
       _debug: {
         items: () => items, active, spawn: (kind, type, x, y, z) => addItem(kind, type, x, y, z),

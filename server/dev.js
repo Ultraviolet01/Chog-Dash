@@ -12,7 +12,7 @@ const ROOT = path.join(__dirname, "..");
 const ROUTES = {
   "/api/auth/nonce": "authNonce", "/api/auth/verify": "authVerify",
   "/api/run/start": "runStart", "/api/run/finish": "runFinish", "/api/leaderboard": "leaderboard",
-  "/api/profile": "profileSet",
+  "/api/profile": "profileSet", "/api/quests": "questsGet", "/api/badge/pin": "badgePin",
 };
 const TYPES = { ".html": "text/html", ".js": "application/javascript", ".css": "text/css", ".json": "application/json",
   ".png": "image/png", ".svg": "image/svg+xml", ".md": "text/plain" };

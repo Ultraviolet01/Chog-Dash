@@ -33,6 +33,33 @@
    - computes the total distance with its own multiplier, ignoring anything the client claims.
 4. Every submission is stored with wallet, token ID, raw distance, total distance, tier, multiplier and validation status (validated or rejected, with the reason).
 
+## Quests (Chog holders only)
+
+- Each day: 3 daily quests (one easy, one medium, one hard). Each week: 1 weekly quest.
+  - The same quests for every player, chosen from the date (`js/quests.js`). A quest never repeats on back-to-back days.
+  - Dailies reset at 00:00 UTC. The weekly quest resets on Monday at 00:00 UTC.
+- Rewards are badges only. One badge per quest, plus one Streak badge (19 in total).
+  - Badges level up like trophies: Bronze, Silver, Gold, Platinum.
+    - Quest badges: at 1, 5, 15 and 40 completions.
+    - Streak badge: at 3, 7, 14 and 30 days in a row (finishing all 3 dailies each day). Missing a full day restarts the streak; the badge keeps its tier.
+  - The frame's shape and metal show the tier (circle, shield, hexagon, star); the glyph's colour shows the quest's difficulty.
+  - Rarity: "Earned by 8% of pilots", the share of quest players who own the badge, with a label (Ultra rare under 5%, Very rare, Rare, Uncommon, Common). The counters are approximate if two runs finish at the same instant.
+  - Pin: a player can pin one earned badge (`POST /api/badge/pin`). It shows next to their name on the leaderboard and on their run card.
+- In the game:
+  - Today's 3 quests show on the ready and crash screens of Chog NFT runs.
+  - "Quest complete" pops up during the run as soon as the live run reaches a target. This is a prediction for the celebration; the server's result after the run is what counts.
+  - New badges and new tiers are revealed one by one after the run.
+  - The Quests panel shows the last 7 days as a flame strip (lit when all 3 dailies were done).
+- Holders only:
+  - `GET /api/quests` (signed in) checks `balanceOf` on the Chog Genesis contract, cached for 10 minutes. A wallet with no Chog gets 403.
+  - Progress only comes from validated Chog NFT runs, which already require owning the Chog at start and at finish.
+- Run stats sent with `POST /api/run/finish`: Stardust, power-ups, Golden Horns, near misses and lives used.
+  - The server caps each one at what the run's length allows (for example one power-up per 12 seconds after the first 10).
+  - Distance and run time are the validated values.
+  - If saving quest progress fails, the run still counts on the leaderboard.
+- Leaderboard rows show each player's badge count.
+- Storage, all in `chog_kv` (no schema change): `quest:`, `badges:`, `streak:`, `qlog:` (last 14 days), `pin:` and `holder:` per wallet, and the rarity counters `bstat:players` and `bstat:<badge>`.
+
 ## Limits (honest)
 
 - These checks stop casual cheating. They can't prove a run was really played: someone who scripts plausible distances can still submit them.
