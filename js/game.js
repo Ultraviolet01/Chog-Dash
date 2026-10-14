@@ -879,7 +879,10 @@
             o.ghost.visible = true;
           } else if (o.ghost) o.ghost.visible = false;
           if (!playing || o.gone) continue;
-          const dx = px - pos.x, dy = py - pos.y, dz = pz - pos.z;
+          // Swept along this frame's move: at high speed (or a slow frame) an obstacle can jump from in front
+          // of the rocket to behind it in one step, so use its closest approach, not just where it ended up.
+          const zc = prevZ <= pz && pos.z >= pz ? pz : (Math.abs(pz - pos.z) < Math.abs(pz - prevZ) ? pos.z : prevZ);
+          const dx = px - pos.x, dy = py - pos.y, dz = pz - zc;
           const r = HIT_R + o.hitR;
           if (dx * dx + dy * dy + dz * dz < r * r) {
             if (pickups.dashing() || pickups.reviving()) { smash(o); shake = Math.max(shake, 0.12); continue; }

@@ -110,16 +110,30 @@
     return c;
   }
 
+  // Stardust: a chunky golden star (four long points, four short) with a white-hot centre and a wide
+  // halo. Drawn with additive blending in the game, so it glows against dark space and reads from afar.
   function stardustCanvas() {
-    const S = 64, c = document.createElement("canvas");
+    const S = 128, c = document.createElement("canvas");
     c.width = c.height = S;
-    const g = c.getContext("2d");
-    const glow = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    glow.addColorStop(0, "rgba(255,240,200,0.9)"); glow.addColorStop(0.35, "rgba(255,200,100,0.35)"); glow.addColorStop(1, "rgba(255,180,80,0)");
-    g.fillStyle = glow; g.fillRect(0, 0, S, S);
-    g.fillStyle = "#fff6dc";
-    g.beginPath(); g.moveTo(32, 10); g.lineTo(38, 32); g.lineTo(32, 54); g.lineTo(26, 32); g.closePath(); g.fill();
-    g.beginPath(); g.moveTo(14, 32); g.lineTo(32, 27); g.lineTo(50, 32); g.lineTo(32, 37); g.closePath(); g.fill();
+    const g = c.getContext("2d"), m = S / 2;
+    const halo = g.createRadialGradient(m, m, 0, m, m, m);
+    halo.addColorStop(0, "rgba(255,246,214,1)"); halo.addColorStop(0.18, "rgba(255,214,110,0.85)");
+    halo.addColorStop(0.45, "rgba(255,180,60,0.32)"); halo.addColorStop(1, "rgba(255,160,40,0)");
+    g.fillStyle = halo; g.fillRect(0, 0, S, S);
+    const star = (outer, inner, points, rot) => {
+      g.beginPath();
+      for (let i = 0; i < points * 2; i++) {
+        const r = i % 2 ? inner : outer, a = rot + (i * Math.PI) / points;
+        g.lineTo(m + Math.cos(a) * r, m + Math.sin(a) * r);
+      }
+      g.closePath();
+    };
+    const body = g.createRadialGradient(m, m, 0, m, m, 50);
+    body.addColorStop(0, "#ffffff"); body.addColorStop(0.35, "#fff1b0"); body.addColorStop(1, "#ffc23a");
+    g.fillStyle = body;
+    star(30, 10, 4, Math.PI / 4); g.fill();          // short diagonal points
+    star(52, 12, 4, -Math.PI / 2); g.fill();         // long main points
+    g.fillStyle = "#ffffff"; g.beginPath(); g.arc(m, m, 9, 0, Math.PI * 2); g.fill();
     return c;
   }
 
@@ -147,6 +161,7 @@
     Object.keys(TYPES).forEach(t => { symbols[t] = tex(iconCanvas(t, false)); iconUrls[t] = iconCanvas(t, true).toDataURL(); });
     const bubbleBack = tex(bubbleCanvas(false)), bubbleFront = tex(bubbleCanvas(true));
     const BUBBLE = 3.0, SYMBOL = 2.1;
+    const DUST_SIZE = 1.5;   // Stardust sprite size up close (it is drawn larger further away, see animate)
     let pops = [];
     const dustTex = tex(stardustCanvas()), hornTex = tex(hornCanvas());
 
@@ -167,8 +182,9 @@
       popTimer = 1.1;
     }
 
-    const spriteOf = (map, size) => {
-      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false, fog: false }));
+    const spriteOf = (map, size, glow) => {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, depthWrite: false, fog: false,
+        blending: glow ? THREE.AdditiveBlending : THREE.NormalBlending }));
       sp.scale.set(size, size, 1);
       return sp;
     };
@@ -182,11 +198,11 @@
         parts.back.position.z = -0.05; parts.front.position.z = 0.05;
         sprite.add(parts.back, parts.icon, parts.front);
       } else {
-        sprite = spriteOf(kind === "horn" ? hornTex : dustTex, kind === "horn" ? 2.4 : 1.1);
+        sprite = spriteOf(kind === "horn" ? hornTex : dustTex, kind === "horn" ? 2.4 : DUST_SIZE, kind !== "horn");
       }
       sprite.position.set(x, y, z);
       scene.add(sprite);
-      const item = { kind, type, sprite, parts, baseY: y, phase: Math.random() * 6, size: kind === "horn" ? 2.4 : 1.1 };
+      const item = { kind, type, sprite, parts, baseY: y, phase: Math.random() * 6, size: kind === "horn" ? 2.4 : DUST_SIZE };
       items.push(item);
       return item;
     }
@@ -319,8 +335,11 @@
         s.material.rotation = Math.sin(t * 2) * 0.3;
         s.scale.setScalar(item.size * (1 + Math.sin(t * 4) * 0.08));
       } else {
-        s.material.rotation += dt * 2.5;
-        s.scale.setScalar(item.size * (1 + Math.sin(t * 9) * 0.25));
+        // Stardust: slow spin and a gentle twinkle. Far away it is drawn larger so it can be spotted early;
+        // it shrinks back to its normal size as it reaches the rocket.
+        s.material.rotation += dt * 1.2;
+        const far = 1 + Math.min(3, Math.max(0, -s.position.z) / 100);
+        s.scale.setScalar(item.size * far * (1 + Math.sin(t * 5) * 0.12));
       }
     }
 
@@ -340,6 +359,7 @@
         const s = item.sprite.position;
         // Magnet: once caught, a collectible homes in on the rocket instead of flying past with the world
         if (magnet && item.kind !== "power" && !item.homing && s.z > -45 && s.z < 3 && Math.hypot(s.x - p.x, s.y - py) < P.magnetRadius) item.homing = true;
+        const prevZ = s.z;
         if (item.homing) {
           const k = Math.min(1, dt * 9);
           s.x += (p.x - s.x) * k; s.y += (py - s.y) * k; s.z += (p.z - s.z) * k;
@@ -347,8 +367,10 @@
           s.z += speed * dt;
         }
         animate(item, now, dt);
-        const r = item.kind === "power" ? 1.4 : item.kind === "horn" ? 1.3 : 1.0;
-        if (playing && Math.hypot(s.x - p.x, s.y - py, s.z - p.z) < r) { collect(item, zoneId); removeItem(item); return false; }
+        const r = item.kind === "power" ? 1.4 : item.kind === "horn" ? 1.3 : 1.2;   // Stardust radius matches its bigger look
+        // Closest approach along this frame's move, so fast flying can't skip over a pickup
+        const zc = prevZ <= p.z && s.z >= p.z ? p.z : (Math.abs(p.z - s.z) < Math.abs(p.z - prevZ) ? s.z : prevZ);
+        if (playing && Math.hypot(s.x - p.x, s.y - py, zc - p.z) < r) { collect(item, zoneId); removeItem(item); return false; }
         if (s.z > api.despawnZ) { removeItem(item); return false; }
         return true;
       });

@@ -130,7 +130,7 @@ function ok(name, cond, detail) {
   await p.waitForTimeout(2500);   // let the protection from those uses wear off
   await ev(() => { const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -2, false).keep = true; });
   await p.waitForTimeout(500);
-  const afterHit = await ev(() => ({ state: ChogUI._game().state, lives: ChogUI._game()._debug.pickups.stats().lives, reviving: ChogUI._game()._debug.pickups.reviving() }));
+  const afterHit = await ev(() => ({ state: ChogUI._game().state, lives: ChogUI._game()._debug.pickups.stats().lives, reviving: ChogUI._game()._debug.pickups.reviving(), dashing: ChogUI._game()._debug.pickups.dashing(), active: JSON.stringify(ChogUI._game()._debug.pickups._debug.active) }));
   ok('a crash with a life continues the run', afterHit.state === 'playing' && afterHit.lives === 0 && afterHit.reviving, JSON.stringify(afterHit));
   await p.waitForTimeout(2500);
   await ev(() => { const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -2, false); });
