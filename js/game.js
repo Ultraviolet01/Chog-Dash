@@ -58,7 +58,7 @@
     const hud = {
       root: $("hud"), dist: $("dist"), score: $("score"), speed: $("speed"), mode: $("modeBadge"),
       laser: $("laserCount"), laserBox: $("laserBox"), near: $("nearMiss"),
-      laserFlash: $("laserFlash"), zoneLabel: $("zoneLabel"), zoneBanner: $("zoneBanner"), flash: $("flash"), zoneFlash: $("zoneFlash"),
+      laserFlash: $("laserFlash"), newBest: $("newBest"), zoneLabel: $("zoneLabel"), zoneBanner: $("zoneBanner"), flash: $("flash"), zoneFlash: $("zoneFlash"),
     };
 
     // ---------- Renderer, scene, camera ----------
@@ -504,7 +504,7 @@
     let obstacles = [], bits = [];
     const vel = { x: 0, y: 0 };
     const safe = { x: 0, y: 0 };
-    let shake = 0, idleY = 0, runTime = 0;
+    let shake = 0, idleY = 0, runTime = 0, newBestShown = false;
     let laserCharges = 0, laserUsed = 0, nearMisses = 0, nearTimer = 0;
     let setup = { laserCharges: 0, multiplier: 1, modeLabel: "", showScore: false };
 
@@ -531,6 +531,8 @@
       vel.x = vel.y = 0; safe.x = safe.y = 0; pointerTarget.x = pointerTarget.y = 0;
       laserCharges = setup.laserCharges; laserUsed = 0; nearMisses = 0;
       runTime = 0;
+      newBestShown = false;
+      hud.newBest.classList.remove("show");
       pickups.reset();
       zoneKey = null; bannerTimer = 0;
       hud.zoneBanner.style.opacity = 0;
@@ -784,6 +786,15 @@
       setText(hud.score, "Total " + root.ChogTraits.computeScore(m, setup.multiplier) +
         " m  (" + m + " m x" + setup.multiplier.toFixed(2) + ")");
       updateLaserHud();
+      // Passing your best (distance in practice, total distance for a Chog): celebrate once per run
+      const value = setup.showScore ? root.ChogTraits.computeScore(m, setup.multiplier) : m;
+      if (state === "playing" && !newBestShown && setup.bestToBeat > 0 && value > setup.bestToBeat) {
+        newBestShown = true;
+        hud.newBest.innerHTML = '<div class="nb-t">NEW BEST!</div><div class="nb-s">Past your ' + Number(setup.bestToBeat).toLocaleString() + " m</div>";
+        hud.newBest.classList.remove("show"); void hud.newBest.offsetWidth; hud.newBest.classList.add("show");
+        sfx("newBest");
+        if (hooks.onNewBest) hooks.onNewBest(setup.bestToBeat);
+      }
     }
 
     // ---------- Main loop ----------
@@ -1027,7 +1038,7 @@
     frame();
 
     return {
-      // opts: { riderCanvas, riderPoses: { side, back }, look, laserCharges, multiplier, modeLabel, showScore }
+      // opts: { riderCanvas, riderPoses: { side, back }, look, laserCharges, multiplier, modeLabel, showScore, bestToBeat }
       configure(opts) {
         setup = Object.assign({}, setup, opts);
         if (opts.riderCanvas) setRiderCanvas(opts.riderCanvas, opts.riderPoses);
@@ -1044,7 +1055,7 @@
       },
       // Test hooks, used by the automated browser tests only
       _debug: { camera, rider, look: () => look, trailLive: () => Array.from(trailLife).filter(l => l > 0).length, extras, gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, beamOn: () => beams.visible, pickups, runTime: () => runTime,
-        speed: () => (state === "playing" ? baseSpeed() * pickups.speedFactor() : 0),
+        speed: () => (state === "playing" ? baseSpeed() * pickups.speedFactor() : 0), newBestShown: () => newBestShown,
         setMeters(m) { distance = m * G.unitsPerMeter; }, spawnAt(x, y, z, huge) {
         const o = makeObstacle(); o.vx = o.vy = 0; o.huge = !!huge; o.mesh.position.set(x, y, z); scene.add(o.mesh); obstacles.push(o); return o;
       } },

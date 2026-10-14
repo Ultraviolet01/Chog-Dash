@@ -165,6 +165,14 @@
     life() {   // extra life: uplifting three notes
       [72, 76, 79, 84].forEach((m, i) => bell(m, i * 0.09, 0.16));
     },
+    newBest() {   // past your best: a triumphant rising fanfare with a sparkling tail
+      [60, 64, 67, 72].forEach((m, i) => {
+        tone({ type: "sawtooth", freq: hz(m), t: i * 0.1, peak: 0.1, attack: 0.02, decay: 0.35, filter: 2600, verb: 0.4 });
+        tone({ type: "triangle", freq: hz(m + 12), t: i * 0.1, peak: 0.08, decay: 0.3, verb: 0.3 });
+      });
+      [72, 76, 79, 84].forEach(m => tone({ type: "sawtooth", freq: hz(m), t: 0.42, peak: 0.07, attack: 0.03, decay: 1.2, filter: 3000, verb: 0.6 }));
+      [96, 100, 103, 108, 103, 108].forEach((m, i) => bell(m, 0.5 + i * 0.07, 0.07));
+    },
     quest() {   // quest complete: bright rising chime
       [76, 79, 83, 88].forEach((m, i) => bell(m, i * 0.07, 0.2));
       tone({ type: "triangle", freq: hz(64), t: 0.28, peak: 0.12, attack: 0.02, decay: 0.9, verb: 0.6 });

@@ -613,3 +613,18 @@ body.flying #questStrip { display: none; }
 #laserFlash.on { animation: laserEdge 0.32s ease-out; }
 @keyframes laserEdge { 0% { opacity: 1; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { #laserFlash.on { animation-duration: 0.15s; } }
+
+/* "NEW BEST!" when a run passes your best */
+#newBest { position: absolute; top: 33%; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; opacity: 0; white-space: nowrap; }
+#newBest.show { animation: nbPop 2.6s ease-out forwards; }
+.nb-t { font: clamp(34px, 6vw, 60px) 'Bungee', Impact, sans-serif; color: #ffcf4d; letter-spacing: 2px;
+  text-shadow: 0 4px 0 #8a5a12, 0 0 24px rgba(255,207,77,0.8), 0 0 60px rgba(255,160,40,0.5); }
+.nb-s { margin-top: 4px; font-weight: 700; font-size: 16px; letter-spacing: 1px; color: var(--ink); text-shadow: 0 2px 6px #000; }
+@keyframes nbPop {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.3) rotate(-6deg); }
+  10% { opacity: 1; transform: translateX(-50%) scale(1.18) rotate(2deg); }
+  18% { transform: translateX(-50%) scale(1) rotate(0); }
+  80% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-24px) scale(0.92); }
+}
+@media (prefers-reduced-motion: reduce) { #newBest.show { animation: nbFade 2.6s linear forwards; } @keyframes nbFade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } } }

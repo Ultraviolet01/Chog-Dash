@@ -372,6 +372,8 @@
   }
 
   function onReady() {
+    // The best to beat this run (the same number as the BEST chip): distance in practice, total distance for this Chog
+    game.configure({ bestToBeat: S.mode === "nft" && S.chog ? readNum("chogDashNftBest:" + S.chog.tokenId) : readNum(PRACTICE_BEST) });
     showEndBar(false);
     closeCard();
     setFlying(false);
