@@ -77,7 +77,7 @@
       // Pickups (js/pickups.js). The server uses the Dash values to bound possible distance.
       pickups: {
         firstAt: 10,            // seconds into a run before anything spawns
-        powerGapMin: 20, powerGapMax: 30,   // seconds between power-ups
+        powerGapMin: 12, powerGapMax: 18,   // seconds between power-ups
         dashSeconds: 3, dashSpeedMult: 1.8,
         magnetSeconds: 10, magnetRadius: 14,
         slowSeconds: 6, slowSpeedMult: 0.6,

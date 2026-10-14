@@ -153,13 +153,23 @@
     return c;
   }
 
+  // Soft round glow, tinted per power-up so each one shows up from far away
+  function glowCanvas() {
+    const S = 128, c = document.createElement("canvas");
+    c.width = c.height = S;
+    const g = c.getContext("2d"), gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    gr.addColorStop(0, "rgba(255,255,255,0.9)"); gr.addColorStop(0.35, "rgba(255,255,255,0.45)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = gr; g.fillRect(0, 0, S, S);
+    return c;
+  }
+
   // ---------- Pickup system ----------
   // api: { player() -> Vector3, hitOffsetY, boundX, boundY, spawnZ, despawnZ, nova(), sparkle(pos, colorHex) }
   function create(scene, api) {
     const tex = c => new THREE.CanvasTexture(c);
     const symbols = {}, iconUrls = {};
     Object.keys(TYPES).forEach(t => { symbols[t] = tex(iconCanvas(t, false)); iconUrls[t] = iconCanvas(t, true).toDataURL(); });
-    const bubbleBack = tex(bubbleCanvas(false)), bubbleFront = tex(bubbleCanvas(true));
+    const bubbleBack = tex(bubbleCanvas(false)), bubbleFront = tex(bubbleCanvas(true)), glowTex = tex(glowCanvas());
     const BUBBLE = 3.0, SYMBOL = 2.1;
     const DUST_SIZE = 1.5;   // Stardust sprite size up close (it is drawn larger further away, see animate)
     let pops = [];
@@ -194,9 +204,10 @@
       if (kind === "power") {
         // Power-ups float inside a water bubble: body behind, symbol in the middle, shine in front
         sprite = new THREE.Group();
-        parts = { back: spriteOf(bubbleBack, BUBBLE), icon: spriteOf(symbols[type], SYMBOL), front: spriteOf(bubbleFront, BUBBLE) };
-        parts.back.position.z = -0.05; parts.front.position.z = 0.05;
-        sprite.add(parts.back, parts.icon, parts.front);
+        parts = { glow: spriteOf(glowTex, BUBBLE * 2.4, true), back: spriteOf(bubbleBack, BUBBLE), icon: spriteOf(symbols[type], SYMBOL), front: spriteOf(bubbleFront, BUBBLE) };
+        parts.glow.material.color.set(TYPES[type].color);
+        parts.glow.position.z = -0.1; parts.back.position.z = -0.05; parts.front.position.z = 0.05;
+        sprite.add(parts.glow, parts.back, parts.icon, parts.front);
       } else {
         sprite = spriteOf(kind === "horn" ? hornTex : dustTex, kind === "horn" ? 2.4 : DUST_SIZE, kind !== "horn");
       }
@@ -228,7 +239,8 @@
       const types = allowedTypes(zoneId, onField());
       if (!types.length) return null;
       const type = pickType(types);
-      return addItem("power", type, rand(-api.boundX + 0.5, api.boundX - 0.5), rand(-api.boundY + 0.5, api.boundY - 0.5) + api.hitOffsetY, api.spawnZ());
+      // Within the central 75% of the flying area, so it's always in view and reachable
+      return addItem("power", type, rand(-api.boundX * 0.75, api.boundX * 0.75), rand(-api.boundY * 0.75, api.boundY * 0.75) + api.hitOffsetY, api.spawnZ());
     }
 
     function addStardust(n) {
@@ -330,6 +342,9 @@
         item.parts.icon.position.set(Math.sin(t * 1.3) * 0.12, Math.sin(t * 2.6) * 0.1, 0);
         const pulse = SYMBOL * (1 + Math.sin(t * 5) * 0.05);
         item.parts.icon.scale.set(pulse, pulse, 1);
+        // Coloured glow pulses; far away the whole bubble is drawn larger so it can be spotted early
+        item.parts.glow.material.opacity = 0.8 + Math.sin(t * 3.2) * 0.2;
+        if (!item.homing) s.scale.setScalar(1 + Math.min(4, Math.max(0, -s.position.z) / 60));
       } else if (item.kind === "horn") {
         if (!item.homing) s.position.y = item.baseY + Math.sin(t * 2.2) * 0.2;
         s.material.rotation = Math.sin(t * 2) * 0.3;
@@ -367,6 +382,14 @@
           s.z += speed * dt;
         }
         animate(item, now, dt);
+        // Once a missed pickup is past the rocket it fades out, so it doesn't flare up as it passes the camera
+        if (!item.homing) {
+          const fade = s.z > p.z ? Math.max(0, 1 - (s.z - p.z) / 4) : 1;
+          if (fade < 1 || item.faded) {
+            item.faded = true;
+            item.sprite.traverse(o => { if (o.material) o.material.opacity = Math.min(o.material.opacity, fade); });
+          }
+        }
         const r = item.kind === "power" ? 1.4 : item.kind === "horn" ? 1.3 : 1.2;   // Stardust radius matches its bigger look
         // Closest approach along this frame's move, so fast flying can't skip over a pickup
         const zc = prevZ <= p.z && s.z >= p.z ? p.z : (Math.abs(p.z - s.z) < Math.abs(p.z - prevZ) ? s.z : prevZ);
