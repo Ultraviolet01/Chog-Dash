@@ -97,16 +97,17 @@ function ok(name, cond, detail) {
   ok('modePractice: hint explains practice', /Rookie/.test(await text('#modeHint')));
 
   await p.click('#howBtn'); await p.waitForTimeout(200);
-  ok('howBtn opens How to play on page 1 (Fly)', await panelShown('howPanel') && (await text('#howStep')) === '1 / 5' && /FLY/.test(await text('#howPanel')));
+  ok('howBtn opens How to play on page 1 (Fly)', await panelShown('howPanel') && (await text('#howStep')) === '1 / 6' && /FLY/.test(await text('#howPanel')));
   ok('page 1 shows keyboard keys and the mouse on desktop', (await p.$$('#howControls .keycap')).length === 8 && !!(await p.$('#howControls .how-mouse')));
   await p.click('#howNext'); await p.waitForTimeout(450);
-  ok('howNext goes to page 2', (await text('#howStep')) === '2 / 5');
+  ok('howNext goes to page 2', (await text('#howStep')) === '2 / 6');
   await p.keyboard.press('ArrowRight'); await p.waitForTimeout(450);
-  ok('arrow key goes to page 3 (pickups with real icons)', (await text('#howStep')) === '3 / 5' && (await p.$$('#howPickups .pk img')).length === 8);
+  ok('arrow key goes to page 3 (pickups with real icons)', (await text('#howStep')) === '3 / 6' && (await p.$$('#howPickups .pk img')).length === 8);
   await p.click('#howPrev'); await p.waitForTimeout(450);
-  ok('howPrev goes back', (await text('#howStep')) === '2 / 5');
-  await p.click('#howDots button:nth-child(5)'); await p.waitForTimeout(450);
-  ok('dots jump to the last page, where Next becomes PLAY', (await text('#howStep')) === '5 / 5' && (await text('#howNext')) === 'PLAY');
+  ok('howPrev goes back', (await text('#howStep')) === '2 / 6');
+  await p.click('#howDots button:nth-child(6)'); await p.waitForTimeout(450);
+  ok('dots jump to the last page, where Next becomes PLAY', (await text('#howStep')) === '6 / 6' && (await text('#howNext')) === 'PLAY');
+  ok('last page explains the streak: 5 minutes, lives at 7/14/21 days', /5 minutes flown/.test(await text('#howPanel')) && /14 days \+3/.test(await text('#howPanel')) && (await p.$$('#howStreak .rd')).length === 7);
   ok('zones page lists all five zones with lengths', /Outer Space 2 min/.test((await text('#howZones')).replace(/\s+/g, ' ')) && (await p.$$('#howZones .zn')).length === 5);
   await p.click('#howBack'); await p.waitForTimeout(200);
   ok('howBack returns home', await panelShown('menuPanel') && !(await panelShown('howPanel')));

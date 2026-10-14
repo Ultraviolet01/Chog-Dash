@@ -132,7 +132,7 @@
 
   // ---------- How to play: five swipeable pages ----------
   let howPage = 0, howBuilt = false;
-  const HOW_PAGES = 5;
+  const HOW_PAGES = 6;
   function openHow() {
     if (!howBuilt) { buildHow(); howBuilt = true; }
     // Page 5 shows your own Chog once you've picked one
@@ -204,6 +204,10 @@
           (isTouch ? "Tap with a second finger to fire" : "Press " + keycap("E") + " to fire") + "</li>" +
         "<li><b>Total distance</b> = distance flown x tier:</li></ul><div class='tiers'>" + tiers + "</div>" +
         "<ul><li>Your Chog's traits style the rocket and its aura trail</li><li>Ranked on the leaderboard under your username</li><li>Daily and weekly quests earn badges</li><li>Quest streaks bank extra lives: 7 days +1, 14 days +3, 21 days +5</li></ul></div>";
+    // Page 6: a sample streak, 4 days in, with the day-7 reward ahead
+    $("howStreak").innerHTML = '<div class="hs-top">' + bigFlame(4, false) + '<div class="qs-big">4<span>DAY STREAK</span></div></div>' +
+      '<div class="road">' + [1, 2, 3, 4, 5, 6, 7].map(d => '<div class="rd' + (d <= 4 ? " lit" : "") + (d === 5 ? " today" : "") + (d === 7 ? " reward" : "") + '">' +
+        (d === 7 ? '<div class="rd-gift">' + G(HEART) + "<b>+1</b></div>" : G(Q.GLYPH_PATHS.flame)) + '<span class="rd-d">' + (d === 5 ? "TODAY" : "DAY " + d) + "</span></div>").join("") + "</div>";
     // Dots, buttons, keys and swipe
     $("howDots").innerHTML = Array.from({ length: HOW_PAGES }, (_, k) => '<button class="how-dot" role="tab" aria-label="Page ' + (k + 1) + '"></button>').join("");
     [...$("howDots").children].forEach((d, k) => { d.onclick = () => goHow(k); });

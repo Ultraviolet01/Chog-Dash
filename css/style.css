@@ -700,3 +700,10 @@ body.flying #questStrip { display: none; }
   .ql-next { margin-left: 0; }
   .br-heart { width: 96px; height: 96px; }
 }
+
+/* How to play, page 6: a sample streak */
+.how-streak { display: block; max-width: 560px; margin: 0 auto; }
+.hs-top { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.how-streak .sflame { width: 48px; height: 48px; }
+.how-streak .qs-big { font-size: 30px; }
+.how-streak .road { margin-top: 8px; }
