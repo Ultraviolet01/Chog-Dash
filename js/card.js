@@ -82,6 +82,18 @@
       g.font = Math.round(br * 0.36) + "px " + BUNGEE; g.fillText("RANK", bx, by - br * 0.18);
       fitText(g, "#" + run.rank, BUNGEE, Math.round(br * 0.66), br * 1.6); g.fillText("#" + run.rank, bx, by + br * 0.5);
     }
+    if (run.demo) {   // DEMO stamp on the ring, tilted like a rubber stamp
+      const w = r * 0.86, h = r * 0.34;
+      g.save();
+      g.translate(cx - r * 0.66, cy - r * 0.78); g.rotate(-0.24);
+      g.shadowColor = TEAL; g.shadowBlur = 14;
+      roundRect(g, -w / 2, -h / 2, w, h, h * 0.22); g.fillStyle = "#0b1020"; g.fill();
+      g.shadowBlur = 0;
+      g.lineWidth = h * 0.1; g.strokeStyle = TEAL; g.stroke();
+      roundRect(g, -w / 2 + h * 0.14, -h / 2 + h * 0.14, w - h * 0.28, h - h * 0.28, h * 0.14); g.lineWidth = h * 0.035; g.stroke();
+      g.fillStyle = TEAL; g.textAlign = "center"; g.font = Math.round(h * 0.56) + "px " + BUNGEE; g.fillText("DEMO", 0, h * 0.2);
+      g.restore();
+    }
     if (run.newBest) {   // ribbon under the portrait
       const w = r * 1.25, h = r * 0.27, x = cx - w / 2, y = cy + r * 0.88;
       g.save(); g.shadowColor = AMBER; g.shadowBlur = 18;
@@ -193,7 +205,7 @@
   }
 
   // run: { portrait, username, chogName, practice, meters, total, multiplier, tier, zoneIndex, zoneName, loop,
-  //        durationMs, stardust, nearMisses, newBest, rank, url, date, pin: { id, tier } | null }
+  //        durationMs, stardust, nearMisses, newBest, rank, url, date, pin: { id, tier } | null, demo }
   function render(run, format) {
     const [W, H] = FORMATS[format] || FORMATS.wide;
     const c = document.createElement("canvas");
@@ -202,7 +214,7 @@
     g.textBaseline = "alphabetic";
     background(g, W, H, (run.total || 0) * 31 + (run.meters || 0));
     const ring = run.practice ? AMBER : (TIER[String(run.tier || "").toLowerCase()] || TEAL);
-    const tag = run.practice ? "PRACTICE RUN" : "CHOG GENESIS  ·  MONAD";
+    const tag = run.practice ? "PRACTICE RUN" : run.demo ? "DEMO RUN  ·  CHOG GENESIS" : "CHOG GENESIS  ·  MONAD";
 
     if (W > H) {
       logo(g, 48, 74, 44);

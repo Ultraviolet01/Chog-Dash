@@ -23,6 +23,15 @@ create table if not exists chog_leaderboard (
 );
 create index if not exists chog_leaderboard_rank_idx on chog_leaderboard (total desc, updated_at asc);
 
+-- The separate DEMO leaderboard: demo runs (the 5 demo Chogs, any signed-in wallet). Same shape.
+create table if not exists chog_demo_leaderboard (
+  wallet text primary key,
+  total integer not null,
+  record jsonb not null,
+  updated_at timestamptz not null default now()
+);
+create index if not exists chog_demo_leaderboard_rank_idx on chog_demo_leaderboard (total desc, updated_at asc);
+
 -- Every submitted run, validated or rejected, with the reason.
 create table if not exists chog_runs (
   id bigserial primary key,
@@ -33,12 +42,13 @@ create table if not exists chog_runs (
 alter table chog_kv enable row level security;
 alter table chog_leaderboard enable row level security;
 alter table chog_runs enable row level security;
+alter table chog_demo_leaderboard enable row level security;
 
 -- Belt and braces: the public keys get no table access at all (row level security already blocks them)
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
-    revoke all on chog_kv, chog_leaderboard, chog_runs from anon, authenticated;
+    revoke all on chog_kv, chog_leaderboard, chog_runs, chog_demo_leaderboard from anon, authenticated;
     revoke all on sequence chog_runs_id_seq from anon, authenticated;
   end if;
 end;
@@ -130,6 +140,37 @@ language sql stable as $$
   from (select record, total, updated_at from chog_leaderboard order by total desc, updated_at asc limit p_n) t;
 $$;
 
+-- ---------- DEMO leaderboard (same as above, on chog_demo_leaderboard) ----------
+create or replace function chog_demo_best_update(p_wallet text, p_total integer, p_record jsonb) returns boolean
+language plpgsql as $$
+declare n integer;
+begin
+  insert into chog_demo_leaderboard (wallet, total, record, updated_at)
+  values (p_wallet, p_total, p_record, now())
+  on conflict (wallet) do update set total = excluded.total, record = excluded.record, updated_at = now()
+    where chog_demo_leaderboard.total < excluded.total;
+  get diagnostics n = row_count;
+  return n > 0;
+end;
+$$;
+
+create or replace function chog_demo_rank(p_wallet text) returns integer
+language sql stable as $$
+  select 1 + (select count(*)::integer from chog_demo_leaderboard o where o.total > me.total)
+  from chog_demo_leaderboard me where me.wallet = p_wallet;
+$$;
+
+create or replace function chog_demo_best(p_wallet text) returns jsonb
+language sql stable as $$
+  select record from chog_demo_leaderboard where wallet = p_wallet;
+$$;
+
+create or replace function chog_demo_top(p_n integer) returns jsonb
+language sql stable as $$
+  select coalesce(jsonb_agg(record order by total desc, updated_at asc), '[]'::jsonb)
+  from (select record, total, updated_at from chog_demo_leaderboard order by total desc, updated_at asc limit p_n) t;
+$$;
+
 -- Only the server (service role) may run these. Supabase lets anyone with the public anon key
 -- call functions in the public schema unless execute is revoked, so revoke it.
 do $$
@@ -138,7 +179,8 @@ begin
   foreach f in array array[
     'chog_kv_get(text)', 'chog_kv_mget(text[])', 'chog_kv_set(text,jsonb,integer)',
     'chog_kv_set_nx(text,jsonb,integer)', 'chog_kv_del(text)', 'chog_run_push(jsonb)',
-    'chog_best_update(text,integer,jsonb)', 'chog_rank(text)', 'chog_best(text)', 'chog_top(integer)'
+    'chog_best_update(text,integer,jsonb)', 'chog_rank(text)', 'chog_best(text)', 'chog_top(integer)',
+    'chog_demo_best_update(text,integer,jsonb)', 'chog_demo_rank(text)', 'chog_demo_best(text)', 'chog_demo_top(integer)'
   ] loop
     execute 'revoke all on function ' || f || ' from public';
     if exists (select 1 from pg_roles where rolname = 'anon') then

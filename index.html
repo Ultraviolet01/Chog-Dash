@@ -72,6 +72,7 @@
       <span id="modePill" class="mode-pill" aria-hidden="true"></span>
       <button id="modePractice" class="mode on">PRACTICE</button>
       <button id="modeNft" class="mode">CHOG NFT</button>
+      <button id="modeDemo" class="mode" title="Try Chog NFT mode with 5 demo Chogs, no wallet">DEMO</button>
     </div>
     <div class="mode-hint-slot"><div id="modeHint" class="mode-hint"></div></div>
     <button id="playBtn" class="play"><span class="play-label">PLAY</span></button>
@@ -211,9 +212,13 @@
       <button id="lbBack" class="ghost">Back</button>
       <div class="lb-title">
         <h2>RANKS</h2>
-        <div class="lb-sub">ALL TIME &middot; CHOG NFT RUNS</div>
+        <div class="lb-sub" id="lbSub">ALL TIME &middot; CHOG NFT RUNS</div>
       </div>
       <button id="lbRefresh" class="ghost" title="Refresh">Refresh</button>
+    </div>
+    <div class="lb-tabs mode-switch" role="tablist">
+      <button id="lbTabNft" class="mode on" role="tab">CHOG NFT</button>
+      <button id="lbTabDemo" class="mode" role="tab">DEMO</button>
     </div>
     <div id="lbPodium" class="podium"></div>
     <div id="lbList" class="lb-list"></div>
@@ -221,6 +226,27 @@
     <p class="lb-rule" id="lbRule"></p>
   </div>
   <div id="lbMe" class="lb-me"></div>
+</div>
+
+<!-- Demo: pick one of 5 demo Chogs -->
+<div id="demoPanel" class="panel lb demo">
+  <div class="lb-wrap">
+    <div class="lb-head">
+      <button id="demoBack" class="ghost">Back</button>
+      <div class="lb-title">
+        <h2>DEMO</h2>
+        <div class="lb-sub">TRY CHOG NFT MODE &middot; NO CHOG NEEDED</div>
+      </div>
+      <span class="demo-tag">DEMO</span>
+    </div>
+    <p class="demo-intro">Pick a Chog to fly: one from each tier, <b>Common to Legendary</b>, each with its own rocket and aura trail, two with <b>Laser Eyes</b>.
+      Try everything Chog NFT mode does: traits, tier scoring, quests, badges, the streak and streak lives (kept on this device).
+      Demo runs never go on the Chog NFT leaderboard; signed in with any wallet, they go on the separate DEMO leaderboard.</p>
+    <div id="demoAccount" class="demo-account"></div>
+    <div id="demoList" class="demo-list"></div>
+    <div id="demoStatus" class="lb-status"></div>
+    <p class="lb-rule">These are real Chog Genesis NFTs, used here for the demo only. <button id="demoReset" class="link-btn">Reset demo progress</button></p>
+  </div>
 </div>
 
 <!-- Quests (Chog NFT holders only) -->
@@ -277,7 +303,7 @@ function loadAll(list, done) {
   loadScript(list[0], function () { loadAll(list.slice(1), done); }, function () { showError("Could not load " + list[0]); });
 }
 function boot() {
-  loadAll(["js/config.js", "js/traits.js", "js/quests.js", "js/chain.js", "js/metadata.js", "js/audio.js", "js/art.js", "js/looks.js", "js/card.js", "js/scenery.js", "js/pickups.js", "js/game.js", "js/ui.js"], function () {
+  loadAll(["js/config.js", "js/traits.js", "js/quests.js", "js/demo-chogs.js", "js/demo.js", "js/chain.js", "js/metadata.js", "js/audio.js", "js/art.js", "js/looks.js", "js/card.js", "js/scenery.js", "js/pickups.js", "js/game.js", "js/ui.js"], function () {
     try { ChogUI.start(); } catch (e) { showError("Game failed to start: " + e.message); }
   });
 }

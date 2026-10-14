@@ -1,9 +1,10 @@
 /*
- * Menus and flow: practice mode, Chog NFT mode (wallet, ownership, metadata), run eligibility,
+ * Menus and flow: practice mode, Chog NFT mode (wallet, ownership, metadata), demo mode, run eligibility,
  * score submission and the leaderboard view.
  */
 (function (root) {
-  const cfg = root.ChogConfig, T = root.ChogTraits, Chain = root.ChogChain, Meta = root.ChogMetadata, Art = root.ChogArt;
+  const cfg = root.ChogConfig, T = root.ChogTraits, Chain = root.ChogChain, Meta = root.ChogMetadata, Art = root.ChogArt,
+    Demo = root.ChogDemo;
   const $ = id => document.getElementById(id);
   const dev = new URLSearchParams(location.search).get("dev") || "";
   const PRACTICE_BEST = "chogDashPracticeBest";
@@ -14,6 +15,7 @@
     mode: null,
     provider: null, account: null, chainId: null,
     chog: null,             // { tokenId, name, metadata, gameplay, imageUrl, riderCanvas, riderPoses }
+    demoChog: null,         // the same, for one of the 5 demo Chogs (demo: true)
     auth: null, authError: "",
     runId: null, activeRunId: null, runStatus: { text: "", kind: "" }, sessionReq: 0, runCounter: 0,
     selectReq: 0, holdingsReq: 0, signReq: 0, metaCache: {},
@@ -25,7 +27,7 @@
   const short = a => (a ? a.slice(0, 6) + "..." + a.slice(-4) : "");
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function show(panelId) {
-    ["menuPanel", "nftPanel", "lbPanel", "howPanel", "questPanel"].forEach(id => $(id).classList.toggle("show", id === panelId));
+    ["menuPanel", "nftPanel", "lbPanel", "howPanel", "questPanel", "demoPanel"].forEach(id => $(id).classList.toggle("show", id === panelId));
     if (panelId !== "questPanel") clearInterval(questTimer);
     if (panelId === "menuPanel") { refreshHome(); $("questStrip").classList.remove("show"); stopReveal(); }
   }
@@ -80,11 +82,16 @@
     game = root.ChogGame.init({ onReady, onStart, onEnd, onRetry: playAgain });
     $("modePractice").onclick = () => setHomeMode("practice");
     $("modeNft").onclick = () => setHomeMode("nft");
+    $("modeDemo").onclick = () => setHomeMode("demo");
+    $("demoBack").onclick = () => show("menuPanel");
+    $("demoReset").onclick = () => { Demo.reset(); setStatus($("demoStatus"), "Demo progress reset: a 6-day streak and 2 streak lives again."); $("demoStatus").className = "lb-status good"; };
     $("playBtn").onclick = play;
     $("walletChip").onclick = openNft;
-    $("lbBtn").onclick = openLeaderboard;
+    $("lbBtn").onclick = () => openLeaderboard();
+    $("lbTabNft").onclick = () => openLeaderboard("nft");
+    $("lbTabDemo").onclick = () => openLeaderboard("demo");
     $("howBtn").onclick = openHow;
-    $("nftBack").onclick = () => show("menuPanel");
+    $("nftBack").onclick = () => { const back = S.nftReturn || "menuPanel"; S.nftReturn = null; back === "demoPanel" ? openDemo() : show(back); };
     $("lbBack").onclick = () => show("menuPanel");
     $("howBack").onclick = () => show("menuPanel");
     $("questBtn").onclick = openQuests;
@@ -102,7 +109,7 @@
     });
     let saved = "practice";
     try { saved = localStorage.getItem("chogDashMode") || "practice"; } catch (e) {}
-    setHomeMode(saved === "nft" ? "nft" : "practice");
+    setHomeMode(saved === "nft" || saved === "demo" ? saved : "practice");
     $("hudMenuBtn").onclick = backToMenu;
     $("switchNet").onclick = switchNetwork;
     $("signInBtn").onclick = signInAndScan;
@@ -113,7 +120,7 @@
     $("cardBtn").onclick = openCard;
     $("againBtn").onclick = playAgain;
     $("endHomeBtn").onclick = backToMenu;
-    $("endLbBtn").onclick = () => { backToMenu(); openLeaderboard(); };
+    $("endLbBtn").onclick = () => { const board = S.mode === "demo" ? "demo" : "nft"; backToMenu(); openLeaderboard(board); };
     window.addEventListener("keydown", e => {
       if (e.code === "KeyR" && !e.repeat && game.state === "dead" && !document.querySelector(".panel.show") && e.target.tagName !== "INPUT") playAgain();
     });
@@ -203,7 +210,8 @@
         "<li><b>Laser Eyes</b> (laser Eyes trait): " + cfg.abilities.laserEyes.charges + " shots that destroy what's in your path. " +
           (isTouch ? "Tap with a second finger to fire" : "Press " + keycap("E") + " to fire") + "</li>" +
         "<li><b>Total distance</b> = distance flown x tier:</li></ul><div class='tiers'>" + tiers + "</div>" +
-        "<ul><li>Your Chog's traits style the rocket and its aura trail</li><li>Ranked on the leaderboard under your username</li><li>Daily and weekly quests earn badges</li><li>Quest streaks bank extra lives: 7 days +1, 14 days +3, 21 days +5</li></ul></div>";
+        "<ul><li>Your Chog's traits style the rocket and its aura trail</li><li>Ranked on the leaderboard under your username</li><li>Daily and weekly quests earn badges</li><li>Quest streaks bank extra lives: 7 days +1, 14 days +3, 21 days +5</li></ul></div>" +
+      '<p class="how-demo"><span class="demo-tag">DEMO</span> No Chog yet? The <b>DEMO</b> tab lets you fly 5 demo Chogs with every Chog NFT feature, and has its own DEMO leaderboard.</p>';
     // Page 6: a sample streak, 4 days in, with the day-7 reward ahead
     $("howStreak").innerHTML = '<div class="hs-top">' + bigFlame(4, false) + '<div class="qs-big">4<span>DAY STREAK</span></div></div>' +
       '<div class="road">' + [1, 2, 3, 4, 5, 6, 7].map(d => '<div class="rd' + (d <= 4 ? " lit" : "") + (d === 5 ? " today" : "") + (d === 7 ? " reward" : "") + '">' +
@@ -282,19 +290,20 @@
   }
 
   // ---------- Home screen ----------
-  let homeMode;   // "practice" or "nft"; set from the saved choice at start
+  let homeMode;   // "practice", "nft" or "demo"; set from the saved choice at start
   function setHomeMode(m) {
     const changed = homeMode !== m && homeMode !== undefined;
     homeMode = m;
     try { localStorage.setItem("chogDashMode", m); } catch (e) {}
     $("modePractice").classList.toggle("on", m === "practice");
     $("modeNft").classList.toggle("on", m === "nft");
+    $("modeDemo").classList.toggle("on", m === "demo");
     movePill(!changed);
     refreshHome(changed);
   }
   // Slides the pill behind the chosen mode button
   function movePill(instant) {
-    const sw = document.querySelector(".mode-switch"), on = $(homeMode === "nft" ? "modeNft" : "modePractice"), pill = $("modePill");
+    const sw = document.querySelector(".mode-switch"), on = $(homeMode === "nft" ? "modeNft" : homeMode === "demo" ? "modeDemo" : "modePractice"), pill = $("modePill");
     if (!sw || !on.offsetWidth) return;
     sw.classList.toggle("no-anim", !!instant);
     pill.style.width = on.offsetWidth + "px";
@@ -307,20 +316,23 @@
       el.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 260, easing: "ease-out" });
   }
   function refreshHome(animate) {
-    const nft = homeMode === "nft";
-    const hint = nft
-      ? (S.chog ? "Ride " + S.chog.name + ". Abilities from its traits. Ranked." : "Ride a Chog you own. Abilities from its traits. Ranked.")
+    const demo = homeMode === "demo", nft = homeMode === "nft" || demo;
+    const chog = demo ? S.demoChog : S.chog;
+    const hint = demo
+      ? (chog ? "Demo: ride " + chog.name + ". Every Chog NFT feature, no Chog needed." : "Try Chog NFT mode with 5 demo Chogs. No Chog needed. DEMO leaderboard.")
+      : nft
+      ? (chog ? "Ride " + chog.name + ". Abilities from its traits. Ranked." : "Ride a Chog you own. Abilities from its traits. Ranked.")
       : "Fly as Rookie, the practice pilot. No wallet. Not ranked.";
-    const label = nft && !S.chog ? "PICK CHOG" : "PLAY";
+    const label = demo || (nft && !chog) ? "PICK CHOG" : "PLAY";   // demo: always choose from the 5 demo Chogs
     const lab = $("playBtn").querySelector(".play-label");
     if ($("modeHint").textContent !== hint) { $("modeHint").textContent = hint; if (animate) swapIn($("modeHint")); }
     if (lab.textContent !== label) { lab.textContent = label; if (animate) swapIn(lab); }
     $("playBtn").classList.toggle("pick", label !== "PLAY");
-    $("bestLabel").textContent = nft && S.chog ? "BEST TOTAL" : "BEST";
-    $("bestValue").textContent = (nft && S.chog ? readNum("chogDashNftBest:" + S.chog.tokenId) : readNum(PRACTICE_BEST)).toLocaleString() + " m";
+    $("bestLabel").textContent = nft && chog ? "BEST TOTAL" : "BEST";
+    $("bestValue").textContent = (nft && chog ? readNum(bestKey(chog)) : readNum(PRACTICE_BEST)).toLocaleString() + " m";
     $("walletChipText").textContent = S.account ? (S.username || short(S.account)) : "Connect wallet";
     $("walletDot").classList.toggle("on", !!S.account && S.chainId === cfg.collection.chainId);
-    $("keyHint").textContent = "Press SPACE to " + (nft && !S.chog ? "pick a Chog" : "play") + "  ·  F for full screen";
+    $("keyHint").textContent = "Press SPACE to " + (label === "PICK CHOG" ? "pick a Chog" : "play") + "  ·  F for full screen";
     if (!animate) movePill(true);   // e.g. the home screen was hidden while the pill moved
     placeHero();
   }
@@ -333,9 +345,14 @@
 
   function play() {
     if (homeMode === "practice") startPractice();
+    else if (homeMode === "demo") openDemo();
     else if (S.chog) rideChog();
     else openNft();
   }
+  // Best total distance on this device for a Chog (demo Chogs are kept apart from real runs)
+  const bestKey = c => (c.demo ? "chogDashDemoBest:" : "chogDashNftBest:") + c.tokenId;
+  // The Chog being flown: a demo Chog in demo mode, else the wallet's chosen Chog
+  const activeChog = () => (S.mode === "demo" ? S.demoChog : S.mode === "nft" ? S.chog : null);
 
   function enterGame() {
     show(null);
@@ -377,8 +394,9 @@
 
   function onReady() {
     // The best to beat this run (the same number as the BEST chip): distance in practice, total distance for this Chog
-    game.configure({ bestToBeat: S.mode === "nft" && S.chog ? readNum("chogDashNftBest:" + S.chog.tokenId) : readNum(PRACTICE_BEST), bankLives: 0 });
-    S.bankLives = 0;
+    const chog = activeChog();
+    S.bankLives = S.mode === "demo" ? Demo.lives() : 0;   // Chog NFT mode gets its streak lives from the server's run session
+    game.configure({ bestToBeat: chog ? readNum(bestKey(chog)) : readNum(PRACTICE_BEST), bankLives: S.bankLives });
     showEndBar(false);
     closeCard();
     setFlying(false);
@@ -393,9 +411,13 @@
     } else if (S.mode === "nft") {
       renderNftReady();
       requestRunSession();
+    } else if (S.mode === "demo") {
+      renderNftReady();
+      requestDemoSession();
     }
     stopReveal();
-    if (S.mode === "nft") loadQuests(); else { S.quests = null; renderQuestStrip(); }
+    if (S.mode === "nft") loadQuests();
+    else { S.quests = S.mode === "demo" ? Demo.view() : null; renderQuestStrip(); }
   }
 
   function onStart() {
@@ -431,8 +453,8 @@
       ]);
       return;
     }
-    const c = S.chog, g = c.gameplay;
-    const key = "chogDashNftBest:" + c.tokenId;
+    const c = activeChog(), g = c.gameplay;
+    const key = bestKey(c);
     const best = Math.max(readNum(key), result.score);
     writeNum(key, best);
     const run = S.runCounter;
@@ -443,6 +465,27 @@
       status,
       retryText(),
     ];
+    if (S.mode === "demo") {
+      // Demo: quests, badges, the streak and streak lives use the same rules, kept on this device. Signed in,
+      // the run is checked by the server and ranked on the separate DEMO leaderboard.
+      const q = Demo.finish(result);
+      if (q.badges.length) revealBadges(q.badges);
+      if (q.livesEarned) revealBadges([{ lives: q.livesEarned, day: q.streakDay }]);
+      S.quests = Demo.view();
+      renderQuestStrip();
+      if (!S.activeRunId) { setMsg("CRASHED", lines(["Demo run: not on the DEMO leaderboard (not signed in)", ""]).concat(questLines(q))); return; }
+      setMsg("CRASHED", lines(["Submitting to the DEMO leaderboard...", ""]).concat(questLines(q)));
+      apiCall("/run/finish", { runId: S.activeRunId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed }, S.auth && S.auth.token)
+        .then(r => {
+          if (run !== S.runCounter || game.state !== "dead") return;
+          if (r.status === "validated" && S.lastRun) { S.lastRun.rank = r.rank || null; S.lastRun.total = r.finalScore; }
+          setMsg("CRASHED", lines(r.status === "validated"
+            ? ["DEMO leaderboard: total distance " + r.finalScore + " m" + (r.rank ? ", rank " + r.rank : ""), "good"]
+            : ["Not validated: " + (r.reason || r.status), "warn"]).concat(questLines(q)));
+        })
+        .catch(e => { if (run === S.runCounter && game.state === "dead") setMsg("CRASHED", lines(["Not submitted: " + e.message, "warn"]).concat(questLines(q))); });
+      return;
+    }
     if (!S.activeRunId) {
       setMsg("CRASHED", lines(["Not submitted: " + (S.runStatus.kind === "warn" ? S.runStatus.text : "this run was not registered with the leaderboard"), "warn"]));
       return;
@@ -468,20 +511,94 @@
       });
   }
 
+  // ---------- Demo: 5 demo Chogs, Chog NFT mode without a wallet ----------
+  function openDemo() {
+    show("demoPanel");
+    renderDemoAccount();
+    const list = $("demoList");
+    const mark = () => list.querySelectorAll(".demo-card").forEach(el => el.classList.toggle("sel", !!S.demoChog && el.dataset.token === S.demoChog.tokenId));
+    if (list.childElementCount) { mark(); return; }
+    Demo.CHOGS.forEach(d => {
+      const meta = d.metadata, gp = T.resolveGameplay(meta);
+      const laser = gp.abilities.find(a => a.id === "laserEyes");
+      const look = root.ChogLooks.rocketLook(gp.attributes, meta, null);
+      const legendary = look.id.indexOf("legendary:") === 0;
+      const chips = (laser ? ['<span class="dchip laser">Laser Eyes &middot; ' + esc(laser.fromValue) + "</span>"] : [])
+        .concat(look.id !== "standard" ? ['<span class="dchip rocket">' + esc(legendary ? "One-of-one rocket" : look.name) + "</span>"] : [])
+        .concat(look.trail ? ['<span class="dchip trail">' + esc(legendary ? look.trail.style.charAt(0).toUpperCase() + look.trail.style.slice(1) : look.trail.name) + " trail</span>"] : []);
+      const card = document.createElement("button");
+      card.className = "demo-card t-" + String(gp.tier || "").toLowerCase();
+      card.dataset.token = d.tokenId;
+      card.innerHTML = '<div class="dimg"><span class="dload">Loading art...</span></div><div class="dbody"><div class="dname">' + esc(meta.name) +
+        '</div><div class="dtier">' + esc(gp.tier) + " &middot; x" + gp.multiplier.toFixed(2) + "</div><div class=\"dchips\">" + chips.join("") +
+        '</div><div class="dblurb">' + esc(d.blurb) + '</div><span class="dfly">FLY</span></div>';
+      card.onclick = () => pickDemo(d, card);
+      list.appendChild(card);
+      Meta.loadImage(meta.image).then(art => {
+        d._art = art;
+        const img = document.createElement("img"); img.alt = ""; img.src = art.url;
+        card.querySelector(".dimg").replaceChildren(img);
+      }).catch(() => { card.querySelector(".dload").textContent = "Art not loaded"; });
+    });
+  }
+  // Demo runs go on the DEMO leaderboard when signed in (any wallet, no Chog needed) with a pilot name
+  function renderDemoAccount() {
+    const box = $("demoAccount");
+    const ok = authValid() && S.username;
+    box.className = "demo-account" + (ok ? " ok" : "");
+    box.innerHTML = ok
+      ? "<span><b>" + esc(S.username) + "</b>: your demo runs go on the DEMO leaderboard.</span>"
+      : "<span>Want your demo runs on the <b>DEMO leaderboard</b>? Connect any wallet (it doesn't need a Chog), sign in and pick a pilot name.</span>";
+    const b = document.createElement("button");
+    b.textContent = ok ? "See DEMO ranks" : authValid() ? "Pick a pilot name" : "Connect wallet";
+    b.className = ok ? "ghost" : "";
+    b.onclick = ok ? () => openLeaderboard("demo") : () => { S.nftReturn = "demoPanel"; openNft(); };
+    box.appendChild(b);
+  }
+
+  async function pickDemo(d, card) {
+    const st = $("demoStatus");
+    st.className = "lb-status"; st.textContent = "Loading " + d.metadata.name + "...";
+    try {
+      const art = d._art || (d._art = await Meta.loadImage(d.metadata.image));
+      S.demoChog = Object.assign(chogFromArt(d.tokenId, d.metadata, art), { demo: true });
+      st.textContent = "";
+      setHomeMode("demo");
+      rideDemo();
+    } catch (e) {
+      st.className = "lb-status err";
+      st.textContent = "Couldn't load this Chog's artwork from IPFS right now. Try again in a moment.";
+    }
+  }
+  function rideDemo() {
+    const c = S.demoChog;
+    const laser = c.gameplay.abilities.find(a => a.id === "laserEyes");
+    S.mode = "demo";
+    game.configure({
+      riderCanvas: c.riderCanvas, riderPoses: c.riderPoses, look: c.look, laserCharges: laser ? laser.charges : 0,
+      multiplier: c.gameplay.multiplier, showScore: true,
+      modeLabel: "DEMO · " + c.name + " · Tier " + (c.gameplay.tier || "unknown"),
+    });
+    $("modeBadge").className = "demo";
+    $("riderCard").src = c.imageUrl;
+    $("riderCard").style.display = "block";
+    enterGame();
+  }
+
   // ---------- Run card ----------
   // Built from the finished run, for practice and Chog NFT runs alike. Checked against the stored best
   // before onEnd updates it, so a record run gets the NEW BEST badge.
   function rememberRun(result) {
-    const nft = S.mode === "nft" && S.chog;
+    const c = activeChog(), nft = !!c, demo = S.mode === "demo";
     const z = T.zoneAt(result.meters);
-    const prevBest = nft ? readNum("chogDashNftBest:" + S.chog.tokenId) : readNum(PRACTICE_BEST);
+    const prevBest = nft ? readNum(bestKey(c)) : readNum(PRACTICE_BEST);
     S.lastRun = {
-      practice: !nft,
-      portrait: nft ? S.chog.img : Art.rookieCanvas(),
-      username: S.username || (nft ? short(S.account) : "Practice pilot"),
-      chogName: nft ? S.chog.name : null,
-      tier: nft ? S.chog.gameplay.tier : null,
-      multiplier: nft ? S.chog.gameplay.multiplier : 1,
+      practice: !nft, demo,
+      portrait: nft ? c.img : Art.rookieCanvas(),
+      username: demo ? "Demo pilot" : S.username || (nft ? short(S.account) : "Practice pilot"),
+      chogName: nft ? c.name : null,
+      tier: nft ? c.gameplay.tier : null,
+      multiplier: nft ? c.gameplay.multiplier : 1,
       meters: result.meters, total: result.score,
       zoneIndex: z.index, zoneName: z.zone.name, loop: z.loop,
       durationMs: result.durationMs, stardust: result.stardust || 0, nearMisses: result.nearMisses || 0,
@@ -507,7 +624,7 @@
     if (game.state !== "dead" || performance.now() - (S.crashedAt || 0) < 600) return;   // no accidental restarts
     closeCard();
     showEndBar(false);
-    if (S.mode === "nft") {
+    if (S.mode === "nft" || S.mode === "demo") {
       // A ranked run needs its run session from the server first; start as soon as it's settled
       S.autoStart = true;
       game.toReady();
@@ -545,6 +662,7 @@
     const r = S.lastRun;
     return (r.practice
       ? "I flew " + r.meters.toLocaleString() + " m in Chog Dash practice"
+      : r.demo ? "I flew " + r.total.toLocaleString() + " m in the Chog Dash demo riding " + r.chogName + (r.rank ? " and I'm #" + r.rank + " on the demo leaderboard" : "")
       : "I flew " + r.total.toLocaleString() + " m in Chog Dash riding " + r.chogName + (r.rank ? " and I'm #" + r.rank + " on the leaderboard" : "")) +
       (r.newBest ? " (new best)" : "") + ". Can you beat it? #ChogDash";
   };
@@ -600,9 +718,9 @@
 
   // ---------- NFT mode: run eligibility ----------
   function renderNftReady() {
-    const c = S.chog, g = c.gameplay;
+    const c = activeChog(), g = c.gameplay, demo = S.mode === "demo";
     const laser = g.abilities.find(a => a.id === "laserEyes");
-    setMsg("CHOG NFT MODE", [
+    setMsg(demo ? "DEMO MODE" : "CHOG NFT MODE", [
       c.name + " (token " + c.tokenId + ")",
       "Tier " + (g.tier || "unknown") + ": distance multiplier x" + g.multiplier.toFixed(2),
       laser ? "Laser Eyes: " + laser.charges + " charges this run" : "No ability from this Chog's traits",
@@ -613,6 +731,32 @@
       portraitTip(),
       startText(),
     ]);
+  }
+
+  // Demo: a server run session puts the run on the DEMO leaderboard (signed in, any wallet, with a pilot name)
+  async function requestDemoSession() {
+    S.runId = null;
+    const req = ++S.sessionReq;
+    if (!authValid() || !S.username) {
+      S.runStatus = { text: "Demo run: not on the DEMO leaderboard. Connect any wallet and pick a pilot name to get ranked", kind: "warn" };
+      renderNftReady();
+      autoStartIfWaiting();
+      return;
+    }
+    S.runStatus = { text: "Checking the DEMO leaderboard...", kind: "" };
+    renderNftReady();
+    try {
+      const r = await apiCall("/run/start", { tokenId: S.demoChog.tokenId, demo: true }, S.auth.token);
+      if (req !== S.sessionReq) return;
+      S.runId = r.runId;
+      S.runStatus = { text: "Demo run for the DEMO leaderboard as " + S.username + " (server-checked, Tier " + r.tier + " x" + r.multiplier + ")", kind: "good" };
+    } catch (e) {
+      if (req !== S.sessionReq) return;
+      if (e.status === 401) S.auth = null;
+      S.runStatus = { text: "Demo run: not on the DEMO leaderboard (" + e.message + ")", kind: "warn" };
+    }
+    if (game.state === "ready") renderNftReady();
+    autoStartIfWaiting();
   }
 
   async function requestRunSession() {
@@ -807,7 +951,7 @@
       });
       if (req !== S.holdingsReq) return;
       if (r.balance === 0) {
-        setStatus(st, "This wallet holds no Chog Genesis NFTs. You can still play practice mode.");
+        setStatus(st, "This wallet holds no Chog Genesis NFTs. You can still play practice mode, or the DEMO tab with 5 demo Chogs (signed in, your demo runs go on the DEMO leaderboard).");
         return;
       }
       setStatus(st, "Found " + r.tokenIds.length + " Chog" + (r.tokenIds.length === 1 ? "" : "s") + " in this wallet. Pick one to ride." +
@@ -888,24 +1032,32 @@
     let art;
     try {
       art = await Meta.loadImage(meta.image);
-      const canvas = Art.nftRiderCanvas(art.img);
-      canvas.getContext("2d").getImageData(0, 0, 1, 1);   // throws if the image can't be used by the game
+      const chog = chogFromArt(idStr, meta, art);   // throws if the image can't be used by the game
       if (stale()) return;
       $("chosenImg").src = art.url;
-      // In flight the rider faces where the rocket goes, so the camera sees a back view made from this
-      // Chog's own traits and colours (see Art.chogBackCanvas). The portrait is shown in the HUD.
-      const riderPoses = {
-        side: Art.chogBackCanvas(art.img, gp.attributes, "threeQuarter", meta),
-        back: Art.chogBackCanvas(art.img, gp.attributes, "back", meta),
-      };
-      // Rocket paint, glow and aura trail from the traits (looks only, see js/looks.js)
-      const look = root.ChogLooks.rocketLook(gp.attributes, meta, Art.samplePalette(art.img).bg);
-      S.chog = { tokenId: idStr, name, metadata: meta, gameplay: gp, imageUrl: art.url, img: art.img, riderCanvas: canvas, riderPoses, look };
-      setStatus(info, lines.concat(lookLines(look)).join("\n"));
+      S.chog = chog;
+      setStatus(info, lines.concat(lookLines(S.chog.look)).join("\n"));
       $("rideBtn").disabled = false;
     } catch (e) {
       if (!stale()) setStatus(info, lines.join("\n") + "\nCouldn't load this Chog's artwork, so it can't be ridden right now. Try again in a moment.", "err");
     }
+  }
+
+  // Everything the game needs to fly a Chog, from its metadata and loaded artwork
+  function chogFromArt(idStr, meta, art) {
+    const gp = T.resolveGameplay(meta);
+    const name = typeof meta.name === "string" && meta.name.trim() ? meta.name : "Token " + idStr;
+    const canvas = Art.nftRiderCanvas(art.img);
+    canvas.getContext("2d").getImageData(0, 0, 1, 1);   // throws if the image can't be used by the game
+    // In flight the rider faces where the rocket goes, so the camera sees a back view made from this
+    // Chog's own traits and colours (see Art.chogBackCanvas). The portrait is shown in the HUD.
+    const riderPoses = {
+      side: Art.chogBackCanvas(art.img, gp.attributes, "threeQuarter", meta),
+      back: Art.chogBackCanvas(art.img, gp.attributes, "back", meta),
+    };
+    // Rocket paint, glow and aura trail from the traits (looks only, see js/looks.js)
+    const look = root.ChogLooks.rocketLook(gp.attributes, meta, Art.samplePalette(art.img).bg);
+    return { tokenId: idStr, name, metadata: meta, gameplay: gp, imageUrl: art.url, img: art.img, riderCanvas: canvas, riderPoses, look };
   }
 
   function lookLines(look) {
@@ -982,13 +1134,17 @@
       esc((e.name || "Token " + e.tokenId) + (e.tier ? " · " + e.tier + " x" + Number(e.multiplier).toFixed(2) : "")) + "</div>";
   }
 
+  // Two real leaderboards: Chog NFT runs, and demo runs (the 5 demo Chogs, any signed-in wallet)
+  let lbBoard = "nft";
   function renderBoard(r) {
-    const podium = $("lbPodium"), list = $("lbList"), mine = S.auth && S.auth.account;
+    const podium = $("lbPodium"), list = $("lbList"), mine = S.auth && S.auth.account, demo = lbBoard === "demo";
     podium.innerHTML = ""; list.innerHTML = "";
     if (!r.entries.length) {
-      list.innerHTML = '<div class="lb-empty"><div class="t">No pilots yet</div><p>Fly a Chog you own and take the top spot.</p></div>';
+      list.innerHTML = '<div class="lb-empty"><div class="t">' + (demo ? "No demo pilots yet" : "No pilots yet") + "</div><p>" +
+        (demo ? "Fly a demo Chog, signed in with any wallet, and take the top spot." : "Fly a Chog you own and take the top spot.") + "</p></div>";
       const b = document.createElement("button");
-      b.textContent = "Fly a Chog"; b.onclick = () => { setHomeMode("nft"); openNft(); };
+      b.textContent = demo ? "Fly a demo Chog" : "Fly a Chog";
+      b.onclick = () => { if (demo) { setHomeMode("demo"); openDemo(); } else { setHomeMode("nft"); openNft(); } };
       list.firstChild.appendChild(b);
       return;
     }
@@ -1014,7 +1170,7 @@
   }
 
   function renderMe(me) {
-    const box = $("lbMe");
+    const box = $("lbMe"), demo = lbBoard === "demo";
     box.innerHTML = "";
     const bar = document.createElement("div");
     bar.className = "bar";
@@ -1028,27 +1184,42 @@
     const signedIn = me || authValid();
     bar.innerHTML = '<span class="you">YOU</span><div class="names"><div class="who">' +
       esc(signedIn ? (S.username || short(S.account)) : "Not signed in") + '</div><div class="hint">' +
-      (signedIn ? "Not ranked yet. Finish a Chog NFT run to get on the board." : "Connect a wallet in Chog NFT mode to see your rank.") + "</div></div>";
+      (demo ? (signedIn ? "Not ranked yet. Finish a demo run to get on the DEMO board." : "Connect any wallet (no Chog needed) and pick a pilot name to get on the DEMO board.")
+        : signedIn ? "Not ranked yet. Finish a Chog NFT run to get on the board." : "Connect a wallet in Chog NFT mode to see your rank.") + "</div></div>";
     const b = document.createElement("button");
     b.textContent = signedIn ? "Fly" : "Connect";
-    b.onclick = () => { setHomeMode("nft"); signedIn && S.chog ? (show("menuPanel"), play()) : openNft(); };
+    b.onclick = demo
+      ? () => { setHomeMode("demo"); if (signedIn) openDemo(); else { S.nftReturn = "demoPanel"; openNft(); } }
+      : () => { setHomeMode("nft"); signedIn && S.chog ? (show("menuPanel"), play()) : openNft(); };
     bar.appendChild(b);
   }
 
-  async function openLeaderboard() {
+  // board: "nft" or "demo"; by default the one that matches the mode you're in
+  async function openLeaderboard(board) {
+    lbBoard = board || (S.mode === "demo" || (!S.mode && homeMode === "demo") ? "demo" : "nft");
+    const demo = lbBoard === "demo";
     show("lbPanel");
-    $("lbRule").textContent = "Total distance = distance flown x the Chog's tier multiplier. Each player's best run with any Chog they own counts. Only validated Chog NFT runs appear here; practice runs never do.";
-    $("lbRefresh").onclick = openLeaderboard;
+    $("lbTabNft").classList.toggle("on", !demo);
+    $("lbTabDemo").classList.toggle("on", demo);
+    $("lbPanel").classList.toggle("demo-board", demo);
+    $("lbSub").textContent = demo ? "ALL TIME · DEMO RUNS" : "ALL TIME · CHOG NFT RUNS";
+    $("lbRule").textContent = demo
+      ? "The DEMO leaderboard: runs with the 5 demo Chogs by any signed-in wallet, checked by the server like Chog NFT runs (run time, distance and Laser Eyes limits). Total distance = distance flown x the demo Chog's tier. Separate from the Chog NFT leaderboard."
+      : "Total distance = distance flown x the Chog's tier multiplier. Each player's best run with any Chog they own counts. Only validated Chog NFT runs appear here; practice and demo runs never do.";
+    $("lbRefresh").onclick = () => openLeaderboard(lbBoard);
     const st = $("lbStatus");
     $("lbPodium").innerHTML = "";
     $("lbList").innerHTML = '<div class="lb-row skeleton"></div>'.repeat(4);
     st.textContent = ""; st.className = "lb-status";
     renderMe(null);
+    const want = lbBoard;
     try {
-      const r = await apiCall("/leaderboard", null, authValid() ? S.auth.token : null);
+      const r = await apiCall(demo ? "/demo-leaderboard" : "/leaderboard", null, authValid() ? S.auth.token : null);
+      if (want !== lbBoard) return;   // switched tab meanwhile
       renderBoard(r);
       renderMe(r.me);
     } catch (e) {
+      if (want !== lbBoard) return;
       $("lbList").innerHTML = "";
       st.className = "lb-status err";
       st.textContent = e.offline ? "The leaderboard server isn't reachable from here. It runs on the deployed site (see README)." : e.message;
@@ -1117,7 +1288,7 @@
   }
   function renderQuestStrip() {
     const el = $("questStrip"), r = S.quests;
-    const on = !!r && S.mode === "nft" && (game.state === "ready" || game.state === "dead");
+    const on = !!r && (S.mode === "nft" || S.mode === "demo") && (game.state === "ready" || game.state === "dead");
     el.classList.toggle("show", on);
     if (!r) { el.innerHTML = ""; return; }
     const done = r.daily.filter(q => q.done).length;
@@ -1134,7 +1305,7 @@
   function startLiveQuests() {
     clearInterval(liveTimer);
     S.liveDone = new Set();
-    if (!S.quests || S.mode !== "nft") return;
+    if (!S.quests || (S.mode !== "nft" && S.mode !== "demo")) return;
     liveTimer = setInterval(checkLiveQuests, 400);
   }
   function checkLiveQuests() {
@@ -1201,6 +1372,12 @@
     $("questBtn").classList.remove("has-new");
     const st = $("questStatus");
     st.textContent = ""; st.className = "lb-status";
+    if (homeMode === "demo" || S.mode === "demo") {   // demo quests: same rules, kept on this device
+      S.quests = Demo.view();
+      renderQuests(S.quests);
+      $("questBody").insertAdjacentHTML("afterbegin", '<div class="demo-note"><span class="demo-tag">DEMO</span> Demo quests: progress is kept on this device and never ranked.</div>');
+      return;
+    }
     if (!S.account || !authValid()) {
       questLocked("Quests are for Chog Genesis holders. Connect and sign in with the wallet that holds your Chog to see today's quests.",
         ["Connect wallet", () => { setHomeMode("nft"); openNft(); }]);
@@ -1316,7 +1493,8 @@
       btn.onclick = async () => {
         btn.disabled = true;
         try {
-          const out = await apiCall("/badge/pin", { id: r.pin === id ? null : id }, S.auth.token);
+          const want = r.pin === id ? null : id;
+          const out = S.mode === "demo" || homeMode === "demo" ? { pin: Demo.setPin(want) } : await apiCall("/badge/pin", { id: want }, S.auth.token);
           r.pin = out.pin;
           renderQuests(r);
           badgeInfo(r, id);

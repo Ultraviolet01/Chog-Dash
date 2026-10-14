@@ -33,6 +33,15 @@
    - computes the total distance with its own multiplier, ignoring anything the client claims.
 4. Every submission is stored with wallet, token ID, raw distance, total distance, tier, multiplier and validation status (validated or rejected, with the reason).
 
+## DEMO leaderboard (separate)
+
+- A second, real leaderboard for demo mode (the 5 demo Chogs in js/demo-chogs.js), so judges and visitors can see how ranking works without owning a Chog.
+- Any signed-in wallet with a pilot name can submit: `POST /api/run/start` with `{ tokenId, demo: true }` (one of the 5 demo token IDs only; no ownership check).
+- The server scores it from the demo Chog's embedded metadata (tier multiplier, Laser Eyes charges) and runs the same checks as Chog NFT runs: one submission per run, run time no longer than the session, distance possible in that time, laser use within the charges.
+- Validated demo runs go only to `chog_demo_leaderboard` (`GET /api/demo-leaderboard`, same shape as `/api/leaderboard`). They never reach the Chog NFT board, quests, badges or a wallet's real streak lives.
+- Ranks has CHOG NFT and DEMO tabs; it opens on the DEMO tab in demo mode.
+- Run supabase/schema.sql again in the Supabase SQL editor to add the table and its functions.
+
 ## Quests (Chog holders only)
 
 - Each day: 3 daily quests (one easy, one medium, one hard). Each week: 1 weekly quest.

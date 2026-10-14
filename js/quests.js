@@ -220,10 +220,81 @@
     out[day] = { done: st.done.length, min: Math.floor((st.playMs || 0) / 60000), counted: dayCounts(st) };
     return out;
   }
+  // ---------- One run, and the player's quest screen (shared by the server and the browser demo) ----------
+  // rec: { quest, badges, streak, log, lives } as stored for a player (any may be null).
+  // Returns { rec: the updated record, result: what the run earned, newlyOwned: badge ids owned for the first time }.
+  // result: { completed, badges: [{ id, tier }] that reached a new tier, streak, today, playMsToday, streakDay, livesEarned }
+  function progressRun(rec, stats, t) {
+    const day = dayNumber(t);
+    const { state, completed } = applyRun(rec.quest, stats, t);
+    const badges = Object.assign({}, rec.badges), tierUps = [], newlyOwned = [];
+    const award = (id, change) => {
+      const before = tierIndex(id, badges[id]);
+      badges[id] = change(Object.assign({ first: t }, badges[id]));
+      const after = tierIndex(id, badges[id]);
+      if (after > before) tierUps.push({ id, tier: after });
+      if (before < 0 && after >= 0) newlyOwned.push(id);
+    };
+    completed.forEach(id => award(id, r => Object.assign(r, { count: (r.count || 0) + 1 })));
+    // The streak grows once per day, on the run that makes the day count (3 dailies + 5 minutes flown)
+    let streak = rec.streak, streakDay = null, livesEarned = 0, lives = rec.lives || 0;
+    if (dayCounts(state) && !(streak && streak.lastDay === day)) {
+      streak = bumpStreak(streak, day);
+      streakDay = streak.count;
+      if (((badges.streak && badges.streak.best) || 0) < streak.count) award("streak", r => Object.assign(r, { best: streak.count }));
+      livesEarned = streakLives(streak.count);   // every 7th day banks streak lives
+      lives += livesEarned;
+    }
+    return {
+      rec: { quest: state, badges, streak, log: logDay(rec.log, day, state), lives },
+      result: { completed, badges: tierUps, streak: currentStreak(streak, t), today: state.done.length, playMsToday: state.playMs, streakDay, livesEarned },
+      newlyOwned,
+    };
+  }
+
+  // A badge with its look, record and tier
+  function badgeView(id, rec) {
+    const b = badgeFor(id);
+    if (!b) return null;
+    const tier = tierIndex(id, rec), next = nextTier(id, rec);
+    return Object.assign(b, { count: (rec && rec.count) || 0, best: (rec && rec.best) || 0, first: (rec && rec.first) || null, tier,
+      next: next && { tier: next.tier.id, at: next.at, have: next.have } });
+  }
+
+  // The Quests screen for a player. extra: { pin, players, owners: { [badge id]: number of owners } }
+  function questView(rec, t, extra) {
+    const x = extra || {}, day = dayNumber(t), week = weekNumber(t);
+    const state = rec.quest, badges = rec.badges, streak = rec.streak, log = rec.log;
+    const today = state && state.day === day ? state : null, thisWeek = state && state.week === week ? state : null;
+    const view = (q, progress, done) => ({ id: q.id, title: q.title, desc: q.desc, difficulty: q.difficulty, kind: q.kind,
+      target: q.target, progress: Math.min(q.target, progress || 0), done: !!done, badge: badgeView(q.id, badges && badges[q.id]) });
+    const w = weeklyFor(t), cur = currentStreak(streak, t), ids = allBadges().map(b => b.id);
+    const rarity = {};
+    ids.forEach(id => { rarity[id] = x.players ? Math.round((1000 * ((x.owners && x.owners[id]) || 0)) / x.players) / 10 : 0; });
+    return {
+      daily: dailyFor(t).map(q => view(q, today && today.daily[q.id], today && today.done.includes(q.id))),
+      weekly: view(w, thisWeek && (w.metric === "dailies" ? thisWeek.dailiesThisWeek : thisWeek.weekly[w.id]), thisWeek && thisWeek.weekDone.includes(w.id)),
+      streak: cur,
+      nextStreakBadge: STREAK_TIER_AT.find(n => n > Math.max(cur, (badges && badges.streak && badges.streak.best) || 0)) || null,
+      last7: Array.from({ length: 7 }, (_, k) => {
+        const d = day - 6 + k, e = log && log[d];
+        return Object.assign({ day: d, done: 0, min: 0, counted: false }, typeof e === "number" ? { done: e, counted: e >= 3 } : e);
+      }),
+      playMsToday: (today && today.playMs) || 0, streakPlayMs: STREAK_PLAY_MS,
+      todayCounted: !!(streak && streak.lastDay === day),
+      bestStreak: Math.max(cur, (badges && badges.streak && badges.streak.best) || 0),
+      bankLives: rec.lives || 0, nextLives: nextStreakLives(cur),
+      badges: ids.map(id => badgeView(id, badges && badges[id])).filter(b => b.tier >= 0),
+      rarity, players: x.players || 0,
+      pin: x.pin && badges && tierIndex(x.pin, badges[x.pin]) >= 0 ? x.pin : null,
+      dailyResetAt: nextDayAt(t), weeklyResetAt: nextWeekAt(t), serverTime: t,
+    };
+  }
+
   // A streak is broken if yesterday's dailies weren't all done
   const currentStreak = (s, t) => (s && s.lastDay != null && s.lastDay >= dayNumber(t) - 1 ? s.count : 0);
 
   return { DAILY, WEEKLY, STREAKS, STREAK_PLAY_MS, streakLives, nextStreakLives, dayCounts, ALL, TIERS, QUEST_TIER_AT, STREAK_TIER_AT, GLYPH_PATHS, SHAPE_PATHS,
     badgeFor, allBadges, tierIndex, nextTier, rarity, dayNumber, weekNumber, nextDayAt, nextWeekAt,
-    dailyFor, weeklyFor, runStats, applyRun, bumpStreak, logDay, currentStreak };
+    dailyFor, weeklyFor, runStats, applyRun, bumpStreak, logDay, currentStreak, progressRun, badgeView, questView };
 });

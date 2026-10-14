@@ -372,3 +372,45 @@ test("streak lives: 7 days in a row bank 1 life, runs spend it, a broken streak 
   assert.deepStrictEqual([again.streakDay, again.livesEarned], [7, 1], "recounted from day 1");
   assert.strictEqual((await h.questsGet({ token: ta })).bankLives, 1);
 });
+
+test("demo runs: any signed-in wallet, the 5 demo Chogs only, ranked on the separate DEMO board", async () => {
+  const { h, store, owners, alice, bob, signIn, advance } = setup();
+  // Bob owns no Chog at all
+  delete owners["3"];
+  const tb = await signIn(bob, null);
+  assert.strictEqual(await status(h.runStart({ body: { tokenId: "1832", demo: true }, token: tb })), 403, "needs a pilot name");
+  await h.profileSet({ body: { username: "Judge_Bob" }, token: tb });
+  assert.strictEqual(await status(h.runStart({ body: { tokenId: "1", demo: true }, token: tb })), 400, "not a demo Chog");
+  assert.strictEqual(await status(h.runStart({ body: { tokenId: "1832", demo: true } })), 401, "must be signed in");
+  await store.set("lives:" + bob.address.toLowerCase(), 3);
+  const s = await h.runStart({ body: { tokenId: "1832", demo: true }, token: tb });
+  assert.deepStrictEqual([s.demo, s.tier, s.multiplier, s.laserCharges, s.bankLives], [true, "Rare", 1.15, 10, 0], "tier and laser from the demo metadata");
+  advance(30000);
+  const r = await h.runFinish({ body: { runId: s.runId, meters: 600, durationMs: 29000, laserUsed: 2, bankLivesUsed: 3 }, token: tb });
+  assert.deepStrictEqual([r.status, r.demo, r.finalScore, r.rank], ["validated", true, 690, 1]);
+  assert.strictEqual(r.quests, undefined, "demo quests stay in the browser");
+  assert.strictEqual(await store.get("lives:" + bob.address.toLowerCase()), 3, "real streak lives untouched by demo runs");
+
+  // Same plausibility checks as Chog NFT runs
+  const s2 = await h.runStart({ body: { tokenId: "1798", demo: true }, token: tb });
+  advance(30000);
+  assert.strictEqual((await h.runFinish({ body: { runId: s2.runId, meters: 100000, durationMs: 29000 }, token: tb })).status, "rejected");
+  const s3 = await h.runStart({ body: { tokenId: "1798", demo: true }, token: tb });
+  advance(30000);
+  assert.match((await h.runFinish({ body: { runId: s3.runId, meters: 100, durationMs: 29000, laserUsed: 1 }, token: tb })).reason, /Laser/, "Krown has no Laser Eyes");
+
+  // The DEMO board has Bob; the Chog NFT board does not
+  const demo = await h.demoLeaderboard({ token: tb });
+  assert.deepStrictEqual(demo.entries.map(e => [e.rank, e.username, e.totalMeters, e.name]), [[1, "Judge_Bob", 690, "CHOG #1324"]]);
+  assert.deepStrictEqual([demo.me.rank, demo.me.username], [1, "Judge_Bob"]);
+  assert.match(demo.rule, /Demo runs only/);
+  assert.deepStrictEqual((await h.leaderboard()).entries, []);
+
+  // A holder's real run never lands on the DEMO board
+  const ta = await signIn(alice, "Alice");
+  const real = await h.runStart({ body: { tokenId: "1" }, token: ta });
+  advance(30000);
+  await h.runFinish({ body: { runId: real.runId, meters: 500, durationMs: 29000 }, token: ta });
+  assert.deepStrictEqual((await h.leaderboard()).entries.map(e => e.username), ["Alice"]);
+  assert.deepStrictEqual((await h.demoLeaderboard()).entries.map(e => e.username), ["Judge_Bob"]);
+});

@@ -23,6 +23,20 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
   - Abilities and the tier distance multiplier come from the token's real metadata.
   - The rocket's look comes from its traits too (looks only): painted in its Background colour, an Aura trail, special Skull and Radioactive rockets, and a unique rocket for each one-of-one Legendary. See docs/TRAIT-MAPPING.md.
   - Validated runs go on the official NFT leaderboard.
+- **Demo mode (anyone, for judging and visitors)**
+  - The DEMO tab on the home screen. No Chog needed. Pick one of 5 real Chog Genesis NFTs and fly it with every Chog NFT feature.
+  - One Chog from each tier, so every kind of rocket shows up, two with Laser Eyes:
+    - CHOG #1529 (Common x1.00): fire laser, Fiery Aura flame trail.
+    - CHOG #1709 (Uncommon x1.05): no laser, Wind trail.
+    - CHOG #1324 (Rare x1.15): purple laser, Skull rocket, Electric Shock trail.
+    - CHOG #598 (Epic x1.25): no laser, Radioactive glowing rocket, Aqua Aura water trail.
+    - CHOG #1290 Krown (Legendary x1.40): no laser, one-of-one rocket with a crown and a glow trail.
+  - Tier scoring, rocket looks, quests, badges, the streak and streak lives work exactly as in Chog NFT mode (same rules), kept on the device.
+  - It starts on a 6-day streak with 2 streak lives banked, so finishing today's dailies and 5 minutes of flying shows the day-7 reward.
+  - The DEMO leaderboard (a separate, real board): connect any wallet (it doesn't need a Chog), sign in and pick a pilot name. Demo runs are then checked by the server like Chog NFT runs (run time, distance, Laser Eyes) and ranked on the DEMO tab of Ranks. Without signing in, demo runs aren't ranked. Demo runs never touch the Chog NFT leaderboard or a holder's real streak lives.
+  - The run card carries a DEMO stamp (and the DEMO rank). "Reset demo progress" in the demo picker starts the local quests and streak over.
+  - Storage: the `chog_demo_leaderboard` table in supabase/schema.sql (run it again to add it).
+  - Metadata for the 5 Chogs is embedded in js/demo.js (no chain calls); their artwork loads from IPFS.
 
 ## Controls
 
