@@ -40,14 +40,38 @@
 <div id="badgeReveal" aria-live="polite"></div>
 <div id="zoneFlash"></div>
 <!-- Game over actions: one big PLAY AGAIN, with Share, Ranks and Home beside it -->
-<div id="endBar">
-  <button id="againBtn" class="again"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>PLAY AGAIN</button>
-  <div class="end-row">
-    <button id="cardBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v12M7 8l5-5 5 5"/></svg>Share run</button>
-    <button id="endLbBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3a5 5 0 0 1-10 0V4z"/><path d="M12 12v4M8 20h8M9 16h6v4H9z"/></svg>Ranks</button>
-    <button id="endHomeBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</button>
+<!-- Game over: shown a moment after a crash -->
+<div id="gameOver" aria-live="polite">
+  <div class="go-card">
+    <div class="go-left">
+    <div class="go-title">GAME OVER</div>
+    <div class="go-mode" id="goMode"></div>
+    <div class="go-hero">
+      <img id="goFace" class="go-face" alt="">
+      <div class="go-main">
+        <div class="go-label" id="goLabel">TOTAL DISTANCE</div>
+        <div class="go-total"><span id="goTotal">0</span><small> m</small></div>
+        <div class="go-formula" id="goFormula"></div>
+      </div>
+    </div>
+    <div id="goBest" class="go-best"></div>
+    </div>
+    <div class="go-right">
+    <div id="goStats" class="go-stats"></div>
+    <div id="goRank" class="go-rank empty"></div>
+    <div id="goNotes" class="go-notes"></div>
+    <div id="goQuests" class="go-quests"></div>
+    <div id="endBar">
+      <button id="againBtn" class="again"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>PLAY AGAIN</button>
+      <div class="end-row">
+        <button id="cardBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v12M7 8l5-5 5 5"/></svg>Share run</button>
+        <button id="endLbBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3a5 5 0 0 1-10 0V4z"/><path d="M12 12v4M8 20h8M9 16h6v4H9z"/></svg>Ranks</button>
+        <button id="endHomeBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</button>
+      </div>
+      <div id="endHint" class="end-hint"></div>
+    </div>
+    </div>
   </div>
-  <div id="endHint" class="end-hint"></div>
 </div>
 
 <!-- Home screen -->

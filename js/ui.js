@@ -439,32 +439,17 @@
     setFlying(false);
     clearInterval(liveTimer);
     $("questToast").classList.remove("show");
-    renderQuestStrip();
     rememberRun(result);
-    if (S.mode === "practice") {
-      const best = Math.max(readNum(PRACTICE_BEST), result.meters);
-      writeNum(PRACTICE_BEST, best);
-      setMsg("CRASHED", [
-        "Distance: " + result.meters + " m",
-        "Best on this device: " + best + " m",
-        "Stardust collected: " + (result.stardust || 0),
-        ["Practice run. Not submitted to the NFT leaderboard.", ""],
-        retryText(),
-      ]);
-      return;
-    }
-    const c = activeChog(), g = c.gameplay;
-    const key = bestKey(c);
-    const best = Math.max(readNum(key), result.score);
-    writeNum(key, best);
+    const c = activeChog(), practice = !c;
+    const key = practice ? PRACTICE_BEST : bestKey(c);
+    const value = practice ? result.meters : result.score;
+    const prevBest = readNum(key);
+    writeNum(key, Math.max(prevBest, value));
+    gameOver(result, c, value, prevBest);
+    renderQuestStrip();
     const run = S.runCounter;
-    const lines = status => [
-      "Distance: " + result.meters + " m",
-      "Total distance: " + result.meters + " m x " + g.multiplier.toFixed(2) + " (Tier " + (g.tier || "unknown") + ") = " + result.score + " m",
-      "Best total distance for this Chog on this device: " + best + " m",
-      status,
-      retryText(),
-    ];
+    const live = () => run === S.runCounter && game.state === "dead";
+    if (practice) { goStatus(["Practice run: never on the leaderboard", ""]); return; }
     if (S.mode === "demo") {
       // Demo: quests, badges, the streak and streak lives use the same rules, kept on this device. Signed in,
       // the run is checked by the server and ranked on the separate DEMO leaderboard.
@@ -472,44 +457,121 @@
       if (q.badges.length) revealBadges(q.badges);
       if (q.livesEarned) revealBadges([{ lives: q.livesEarned, day: q.streakDay }]);
       S.quests = Demo.view();
-      renderQuestStrip();
-      if (!S.activeRunId) { setMsg("CRASHED", lines(["Demo run: not on the DEMO leaderboard (not signed in)", ""]).concat(questLines(q))); return; }
-      setMsg("CRASHED", lines(["Submitting to the DEMO leaderboard...", ""]).concat(questLines(q)));
+      goNotes(questLines(q));
+      renderGoQuests();
+      if (!S.activeRunId) { goStatus(["Demo run: not on the DEMO leaderboard (not signed in)", "warn"]); return; }
+      goStatus(["Submitting to the DEMO leaderboard...", "wait"]);
       apiCall("/run/finish", { runId: S.activeRunId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed }, S.auth && S.auth.token)
         .then(r => {
-          if (run !== S.runCounter || game.state !== "dead") return;
+          if (!live()) return;
           if (r.status === "validated" && S.lastRun) { S.lastRun.rank = r.rank || null; S.lastRun.total = r.finalScore; }
-          setMsg("CRASHED", lines(r.status === "validated"
-            ? ["DEMO leaderboard: total distance " + r.finalScore + " m" + (r.rank ? ", rank " + r.rank : ""), "good"]
-            : ["Not validated: " + (r.reason || r.status), "warn"]).concat(questLines(q)));
+          goStatus(r.status === "validated"
+            ? ["DEMO leaderboard: total distance " + r.finalScore + " m" + (r.rank ? ", rank " + r.rank : ""), "good", r.rank]
+            : ["Not validated: " + (r.reason || r.status), "warn"]);
         })
-        .catch(e => { if (run === S.runCounter && game.state === "dead") setMsg("CRASHED", lines(["Not submitted: " + e.message, "warn"]).concat(questLines(q))); });
+        .catch(e => { if (live()) goStatus(["Not submitted: " + e.message, "warn"]); });
       return;
     }
     if (!S.activeRunId) {
-      setMsg("CRASHED", lines(["Not submitted: " + (S.runStatus.kind === "warn" ? S.runStatus.text : "this run was not registered with the leaderboard"), "warn"]));
+      goStatus(["Not submitted: " + (S.runStatus.kind === "warn" ? S.runStatus.text : "this run was not registered with the leaderboard"), "warn"]);
       return;
     }
-    setMsg("CRASHED", lines(["Submitting to the leaderboard...", ""]));
+    goStatus(["Submitting to the leaderboard...", "wait"]);
     apiCall("/run/finish", { runId: S.activeRunId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed,
       stardust: result.stardust || 0, powerups: result.powerups || 0, horns: result.horns || 0, nearMisses: result.nearMisses || 0,
       livesUsed: result.livesUsed || 0, bankLivesUsed: result.bankLivesUsed || 0 }, S.auth && S.auth.token)
       .then(r => {
-        if (run !== S.runCounter || game.state !== "dead") return;
+        if (!live()) return;
         if (r.status === "validated" && S.lastRun) { S.lastRun.rank = r.rank || null; S.lastRun.total = r.finalScore; }
-        const st = r.status === "validated"
-          ? ["Validated. Total distance " + r.finalScore + " m (x" + r.multiplier + ")" + (r.rank ? ", rank " + r.rank : ""), "good"]
-          : ["Not validated: " + (r.reason || r.status), "warn"];
-        setMsg("CRASHED", lines(st).concat(questLines(r.quests)));
+        goStatus(r.status === "validated"
+          ? ["Validated. Total distance " + r.finalScore + " m (x" + r.multiplier + ")" + (r.rank ? ", rank " + r.rank : ""), "good", r.rank]
+          : ["Not validated: " + (r.reason || r.status), "warn"]);
+        goNotes(questLines(r.quests));
         if (r.quests && r.quests.badges.length) revealBadges(r.quests.badges);
         if (r.quests && r.quests.livesEarned) revealBadges([{ lives: r.quests.livesEarned, day: r.quests.streakDay }]);
         if (r.status === "validated") loadQuests();
       })
-      .catch(e => {
-        if (run !== S.runCounter || game.state !== "dead") return;
-        setMsg("CRASHED", lines(["Not submitted: " + e.message, "warn"]));
-      });
+      .catch(e => { if (live()) goStatus(["Not submitted: " + e.message, "warn"]); });
   }
+
+  // ---------- Game over screen ----------
+  // Like other runners: a beat after the crash, then GAME OVER, the total counting up, the best (or a NEW BEST
+  // burst), the run's stats, where it ranks, today's quests, and a big PLAY AGAIN with Share, Ranks and Home.
+  let goAnim = null;
+  const ZONE_COLORS = { outer: "#4fa8ff", belt: "#d08a4e", drift: "#c58bff", deep: "#3fd0c9", milky: "#ffcf4d" };
+  function gameOver(result, c, value, prevBest) {
+    const z = T.zoneAt(result.meters), practice = !c, g = c && c.gameplay;
+    const laser = g && g.abilities.find(a => a.id === "laserEyes");
+    const newBest = value > prevBest && prevBest > 0;
+    const tierColor = practice ? "var(--accent)" : ({ common: "#cfd6e3", uncommon: "#6ee7a8", rare: "#4fa8ff", epic: "#b6ff3a", legendary: "#ffcf4d" })[String(g.tier || "").toLowerCase()] || "var(--accent)";
+    const el = $("gameOver");
+    el.style.setProperty("--tc", tierColor);
+    $("goMode").textContent = practice ? "PRACTICE" : S.mode === "demo" ? "DEMO · " + c.name : c.name + " · " + (g.tier || "");
+    $("goLabel").textContent = practice ? "DISTANCE" : "TOTAL DISTANCE";
+    $("goFormula").textContent = practice ? "" : result.meters.toLocaleString() + " m flown x " + g.multiplier.toFixed(2) + " (Tier " + (g.tier || "unknown") + ")";
+    $("goFace").style.display = c ? "" : "none";
+    if (c) $("goFace").src = c.imageUrl;
+    // Best: a NEW BEST burst, the first run, or how far short of it
+    const bestBox = $("goBest");
+    bestBox.className = "go-best" + (newBest ? " new" : "");
+    bestBox.innerHTML = newBest
+      ? '<div class="nb">NEW BEST!</div><div class="go-small">Previous best ' + prevBest.toLocaleString() + " m</div>"
+      : prevBest <= 0
+      ? '<div class="go-small">First run' + (practice ? "" : " with this Chog") + ": " + value.toLocaleString() + " m is the one to beat</div>"
+      : '<div class="go-bestrow"><span>BEST</span><b>' + Math.max(prevBest, value).toLocaleString() + ' m</b></div><div class="go-bar"><i style="width:' +
+        Math.min(100, Math.round((value / prevBest) * 100)) + '%"></i></div><div class="go-small">' + (value === prevBest ? "Equal to your best!" : (prevBest - value).toLocaleString() + " m short of your best") + "</div>";
+    // Stats tiles
+    const secs = Math.round((result.durationMs || 0) / 1000);
+    const tiles = [
+      ["TIME", Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0")],
+      ["STARDUST", (result.stardust || 0).toLocaleString()],
+      ["NEAR MISSES", (result.nearMisses || 0).toLocaleString()],
+      ["ZONE", z.zone.name + (z.loop > 1 ? " · loop " + z.loop : ""), ZONE_COLORS[z.zone.id]],
+    ].concat(laser ? [["LASER", (result.laserUsed || 0) + " / " + laser.charges]] : []);
+    $("goStats").style.setProperty("--n", tiles.length);
+    $("goStats").innerHTML = tiles.map(([k, v, col]) => '<div class="go-tile' + (k === "ZONE" ? " zone" : "") + '"' + (col ? ' style="--zc:' + col + '"' : "") + '><span>' + k + "</span><b>" + esc(v) + "</b></div>").join("");
+    $("goNotes").innerHTML = "";
+    goStatus(["", ""]);
+    renderGoQuests();
+    // The total counts up
+    cancelAnimationFrame(goAnim);
+    const total = $("goTotal"), t0 = performance.now(), dur = Math.min(1400, 500 + value / 8);
+    total.textContent = "0";
+    const tick = now => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      total.textContent = Math.round(value * e).toLocaleString();
+      if (k < 1) goAnim = requestAnimationFrame(tick);
+    };
+    $("msg").style.display = "none";
+    clearTimeout(S.goTimer);
+    el.classList.remove("show");
+    S.goTimer = setTimeout(() => {   // a short beat to see the crash first
+      if (game.state !== "dead") return;
+      el.classList.add("show");
+      document.body.classList.add("game-over");
+      goAnim = requestAnimationFrame(tick);
+    }, 550);
+  }
+  // [text, kind ("good" | "warn" | "wait" | ""), rank]
+  function goStatus([text, kind, rank]) {
+    const el = $("goRank");
+    el.className = "go-rank" + (kind ? " " + kind : "") + (text ? "" : " empty");
+    el.innerHTML = (rank ? '<span class="go-rk">#' + rank + "</span>" : "") + "<span>" + esc(text || "") + "</span>";
+  }
+  function goNotes(list) {
+    $("goNotes").innerHTML = (list || []).map(l => '<div class="go-note">' + esc(Array.isArray(l) ? l[0] : l) + "</div>").join("");
+  }
+  // Today's quests on the game over card (Chog NFT and demo runs)
+  function renderGoQuests() {
+    const box = $("goQuests"), r = S.quests;
+    if (!r || !(S.mode === "nft" || S.mode === "demo")) { box.innerHTML = ""; box.style.display = "none"; return; }
+    box.style.display = "";
+    box.innerHTML = '<div class="go-qh">TODAY\'S QUESTS <b>' + r.daily.filter(q => q.done).length + "/3</b></div>" + r.daily.map(q =>
+      '<div class="go-q' + (q.done ? " done" : "") + '" style="--c:' + q.badge.color + '">' + badgeIcon(q.badge, q.done ? Math.max(0, q.badge.tier) : -1, "mini") +
+      '<span class="go-qt">' + esc(q.title) + '</span><span class="go-qbar"><i style="width:' + (q.done ? 100 : Math.round((q.progress / q.target) * 100)) + '%"></i></span>' +
+      '<span class="go-qp">' + (q.done ? "Done" : fmtProgress(q)) + "</span></div>").join("");
+  }
+
 
   // ---------- Demo: 5 demo Chogs, Chog NFT mode without a wallet ----------
   function openDemo() {
@@ -614,6 +676,7 @@
   // ---------- Game over: PLAY AGAIN restarts straight away ----------
   function showEndBar(on) {
     $("endBar").classList.toggle("show", on);
+    if (!on) { clearTimeout(S.goTimer); cancelAnimationFrame(goAnim); $("gameOver").classList.remove("show"); document.body.classList.remove("game-over"); }
     $("hudMenuBtn").style.display = on || document.body.classList.contains("flying") ? "none" : "block";   // Home in the bar replaces it
     if (on) {
       S.crashedAt = performance.now();
@@ -1288,7 +1351,8 @@
   }
   function renderQuestStrip() {
     const el = $("questStrip"), r = S.quests;
-    const on = !!r && (S.mode === "nft" || S.mode === "demo") && (game.state === "ready" || game.state === "dead");
+    const on = !!r && (S.mode === "nft" || S.mode === "demo") && game.state === "ready";   // after a crash the game over card shows them
+    if (game.state === "dead") renderGoQuests();
     el.classList.toggle("show", on);
     if (!r) { el.innerHTML = ""; return; }
     const done = r.daily.filter(q => q.done).length;

@@ -142,7 +142,8 @@ function ok(name, cond, detail) {
   // Crash on purpose
   await p.evaluate(() => { const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -6, false); });
   await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 5000 });
-  ok('crash shows result', /CRASHED/.test(await text('#msg')));
+  await p.waitForFunction(() => document.getElementById('gameOver').classList.contains('show'), null, { timeout: 5000 });
+  ok('crash shows the game over screen', /GAME OVER/.test(await text('#gameOver')) && /Practice run/.test(await text('#goRank')));
   ok('Menu button hidden on the game-over screen (Home replaces it)', !(await visible('#hudMenuBtn')));
   await p.waitForTimeout(700);
   await p.click('#endHomeBtn'); await p.waitForTimeout(300);
@@ -195,8 +196,9 @@ function ok(name, cond, detail) {
   ok('E fires again (9 -> 8)', (await text('#laserCount')) === '8/10');
   await p.evaluate(() => { const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -1, true); });
   await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 5000 });
-  await p.waitForFunction(() => !/Submitting/.test(document.getElementById('msg').textContent), null, { timeout: 15000 });
-  ok('NFT run submitted and validated', /Validated/.test(await text('#msg')), (await text('#msg')).slice(0, 120));
+  await p.waitForFunction(() => /Validated|Not/.test(document.getElementById('goRank').textContent), null, { timeout: 15000 });
+  ok('NFT run submitted and validated', /Validated/.test(await text('#goRank')), (await text('#goRank')).slice(0, 120));
+  await p.waitForFunction(() => document.getElementById('gameOver').classList.contains('show'), null, { timeout: 5000 });
   ok('game over shows PLAY AGAIN, Share run, Ranks and Home', await visible('#againBtn') && await visible('#cardBtn') && await visible('#endLbBtn') && await visible('#endHomeBtn'));
   await p.waitForTimeout(700);   // retries are ignored for 0.6 s after a crash, so a frantic click doesn't skip the result
   await p.click('#againBtn');
@@ -237,7 +239,7 @@ function ok(name, cond, detail) {
   ok('PLAY rides the chosen Chog directly', /Test Chog One/.test(await text('#msg')));
   await p.click('#hudMenuBtn'); await p.waitForTimeout(300);
   await p.click('#lbBtn'); await p.waitForTimeout(800);
-  const rows = await p.evaluate(() => [...document.querySelectorAll('#lbPanel .lb-entry')].map(e => ({ rank: (e.querySelector('.medal') || e.querySelector('.rk')).textContent, who: e.querySelector('.who').textContent, chog: e.querySelector('.chog').textContent, total: e.querySelector('.big').textContent, mine: e.classList.contains('mine') })));
+  const rows = await p.evaluate(() => [...document.querySelectorAll('#lbPanel .lb-entry')].map(e => ({ rank: (e.querySelector('.medal') || e.querySelector('.rk')).textContent, who: e.querySelector('.who .nm').textContent, chog: e.querySelector('.chog').textContent, total: e.querySelector('.big').textContent, mine: e.classList.contains('mine') })));
   ok('leaderboard podium shows username, Chog and total distance', rows.length === 1 && rows[0].rank === '1' && rows[0].who === 'Rocket_Chog' && /Test Chog One/.test(rows[0].chog) && /^[\d,]+m$/.test(rows[0].total), JSON.stringify(rows));
   ok('own row highlighted', rows[0].mine);
   ok('own standing pinned at the bottom', /YOU#1Rocket_Chog/.test((await text('#lbMe')).replace(/\s/g, '')), await text('#lbMe'));

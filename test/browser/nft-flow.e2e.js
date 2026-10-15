@@ -118,19 +118,22 @@ const chain = {
   await p.waitForTimeout(1200);
   await shot('play');
   console.log('hud:', await text('#score'), '|', await text('#laserBox'));
-  await p.waitForFunction(() => document.getElementById('msg').textContent.includes('CRASHED'), null, { timeout: 60000 });
-  await p.waitForFunction(() => !document.getElementById('msg').textContent.includes('Submitting'), null, { timeout: 15000 });
-  const end = await text('#msg');
+  await p.waitForFunction(() => document.getElementById('gameOver').classList.contains('show'), null, { timeout: 60000 });
+  await p.waitForFunction(() => /Validated|Not/.test(document.getElementById('goRank').textContent), null, { timeout: 15000 });
+  const end = await text('#goRank');
+  assert.match(await text('#gameOver'), /GAME OVER/);
+  assert.match(await text('#goFormula'), /m flown x 1\.15 \(Tier Rare\)/);
   const used = await p.evaluate(() => ChogUI._game()._debug.pickups.stats());
   console.log('streak lives used:', used.bankUsed, 'left:', used.bankLives);
   assert.strictEqual(used.bankUsed, 2, 'both streak lives spent before the crash');
   assert.strictEqual(await store.get('lives:' + ME), 0, 'server took them out of the bank');
   console.log('end:', end);
   assert.match(end, /Validated\. Total distance \d+ m \(x1\.15\), rank 1/);
-  // Today's quests show on the crash screen, refreshed with this run
-  await p.waitForFunction(() => document.getElementById('questStrip').classList.contains('show') && document.querySelectorAll('#questStrip .qs-row').length === 3, null, { timeout: 5000 });
-  console.log('quest strip:', await text('#questStrip'));
-  const flown = Number(end.match(/Distance: (\d+) m/)[1]), total = require(R + 'js/traits.js').computeScore(flown, 1.15);
+  // Today's quests show on the game over card, refreshed with this run
+  await p.waitForFunction(() => document.querySelectorAll('#goQuests .go-q').length === 3, null, { timeout: 5000 });
+  console.log('game over quests:', await text('#goQuests'));
+  const flown = await p.evaluate(() => ChogUI._state.lastRun.meters), total = require(R + 'js/traits.js').computeScore(flown, 1.15);
+  await p.waitForFunction(t => document.getElementById('goTotal').textContent === t, total.toLocaleString(), { timeout: 5000 });
   await shot('end');
   // Run card
   assert.ok(await p.isVisible('#cardBtn'), 'share button shown after a run');

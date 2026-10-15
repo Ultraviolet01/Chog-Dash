@@ -73,8 +73,8 @@ const svg = n => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="40
   await p.keyboard.press('Space'); await p.waitForTimeout(1500);
   await p.evaluate(() => { const g = ChogUI._game()._debug; for (let i = 0; i < 3; i++) { const q = g.player.position; g.spawnAt(q.x, q.y + 0.35, -1 - i * 40, true); } });
   await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 20000 });
-  await p.waitForFunction(() => /DEMO leaderboard: total distance \d+ m, rank 1/.test(document.getElementById('msg').textContent), null, { timeout: 10000 });
-  const end = await text('#msg');
+  await p.waitForFunction(() => /DEMO leaderboard: total distance \d+ m, rank 1/.test(document.getElementById('goRank').textContent), null, { timeout: 10000 });
+  const end = await text('#goRank');
   console.log('end:', end);
   const total = Number(end.match(/DEMO leaderboard: total distance (\d+) m/)[1]);
   assert.strictEqual(await p.evaluate(() => ChogUI._state.lastRun.rank), 1, 'run card gets the demo rank');

@@ -69,8 +69,8 @@ const svg = n => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="40
     await d(() => { const g = ChogUI._game()._debug, q = g.player.position; g.spawnAt(q.x, q.y + 0.35, -1, true); });
     await p.waitForTimeout(i < 2 ? 2600 : 600);
   }
-  await p.waitForFunction(() => /CRASHED/.test(document.getElementById('msg').textContent), null, { timeout: 8000 });
-  const end = await text('#msg');
+  await p.waitForFunction(() => document.getElementById('gameOver').classList.contains('show'), null, { timeout: 8000 });
+  const end = await text('#gameOver');
   console.log('end:', end);
   assert.match(end, /Demo run: not on the DEMO leaderboard \(not signed in\)/);
   const after = await d(() => ({ bank: ChogDemo.lives(), played: ChogDemo.view().playMsToday }));
