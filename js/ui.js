@@ -8,7 +8,10 @@
   const $ = id => document.getElementById(id);
   const dev = new URLSearchParams(location.search).get("dev") || "";
   const PRACTICE_BEST = "chogDashPracticeBest";
-  const isTouch = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  // Touch screen: a coarse pointer, or touch support without a mouse/trackpad as the main pointer (some phones and
+  // in-app browsers don't report a coarse pointer). The same test the game uses for the round LASER button.
+  const isTouch = !!window.matchMedia && (matchMedia("(pointer: coarse)").matches ||
+    (("ontouchstart" in window || (navigator.maxTouchPoints || 0) > 0) && !matchMedia("(pointer: fine)").matches));
 
   let game;
   const S = {
