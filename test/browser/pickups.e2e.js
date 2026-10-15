@@ -25,7 +25,7 @@ function ok(name, cond, detail) {
   await p.waitForTimeout(1000);
   await p.click('#playBtn'); await p.waitForTimeout(300);
   await p.keyboard.press('Space'); await p.waitForTimeout(200);
-  const ev = fn => p.evaluate(fn);
+  const ev = (fn, arg) => p.evaluate(fn, arg);
   // Keep the rocket alive while waiting (moves obstacles aside; switched off for the crash tests)
   await ev(() => { window.__keep = setInterval(() => { const d = ChogUI._game()._debug, q = d.player.position;
     d.obstacles().forEach(o => { if (!o.keep && o.mesh.position.z > -12 && Math.abs(o.mesh.position.x - q.x) < 5 && Math.abs(o.mesh.position.y - q.y) < 5) o.mesh.position.x += 14; }); }, 16); });
@@ -79,6 +79,13 @@ function ok(name, cond, detail) {
   await ev(() => { const d = ChogUI._game()._debug, q = d.player.position; d.pickups._debug.spawn('stardust', null, q.x + 6, q.y + 3, -20); });
   await p.waitForTimeout(1500);
   ok('without Magnet, off-side Stardust is not collected', await ev(() => ChogUI._game()._debug.pickups.stats().stardust) === dust1);
+  // Stardust is claimed wherever it touches: the Chog's head, under the hull (both outside the old middle ball), not beside it
+  const claim = async (dx, dy) => { const n0 = await ev(() => ChogUI._game()._debug.pickups.stats().stardust);
+    await ev(([x, y]) => { const d = ChogUI._game()._debug, q = d.player.position; d.pickups._debug.spawn('stardust', null, q.x + x, q.y + y, -20); }, [dx, dy]);
+    await p.waitForTimeout(1500); return (await ev(() => ChogUI._game()._debug.pickups.stats().stardust)) - n0; };
+  ok('Stardust hitting the Chog (its head) is claimed', (await claim(0.5, 1.75)) === 1);
+  ok('Stardust hitting the rocket (under the hull) is claimed', (await claim(0, -0.95)) === 1);
+  ok('Stardust passing beside the rocket and Chog is not claimed', (await claim(1.6, 0.35)) === 0);
 
   // ---------- Nova ----------
   const nova = await ev(() => { const d = ChogUI._game()._debug, q = d.player.position;

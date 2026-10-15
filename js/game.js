@@ -428,6 +428,9 @@
     const sparkMats = {};
     const pickups = root.ChogPickups.create(scene, {
       player: () => player.position, hitOffsetY: HIT_OFFSET_Y, boundX: BOUND_X, boundY: BOUND_Y,
+      // The rocket and rider's shape (relative to the player), so pickups are collected wherever they touch:
+      // the hull from nose tip to nozzle, and the rider sprite above the cockpit
+      body: { front: -1.9, back: 1.4, hullR: 0.45, riderZ: 0.15, riderHalfW: 0.65, riderBottom: 0.3, riderTop: 1.95 },
       spawnZ: () => spawnZ(), despawnZ: DESPAWN_Z,
       sparkle: (pos, color) => {
         if (!sparkMats[color]) sparkMats[color] = new THREE.MeshBasicMaterial({ color });

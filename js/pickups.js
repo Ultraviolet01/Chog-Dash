@@ -177,6 +177,25 @@
 
   // ---------- Pickup system ----------
   // api: { player() -> Vector3, hitOffsetY, boundX, boundY, spawnZ, despawnZ, nova(), sparkle(pos, colorHex) }
+  // Does a pickup touch the rocket or its rider this frame? Checked along the pickup's whole move this frame
+  // (so fast flying can't skip one), against: a ball at the rocket's middle (as before), the hull from nose to
+  // nozzle, and the rider sprite. So Stardust is claimed whether it hits the Chog or the rocket.
+  function touches(item, s, prevZ, p, py, B) {
+    const ir = item.kind === "power" ? 0.7 : item.kind === "horn" ? 0.65 : 0.6;   // the pickup's own size
+    const zlo = Math.min(prevZ, s.z), zhi = Math.max(prevZ, s.z);
+    const gapZ = (a, b) => zhi < a ? a - zhi : zlo > b ? zlo - b : 0;   // how far this frame's path misses [a, b] along z
+    const dx = s.x - p.x;
+    // Middle of the rocket (the old pickup ball)
+    const r = item.kind === "power" ? 1.4 : item.kind === "horn" ? 1.45 : 1.2;
+    if (Math.hypot(dx, s.y - py, gapZ(p.z, p.z)) < r) return true;
+    if (!B) return false;
+    // Hull, nose tip to nozzle
+    if (Math.hypot(dx, s.y - p.y, gapZ(p.z + B.front, p.z + B.back)) < B.hullR + ir) return true;
+    // Rider: the sprite's box above the cockpit
+    const ex = Math.max(0, Math.abs(dx) - B.riderHalfW);
+    const ey = Math.max(0, s.y - (p.y + B.riderTop), (p.y + B.riderBottom) - s.y);
+    return Math.hypot(ex, ey, gapZ(p.z + B.riderZ - 0.3, p.z + B.riderZ + 0.3)) < ir;
+  }
   function create(scene, api) {
     const tex = c => new THREE.CanvasTexture(c);
     const symbols = {}, iconUrls = {};
@@ -414,10 +433,7 @@
             item.sprite.traverse(o => { if (o.material) o.material.opacity = Math.min(o.material.opacity, fade); });
           }
         }
-        const r = item.kind === "power" ? 1.4 : item.kind === "horn" ? 1.45 : 1.2;   // Stardust radius matches its bigger look
-        // Closest approach along this frame's move, so fast flying can't skip over a pickup
-        const zc = prevZ <= p.z && s.z >= p.z ? p.z : (Math.abs(p.z - s.z) < Math.abs(p.z - prevZ) ? s.z : prevZ);
-        if (playing && Math.hypot(s.x - p.x, s.y - py, zc - p.z) < r) { collect(item, zoneId); removeItem(item); return false; }
+        if (playing && touches(item, s, prevZ, p, py, api.body)) { collect(item, zoneId); removeItem(item); return false; }
         if (s.z > api.despawnZ) { removeItem(item); return false; }
         return true;
       });
