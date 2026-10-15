@@ -49,6 +49,20 @@ const launchOpts = { executablePath: process.env.CHROME_PATH || '/opt/pw-browser
     await p.waitForTimeout(700);
     const x1 = await p.evaluate(() => ChogUI._game()._debug.player.position.x);
     assert.ok(x1 < x0 - 1, name + ': dragging left steers left (' + x0.toFixed(2) + ' -> ' + x1.toFixed(2) + ')');
+    // The same swipe moves the rocket the same amount sideways as up/down (smooth, even steering), with no overshoot
+    const swipe = async (dx, dy) => {
+      const q0 = await p.evaluate(() => { const q = ChogUI._game()._debug.player.position; return [q.x, q.y]; });
+      const sx = vw.width / 2, sy = vw.height * 0.6;
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: sx, y: sy }] });
+      for (let i = 1; i <= 10; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: sx + dx * i / 10, y: sy + dy * i / 10 }] }); await p.waitForTimeout(20); }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await p.waitForTimeout(900);
+      const q1 = await p.evaluate(() => { const q = ChogUI._game()._debug.player.position; return [q.x, q.y]; });
+      return [q1[0] - q0[0], q1[1] - q0[1]];
+    };
+    const side = await swipe(60, 0), up = await swipe(0, -60);
+    const ratio = side[0] / up[1];
+    assert.ok(side[0] > 0.5 && up[1] > 0.5 && ratio > 0.85 && ratio < 1.18, name + ': a swipe moves the rocket as far sideways as up (' + side[0].toFixed(2) + ' vs ' + up[1].toFixed(2) + ')');
 
     await p.evaluate(() => { clearInterval(window.__keep); const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -1, true); });
     await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 8000 });

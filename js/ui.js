@@ -50,7 +50,7 @@
     const base = isTouch
       ? "Drag to fly the rocket up, down, left and right."
       : "Move the mouse to fly the rocket. Or use the keyboard: W/A/S/D or the arrow keys. The rocket stays put when you let go. F for full screen.";
-    return base + (laser ? (isTouch ? " Tap with a second finger to fire Laser Eyes." : " Press E to fire Laser Eyes.") : "");
+    return base + (laser ? (isTouch ? " Tap the LASER button (bottom right) to fire Laser Eyes." : " Press E to fire Laser Eyes.") : "");
   }
   const startText = () => (isTouch ? "Tap to start" : "Press Space or click to start");
   const portraitTip = () => (window.innerHeight > window.innerWidth ? "Tip: turn your phone sideways for a bigger view." : "");
@@ -170,7 +170,7 @@
     if (isTouch) {
       $("howControls").innerHTML = '<div class="ctl-touch">' + fingerSvg + "</div>";
       $("howControlsText").innerHTML = "<li><b>Drag anywhere</b> to fly up, down, left and right. Your finger never covers the rocket.</li>" +
-        "<li><b>Tap</b> to start a run.</li><li><b>Laser Eyes</b> (Chogs with that trait): while one finger flies, <b>tap with a second finger</b> to fire.</li><li>Turn your phone sideways for a bigger view.</li>";
+        "<li><b>Tap</b> to start a run.</li><li><b>Laser Eyes</b> (Chogs with that trait): fly with one thumb, tap the <b>LASER button</b> (bottom right) with the other.</li><li>Turn your phone sideways for a bigger view.</li>";
     } else {
       $("howControls").innerHTML = '<div class="ctl-row"><div class="ctl-keys"><div>' + keycap("W") + '</div><div>' + keycap("A") + keycap("S") + keycap("D") +
         '</div></div><span class="ctl-or">or</span><div class="ctl-keys"><div>' + keycap("&uarr;") + '</div><div>' + keycap("&larr;") + keycap("&darr;") + keycap("&rarr;") +
@@ -208,7 +208,7 @@
       '<div class="md md-nft"><div class="md-face md-chog">CHOG</div><div class="md-n">CHOG NFT</div><ul>' +
         "<li>Connect your wallet, sign, and pick a Chog you own</li>" +
         "<li><b>Laser Eyes</b> (laser Eyes trait): " + cfg.abilities.laserEyes.charges + " shots that destroy what's in your path. " +
-          (isTouch ? "Tap with a second finger to fire" : "Press " + keycap("E") + " to fire") + "</li>" +
+          (isTouch ? "Tap the LASER button (bottom right) to fire" : "Press " + keycap("E") + " to fire") + "</li>" +
         "<li><b>Total distance</b> = distance flown x tier:</li></ul><div class='tiers'>" + tiers + "</div>" +
         "<ul><li>Your Chog's traits style the rocket and its aura trail</li><li>Ranked on the leaderboard under your username</li><li>Daily and weekly quests earn badges</li><li>Quest streaks bank extra lives: 7 days +1, 14 days +3, 21 days +5</li></ul></div>" +
       '<p class="how-demo"><span class="demo-tag">DEMO</span> No Chog yet? The <b>DEMO</b> tab lets you fly 5 demo Chogs with every Chog NFT feature, and has its own DEMO leaderboard.</p>';

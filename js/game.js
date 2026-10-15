@@ -15,6 +15,10 @@
   const STEER_ACCEL = 70;
   const POINTER_SPEED_X = 20, POINTER_SPEED_Y = 16;   // mouse/touch: faster, so the rocket keeps up with the pointer
   const POINTER_ACCEL = 140, POINTER_GAIN = 9;
+  // Touch: the rocket moves with the finger, the same amount up/down as left/right, eased in smoothly
+  const TOUCH_SENS = 1.8;      // world units per finger move, relative to what the screen shows (1 = follows the finger exactly)
+  const TOUCH_SMOOTH = 16;     // how quickly the rocket closes the gap to the finger (per second, frame-rate independent)
+  const TOUCH_MAX = 1.25;      // top speed vs. mouse steering, so a flick isn't a teleport
   const MAX_UP = 10;                  // max up/down speed (keyboard)
   const NEAR_MISS_MARGIN = 1.3;       // extra distance that still counts as a near miss
 
@@ -480,17 +484,24 @@
     window.addEventListener("keyup", e => { keys[e.code] = false; });
     window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
 
-    // Touch: one finger drags the rocket; a second finger tapping fires Laser Eyes
+    // Touch: a finger drags the rocket. Laser Eyes has its own button (bottom right, under the right thumb), so no
+    // multi-finger gesture is needed (phones read two fingers as pinch-zoom)
     const fingers = new Set();
     renderer.domElement.addEventListener("pointerdown", e => {
       if (state === "menu") return;
       if (e.pointerType !== "mouse") {
         fingers.add(e.pointerId);
-        if (fingers.size >= 2) { fireLaser(); return; }
+        if (fingers.size >= 2) return;   // a second finger on the screen doesn't take over the steering
         lastTouch = { x: e.clientX, y: e.clientY };
+        // A new swipe starts from where the rocket is now (no jump to an old target)
+        pointerTarget.x = player.position.x; pointerTarget.y = player.position.y;
       }
       onPress();
     });
+    // The laser button fires on touch-down (no delay) and never starts a drag or a zoom
+    hud.laserBox.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); if (state === "playing") fireLaser(); });
+    // iOS Safari: no pinch or double-tap zoom while playing
+    ["gesturestart", "dblclick"].forEach(ev => document.addEventListener(ev, e => { if (state !== "menu") e.preventDefault(); }, { passive: false }));
     window.addEventListener("pointermove", e => {
       // The rocket follows the mouse: left/right and up/down
       if (e.pointerType === "mouse") {
@@ -498,13 +509,20 @@
         pointerTarget.x = (e.clientX / window.innerWidth * 2 - 1) * BOUND_X;
         pointerTarget.y = -(e.clientY / window.innerHeight * 2 - 1) * BOUND_Y;
       } else if (lastTouch) {
-        // Touch steers by dragging (in any direction), so the finger doesn't cover the rider
-        steerMode = "pointer";
-        pointerTarget.x = clamp(pointerTarget.x + (e.clientX - lastTouch.x) / window.innerWidth * BOUND_X * 3, -BOUND_X, BOUND_X);
-        pointerTarget.y = clamp(pointerTarget.y - (e.clientY - lastTouch.y) / window.innerHeight * BOUND_Y * 3, -BOUND_Y, BOUND_Y);
+        // Touch steers by dragging (in any direction), so the finger doesn't cover the rider. The same world distance
+        // per pixel both ways (from what the camera shows at the rocket), so up/down feels like left/right.
+        steerMode = "touch";
+        const u = touchUnitsPerPx();
+        pointerTarget.x = clamp(pointerTarget.x + (e.clientX - lastTouch.x) * u, -BOUND_X, BOUND_X);
+        pointerTarget.y = clamp(pointerTarget.y - (e.clientY - lastTouch.y) * u, -BOUND_Y, BOUND_Y);
         lastTouch = { x: e.clientX, y: e.clientY };
       }
     });
+    // World units per screen pixel at the rocket's depth (base field of view, so speed-ups don't change the feel)
+    function touchUnitsPerPx() {
+      const d = Math.max(4, camera.position.z - player.position.z);
+      return 2 * Math.tan(THREE.MathUtils.degToRad(35)) * d / window.innerHeight * TOUCH_SENS;
+    }
     const release = e => { fingers.delete(e.pointerId); if (!fingers.size) lastTouch = null; };
     window.addEventListener("pointerup", release);
     window.addEventListener("pointercancel", release);
@@ -903,23 +921,32 @@
 
       if (playing) {
         const ss = steerScale();
-        const step = STEER_ACCEL * ss * dt;
+        const step = STEER_ACCEL * ss * dt, move = { x: 0, y: 0 };
         if (steerMode === "keys") {
           // Keyboard: move while a key is held, stay put when released
           const tx = ((keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0)) * STEER_SPEED * ss;
           const ty = ((keys.ArrowUp || keys.KeyW ? 1 : 0) - (keys.ArrowDown || keys.KeyS ? 1 : 0)) * MAX_UP * ss;
           vel.x += clamp(tx - vel.x, -step, step);
           vel.y += clamp(ty - vel.y, -step, step);
+        } else if (steerMode === "touch") {
+          // Touch: ease toward the finger's target (exponential, so no overshoot or wobble), capped at a top speed
+          const a = 1 - Math.exp(-TOUCH_SMOOTH * dt), cap = TOUCH_MAX * ss * dt;
+          const mx = clamp((pointerTarget.x - player.position.x) * a, -POINTER_SPEED_X * cap, POINTER_SPEED_X * cap);
+          const my = clamp((pointerTarget.y - player.position.y) * a, -POINTER_SPEED_Y * cap, POINTER_SPEED_Y * cap);
+          move.x = mx; move.y = my;
+          // Velocity is kept (smoothed) only for the banking tilt
+          vel.x += ((dt > 0 ? mx / dt : 0) - vel.x) * Math.min(1, dt * 12);
+          vel.y += ((dt > 0 ? my / dt : 0) - vel.y) * Math.min(1, dt * 12);
         } else {
-          // Mouse/touch: fly toward the pointer
+          // Mouse: fly toward the pointer
           const tx = clamp((pointerTarget.x - player.position.x) * POINTER_GAIN, -POINTER_SPEED_X * ss, POINTER_SPEED_X * ss);
           const ty = clamp((pointerTarget.y - player.position.y) * POINTER_GAIN, -POINTER_SPEED_Y * ss, POINTER_SPEED_Y * ss);
           const pstep = POINTER_ACCEL * ss * dt;
           vel.x += clamp(tx - vel.x, -pstep, pstep);
           vel.y += clamp(ty - vel.y, -pstep, pstep);
         }
-        player.position.x += vel.x * dt;
-        player.position.y += vel.y * dt;
+        if (steerMode === "touch") { player.position.x += move.x; player.position.y += move.y; }
+        else { player.position.x += vel.x * dt; player.position.y += vel.y * dt; }
         if (Math.abs(player.position.x) > BOUND_X) { player.position.x = Math.sign(player.position.x) * BOUND_X; vel.x = 0; }
         if (Math.abs(player.position.y) > BOUND_Y) { player.position.y = Math.sign(player.position.y) * BOUND_Y; vel.y = 0; }
         player.rotation.z = -vel.x * 0.04;            // bank into turns

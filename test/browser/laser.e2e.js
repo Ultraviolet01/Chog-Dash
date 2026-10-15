@@ -41,7 +41,7 @@ const R = path.join(__dirname, '../../');
   await p.waitForTimeout(1000);
   await p.click('#playBtn'); await p.waitForTimeout(300);
   await p.keyboard.press('Space'); await p.waitForTimeout(100);
-  assert.match(await p.textContent('#laserBox'), /^E\s*2-FINGER TAP\s*LASER\s*10\/10$|E.*LASER.*10\/10/);
+  assert.match(await p.textContent('#laserBox'), /E.*LASER.*10\/10/);
   assert.ok(await p.isVisible('#laserBox .lz-key'), 'E key shown on the HUD (desktop)');
   await p.evaluate(() => {
     const d = ChogUI._game()._debug;
@@ -66,7 +66,7 @@ const R = path.join(__dirname, '../../');
   await p.keyboard.press('KeyE'); await p.waitForTimeout(200);
   assert.deepStrictEqual(await p.evaluate(() => window.__snd.filter(n => /^laser/.test(n))), ['laser', 'laserBlock'], 'zap, then a clang off the huge asteroid');
 
-  // Phone: one finger flies, a second finger's tap fires
+  // Phone: one finger flies; the round LASER button (bottom right) fires; a second finger on the screen does not
   const ctx = await b.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
   const m = await ctx.newPage();
   m.on('pageerror', e => errs.push(e.message));
@@ -76,19 +76,32 @@ const R = path.join(__dirname, '../../');
   await m.tap('#playBtn'); await m.waitForTimeout(300);
   await m.touchscreen.tap(420, 200); await m.waitForTimeout(200);
   assert.strictEqual(await m.evaluate(() => ChogUI._game().state), 'playing');
-  assert.ok(await m.isVisible('#laserBox .lz-touch'), '"2-FINGER TAP" shown on touch screens');
+  // Keep the rocket alive while the touch steps run (moves nearby obstacles aside)
+  await m.evaluate(() => { setInterval(() => { const d = ChogUI._game()._debug, q = d.player.position;
+    d.obstacles().forEach(o => { if (o.mesh.position.z > -12 && Math.abs(o.mesh.position.x - q.x) < 5 && Math.abs(o.mesh.position.y - q.y) < 5) o.mesh.position.x += 14; }); }, 16); });
+  const btn = await m.evaluate(() => { const r = document.getElementById('laserBox').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width, right: innerWidth - r.right }; });
+  assert.ok(btn.w >= 70 && btn.right < 40, 'round LASER button at the bottom right: ' + JSON.stringify(btn));
   const cdp = await ctx.newCDPSession(m);
   const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
   await touch('touchStart', [{ x: 300, y: 250, id: 1 }]);
   await touch('touchMove', [{ x: 320, y: 240, id: 1 }]);
   assert.strictEqual(await m.textContent('#laserCount'), '10/10', 'one finger only steers');
-  await touch('touchStart', [{ x: 320, y: 240, id: 1 }, { x: 600, y: 150, id: 2 }]);
+  await touch('touchStart', [{ x: 320, y: 240, id: 1 }, { x: 500, y: 150, id: 2 }]);
   await touch('touchEnd', [{ x: 320, y: 240, id: 1 }]);
-  await touch('touchEnd', []);
   await m.waitForTimeout(100);
-  assert.strictEqual(await m.textContent('#laserCount'), '9/10', 'second finger fires');
+  assert.strictEqual(await m.textContent('#laserCount'), '10/10', 'a second finger on the screen does not fire (no pinch gesture)');
+  // Steering finger down, other thumb taps the button
+  await touch('touchStart', [{ x: 320, y: 240, id: 1 }, { x: btn.x, y: btn.y, id: 3 }]);
+  await touch('touchEnd', [{ x: 320, y: 240, id: 1 }]);
+  await touch('touchMove', [{ x: 360, y: 240, id: 1 }]);
+  await m.waitForTimeout(100);
+  assert.strictEqual(await m.textContent('#laserCount'), '9/10', 'LASER button fires while the other thumb steers');
+  await touch('touchEnd', []);
+  await m.touchscreen.tap(btn.x, btn.y); await m.waitForTimeout(100);
+  assert.strictEqual(await m.textContent('#laserCount'), '8/10', 'LASER button fires on its own');
+  assert.strictEqual(await m.evaluate(() => ChogUI._game().state), 'playing');
   if (process.env.SHOTS) await m.screenshot({ path: path.join(process.env.SHOTS, 'laser-touch.png') });
   assert.deepStrictEqual(errs, []);
-  console.log('PASS laser rules, E key and two-finger tap');
+  console.log('PASS laser rules, E key and LASER button');
   await b.close();
 })();

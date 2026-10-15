@@ -47,7 +47,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 - Full screen: press F or use the full-screen button (home screen and in-game). Esc or F again to leave. The mouse cursor hides while you fly.
 - Whichever you used last (mouse or keyboard) is in control.
 - Laser Eyes: E (only for Chogs with that trait).
-- Touch screens: drag to fly the rocket in any direction; tap with a second finger to fire Laser Eyes. There is no on-screen laser button.
+- Touch screens: drag to fly the rocket in any direction; tap the round LASER button (bottom right, under the right thumb) to fire Laser Eyes. It fires on touch-down and never starts a drag or a zoom (no two-finger gesture, which phones read as pinch-zoom).
 - There is no boost. Speed rises on its own as you travel further.
 
 ## Sound
