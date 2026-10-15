@@ -73,14 +73,22 @@
     scene.background = new THREE.Color(0x04050f);
     scene.fog = new THREE.Fog(0x05061a, 90, 250);
     const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 1200);
-    let baseCamZ = 7;
+    let baseCamZ = 7, camFollowX = 0.6;
+    const PORTRAIT_VIEW = 3.8;   // tall screens: half-width of the view at the rocket, in world units
 
     function resize() {
       const w = window.innerWidth, h = window.innerHeight;
       renderer.setSize(w, h);
       camera.aspect = w / h;
-      // Pull the camera back on narrow screens so the whole flying area (and anything that can hit you) stays in view
-      baseCamZ = Math.max(7, (BOUND_X + 1.2) / (Math.tan(THREE.MathUtils.degToRad(35)) * camera.aspect));
+      // Wide screens: the camera stands far enough back for the whole flying area (and anything that can hit you).
+      // Tall (portrait) screens: that would put the camera ~3.5x further back and make the rocket tiny, so instead it
+      // shows a band about PORTRAIT_VIEW units either side and follows the rocket sideways (see camFollowX), which
+      // still brings every part of the flying area into view as you steer there.
+      const fit = halfW => halfW / (Math.tan(THREE.MathUtils.degToRad(35)) * camera.aspect);
+      baseCamZ = camera.aspect >= 1 ? Math.max(7, fit(BOUND_X + 1.2)) : Math.max(7, fit(PORTRAIT_VIEW));
+      // How much of the rocket's sideways move the camera copies: at the edge of the flying area, the view's edge
+      // lines up with the area's edge (plus margin)
+      camFollowX = camera.aspect >= 1 ? 0.6 : Math.max(0.6, (BOUND_X + 1.2 - PORTRAIT_VIEW) / BOUND_X);
       camera.updateProjectionMatrix();
     }
     window.addEventListener("resize", resize);
@@ -984,7 +992,7 @@
 
       // Camera follows from behind and above; closer and lower on the home screen to show off the rider
       const home = state === "menu";
-      const camX = player.position.x * (home ? 0.3 : 0.6), camY = player.position.y * (home ? 0.3 : 0.6) + (home ? 1.9 : 2.7);
+      const camX = player.position.x * (home ? 0.3 : camFollowX), camY = player.position.y * (home ? 0.3 : 0.6) + (home ? 1.9 : 2.7);
       camera.position.x += (camX - camera.position.x) * Math.min(1, dt * 6);
       camera.position.y += (camY - camera.position.y) * Math.min(1, dt * 6);
       // On the home screen the whole play area doesn't need to fit, so tall screens can come in close too
@@ -995,7 +1003,7 @@
         camera.position.x += rand(-0.3, 0.3) * Math.min(1, shake * 3);
         camera.position.y += rand(-0.3, 0.3) * Math.min(1, shake * 3);
       }
-      lookAt.set(player.position.x * (home ? 0.45 : 0.8), player.position.y * (home ? 0.6 : 0.8) + (home ? 0.4 : 0), -10);
+      lookAt.set(player.position.x * (home ? 0.45 : Math.max(0.8, camFollowX)), player.position.y * (home ? 0.6 : 0.8) + (home ? 0.4 : 0), -10);
       camera.lookAt(lookAt);
       const speedRatio = playing ? Math.min(1.6, (baseSpeed() - G.baseSpeed) / (G.rampSpeed - G.baseSpeed)) : 0;
       const fov = 70 + speedRatio * 12 + (dashing ? 10 : 0) - (playing && pickups.slowed() ? 4 : 0);
