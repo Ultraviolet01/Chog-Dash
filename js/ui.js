@@ -236,19 +236,42 @@
     });
   }
 
-  // ---------- Sound: mute buttons, M key, button clicks ----------
+  // ---------- Sound: speaker buttons open the sound panel (music / sound effects), M key, button clicks ----------
   function setupSound() {
-    const A = root.ChogAudio;
+    const A = root.ChogAudio, panel = $("soundPanel");
     if (!A) { ["muteBtn", "hudMuteBtn"].forEach(id => { $(id).style.display = "none"; }); return; }
+    let anchor = null;
     const sync = () => {
       document.body.classList.toggle("muted", A.isMuted());
-      ["muteBtn", "hudMuteBtn"].forEach(id => { $(id).title = (A.isMuted() ? "Sound off" : "Sound on") + " (M)"; });
+      $("musicTgl").setAttribute("aria-checked", A.musicOn() ? "true" : "false");
+      $("sfxTgl").setAttribute("aria-checked", A.sfxOn() ? "true" : "false");
+      const t = A.isMuted() ? "Sound off" : !A.musicOn() ? "Music off" : !A.sfxOn() ? "Sound effects off" : "Sound on";
+      ["muteBtn", "hudMuteBtn"].forEach(id => { $(id).title = t + " (M)"; });
     };
-    const toggle = () => { A.unlock(); A.setMuted(!A.isMuted()); sync(); if (!A.isMuted()) A.play("click"); };
-    $("muteBtn").onclick = toggle;
-    $("hudMuteBtn").onclick = toggle;
-    window.addEventListener("keydown", e => { if (e.code === "KeyM" && !e.repeat && !/INPUT|TEXTAREA/.test(e.target.tagName)) toggle(); });
-    // A soft click on menu buttons (not while flying, and not the mute buttons themselves)
+    const close = () => { panel.classList.remove("show"); anchor = null; };
+    const open = btn => {
+      anchor = btn; panel.classList.add("show");
+      const r = btn.getBoundingClientRect(), w = panel.offsetWidth;
+      panel.style.top = Math.round(r.bottom + 8) + "px";
+      panel.style.left = Math.round(Math.max(8, Math.min(innerWidth - w - 8, r.right - w))) + "px";
+    };
+    const onBtn = e => { A.unlock(); if (anchor === e.currentTarget) close(); else open(e.currentTarget); };
+    $("muteBtn").onclick = onBtn;
+    $("hudMuteBtn").onclick = onBtn;
+    $("musicTgl").onclick = () => { A.unlock(); A.setMusic(!A.musicOn()); sync(); };
+    $("sfxTgl").onclick = () => { A.unlock(); A.setSfx(!A.sfxOn()); sync(); };
+    // Click outside closes the panel; Esc closes it without leaving the screen; any other key (like Space to fly) closes it too
+    document.addEventListener("pointerdown", e => { if (anchor && !panel.contains(e.target) && !e.target.closest(".mute-btn")) close(); });
+    window.addEventListener("keydown", e => {
+      if (!anchor || e.code === "KeyM") return;
+      close();
+      if (e.key === "Escape") { e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true);
+    window.addEventListener("resize", close);
+    // M switches all sound off, or back on
+    const toggleAll = () => { A.unlock(); A.setMuted(!A.isMuted()); sync(); if (!A.isMuted()) A.play("click"); };
+    window.addEventListener("keydown", e => { if (e.code === "KeyM" && !e.repeat && !/INPUT|TEXTAREA/.test(e.target.tagName)) toggleAll(); });
+    // A soft click on menu buttons (not while flying, and not the speaker buttons themselves)
     document.addEventListener("click", e => {
       const b = e.target.closest && e.target.closest("button");
       if (b && !b.classList.contains("mute-btn") && !document.body.classList.contains("flying")) A.play("click");

@@ -9,13 +9,20 @@
  * - Events: launch, crash, near miss, Laser Eyes (zap, then a blast when it destroys something or a clang when a
  *   huge asteroid blocks it), warp gate, extra life, life used, UI clicks.
  * - Browsers only allow sound after the player interacts, so the context starts on the first input.
- * - Mute is remembered on the device (localStorage).
+ * - Music and sound effects can each be switched off (M switches all sound); the choice is remembered on the
+ *   device (localStorage). The engine hum counts as a sound effect.
  */
 (function (root) {
-  const MUTE_KEY = "chogDashMuted";
-  let ctx = null, master, sfxBus, musicBus, reverb, engine = null, pad = null;
-  let muted = false;
-  try { muted = localStorage.getItem(MUTE_KEY) === "1"; } catch (e) {}
+  const MUTE_KEY = "chogDashMuted", MUSIC_KEY = "chogDashMusic", SFX_KEY = "chogDashSfx";
+  const MUSIC_VOL = 0.5, SFX_VOL = 0.9;
+  let ctx = null, master, sfxBus, musicBus, reverb, sfxVerb, musicVerb, engine = null, pad = null;
+  let musicOn = true, sfxOn = true;
+  try {
+    const m = localStorage.getItem(MUSIC_KEY), f = localStorage.getItem(SFX_KEY);
+    if (m === null && f === null && localStorage.getItem(MUTE_KEY) === "1") musicOn = sfxOn = false;   // older "mute all" choice
+    if (m !== null) musicOn = m === "1";
+    if (f !== null) sfxOn = f === "1";
+  } catch (e) {}
 
   const hz = midi => 440 * Math.pow(2, (midi - 69) / 12);
   const now = () => ctx.currentTime;
@@ -33,10 +40,10 @@
     ctx = c; noiseBuf = null;
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 4;
-    master = ctx.createGain(); master.gain.value = muted ? 0 : 0.8;
+    master = ctx.createGain(); master.gain.value = 0.8;
     master.connect(comp); comp.connect(ctx.destination);
-    sfxBus = ctx.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(master);
-    musicBus = ctx.createGain(); musicBus.gain.value = 0.5; musicBus.connect(master);
+    sfxBus = ctx.createGain(); sfxBus.gain.value = sfxOn ? SFX_VOL : 0; sfxBus.connect(master);
+    musicBus = ctx.createGain(); musicBus.gain.value = musicOn ? MUSIC_VOL : 0; musicBus.connect(master);
     // Long, dark "space" reverb from a generated impulse
     reverb = ctx.createConvolver();
     const len = Math.floor(ctx.sampleRate * 3.2), ir = ctx.createBuffer(2, len, ctx.sampleRate);
@@ -47,6 +54,9 @@
     reverb.buffer = ir;
     const wet = ctx.createGain(); wet.gain.value = 0.55;
     reverb.connect(wet); wet.connect(master);
+    // Music and effects each send to the reverb through their own switch, so turning one off silences its echo too
+    sfxVerb = ctx.createGain(); sfxVerb.gain.value = sfxOn ? 1 : 0; sfxVerb.connect(reverb);
+    musicVerb = ctx.createGain(); musicVerb.gain.value = musicOn ? 1 : 0; musicVerb.connect(reverb);
   }
 
   // Starts audio on the first user gesture (browser autoplay rules)
@@ -57,11 +67,24 @@
   }
   ["pointerdown", "keydown", "touchstart"].forEach(ev => window.addEventListener(ev, unlock, { capture: true, passive: true }));
 
-  function setMuted(m) {
-    muted = !!m;
-    try { localStorage.setItem(MUTE_KEY, muted ? "1" : "0"); } catch (e) {}
-    if (ctx) master.gain.setTargetAtTime(muted ? 0 : 0.8, now(), 0.05);
+  function save() {
+    try {
+      localStorage.setItem(MUSIC_KEY, musicOn ? "1" : "0");
+      localStorage.setItem(SFX_KEY, sfxOn ? "1" : "0");
+      localStorage.setItem(MUTE_KEY, !musicOn && !sfxOn ? "1" : "0");
+    } catch (e) {}
+    if (ctx) {
+      musicBus.gain.setTargetAtTime(musicOn ? MUSIC_VOL : 0, now(), 0.05);
+      sfxBus.gain.setTargetAtTime(sfxOn ? SFX_VOL : 0, now(), 0.05);
+      musicVerb.gain.setTargetAtTime(musicOn ? 1 : 0, now(), 0.05);
+      sfxVerb.gain.setTargetAtTime(sfxOn ? 1 : 0, now(), 0.05);
+    }
   }
+  function setMusic(on) { musicOn = !!on; save(); }
+  function setSfx(on) { sfxOn = !!on; save(); }
+  // Mute all, or bring both back
+  function setMuted(m) { musicOn = sfxOn = !m; save(); }
+
 
   // ---------- Building blocks ----------
   let noiseBuf = null;
@@ -88,7 +111,7 @@
     let out = o;
     if (filter) { const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = filter; o.connect(f); out = f; }
     out.connect(g); g.connect(sfxBus);
-    if (verb) { const v = ctx.createGain(); v.gain.value = verb; g.connect(v); v.connect(reverb); }
+    if (verb) { const v = ctx.createGain(); v.gain.value = verb; g.connect(v); v.connect(sfxVerb); }
     o.start(t0); o.stop(t0 + attack + decay + 0.05);
   }
   // Filtered noise burst, optionally sweeping the filter
@@ -98,7 +121,7 @@
     if (to) f.frequency.exponentialRampToValueAtTime(to, t0 + attack + decay);
     env(g, t0, peak, attack, decay);
     s.connect(f); f.connect(g); g.connect(sfxBus);
-    if (verb) { const v = ctx.createGain(); v.gain.value = verb; g.connect(v); v.connect(reverb); }
+    if (verb) { const v = ctx.createGain(); v.gain.value = verb; g.connect(v); v.connect(sfxVerb); }
     s.start(t0, Math.random()); s.stop(t0 + attack + decay + 0.05);
   }
   const bell = (midi, t, peak) => {   // glassy bell: sine + a quiet inharmonic partial
@@ -146,7 +169,7 @@
       o.type = "triangle"; o.frequency.setValueAtTime(220, t0); o.frequency.exponentialRampToValueAtTime(660, t0 + 0.6);
       lfo.frequency.value = 22; lg.gain.value = 40; lfo.connect(lg); lg.connect(o.frequency);
       env(g, t0, 0.2, 0.03, 0.65); o.connect(g); g.connect(sfxBus);
-      const v = ctx.createGain(); v.gain.value = 0.3; g.connect(v); v.connect(reverb);
+      const v = ctx.createGain(); v.gain.value = 0.3; g.connect(v); v.connect(sfxVerb);
       o.start(t0); lfo.start(t0); o.stop(t0 + 0.75); lfo.stop(t0 + 0.75);
     },
     slow() {   // time bends: long downward sweep, deep and echoing
@@ -226,7 +249,7 @@
   };
 
   function play(name) {
-    if (!ctx || muted || ctx.state !== "running" || !SFX[name]) return;
+    if (!ctx || !sfxOn || ctx.state !== "running" || !SFX[name]) return;
     try { SFX[name](); } catch (e) {}
   }
 
@@ -254,7 +277,7 @@
     let src = o;
     if (filter) { const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = filter; o.connect(f); src = f; }
     src.connect(g); g.connect(musicBus);
-    if (verb) { const v = ctx.createGain(); v.gain.value = verb; g.connect(v); v.connect(reverb); }
+    if (verb) { const v = ctx.createGain(); v.gain.value = verb; g.connect(v); v.connect(musicVerb); }
     o.start(at); o.stop(at + attack + decay + 0.05);
   }
   function hat(at, peak) {
@@ -337,25 +360,25 @@
 
   // Records one sound effect offline and returns its samples (used to export listening samples)
   async function _record(name, seconds) {
-    const live = { ctx, master, sfxBus, musicBus, reverb, noiseBuf, muted };
+    const live = { ctx, master, sfxBus, musicBus, reverb, sfxVerb, musicVerb, noiseBuf, musicOn, sfxOn };
     const off = new OfflineAudioContext(2, Math.ceil(44100 * seconds), 44100);
-    build(off); muted = false; master.gain.value = 0.8;
+    musicOn = sfxOn = true; build(off);
     SFX[name]();
     const buf = await off.startRendering();
-    ({ ctx, master, sfxBus, musicBus, reverb, noiseBuf, muted } = live);
+    ({ ctx, master, sfxBus, musicBus, reverb, sfxVerb, musicVerb, noiseBuf, musicOn, sfxOn } = live);
     return [buf.getChannelData(0), buf.getChannelData(1)];
   }
   // Records the background music for one zone (with the in-run beat if withDrums)
   async function _recordAmbient(zone, seconds, withDrums) {
-    const live = { ctx, master, sfxBus, musicBus, reverb, noiseBuf, muted, pad, zoneIndex, drums, step, nextStepAt };
+    const live = { ctx, master, sfxBus, musicBus, reverb, sfxVerb, musicVerb, noiseBuf, musicOn, sfxOn, pad, zoneIndex, drums, step, nextStepAt };
     const off = new OfflineAudioContext(2, Math.ceil(44100 * seconds), 44100);
-    build(off); muted = false; master.gain.value = 0.8; zoneIndex = zone; drums = !!withDrums;
+    musicOn = sfxOn = true; build(off); zoneIndex = zone; drums = !!withDrums;
     step = 0; nextStepAt = 0.05;
     scheduleUntil(seconds - 0.5);
     const buf = await off.startRendering();
-    ({ ctx, master, sfxBus, musicBus, reverb, noiseBuf, muted, pad, zoneIndex, drums, step, nextStepAt } = live);
+    ({ ctx, master, sfxBus, musicBus, reverb, sfxVerb, musicVerb, noiseBuf, musicOn, sfxOn, pad, zoneIndex, drums, step, nextStepAt } = live);
     return [buf.getChannelData(0), buf.getChannelData(1)];
   }
 
-  root.ChogAudio = { play, unlock, setMuted, isMuted: () => muted, setZone, setEngine, _ctx: () => ctx, _record, _recordAmbient, _names: () => Object.keys(SFX) };
+  root.ChogAudio = { play, unlock, setMuted, isMuted: () => !musicOn && !sfxOn, setMusic, setSfx, musicOn: () => musicOn, sfxOn: () => sfxOn, setZone, setEngine, _ctx: () => ctx, _record, _recordAmbient, _names: () => Object.keys(SFX) };
 })(window);

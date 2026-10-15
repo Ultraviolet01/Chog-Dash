@@ -57,7 +57,9 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 - Each pickup has its own tone: Stardust chimes climb in pitch along a streak; Golden Horn fanfare; Dash boost whoosh; Magnet wobble; Slow-Mo downward sweep; Nova boom; Radar sonar ping; Mystery Box roll, then the revealed power's tone.
 - Also: launch, crash, near miss, warp gate, extra life, life used, smash crunch, button clicks.
 - Laser Eyes: a zap with a short buzzing beam, then a blast when it destroys something, or a metallic clang when a huge asteroid blocks it.
-- Sound button (top right) or M to mute; remembered on the device. Browsers start sound after the first click, tap or key.
+- Sound button (top right) opens a panel with separate switches for Music and Sound effects (the engine hum counts as an effect).
+- M turns all sound off or back on. Choices are remembered on the device.
+- Browsers start sound after the first click, tap or key.
 
 ## Run card
 

@@ -464,6 +464,23 @@ th { color: var(--muted); font-weight: normal; }
 .mute-btn .off { display: none; }
 body.muted .mute-btn .on { display: none; }
 body.muted .mute-btn .off { display: inline; }
+/* Sound panel: opens from the speaker buttons, with a switch for music and one for sound effects */
+.sound-panel { position: fixed; z-index: 30; display: none; width: 230px; padding: 12px 14px; border-radius: 14px;
+  background: rgba(13,19,34,0.97); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+.sound-panel.show { display: block; animation: spIn 0.18s ease-out both; }
+@keyframes spIn { from { opacity: 0; transform: translateY(-6px); } }
+.sp-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--muted); margin-bottom: 6px; }
+.sp-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; font-weight: 700; font-size: 14px; }
+.sp-hint { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.sp-hint b { color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+.sw { position: relative; flex: none; width: 46px; height: 26px; padding: 0; border-radius: 999px;
+  background: #1a2236; border: 1px solid var(--line); transition: background 0.2s, border-color 0.2s; }
+.sw i { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--muted);
+  transition: transform 0.2s, background 0.2s; }
+.sw[aria-checked="true"] { background: rgba(79,209,197,0.25); border-color: var(--accent2); }
+.sw[aria-checked="true"] i { transform: translateX(20px); background: var(--accent2); }
+@media (pointer: coarse) { .sp-hint { display: none; } .sp-row { padding: 10px 0; } .sw { width: 52px; height: 30px; } .sw i { width: 22px; height: 22px; } .sw[aria-checked="true"] i { transform: translateX(22px); } }
+@media (prefers-reduced-motion: reduce) { .sound-panel.show { animation: none; } .sw, .sw i { transition: none; } }
 #hudMuteBtn { position: absolute; right: 64px; top: 52px; pointer-events: auto; padding: 6px 8px; line-height: 0; }
 body.flying #hudMuteBtn { display: none; }
 @media (pointer: coarse) { #hudMuteBtn { min-width: 44px; min-height: 44px; } }

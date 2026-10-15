@@ -111,13 +111,24 @@ function ok(name, cond, detail) {
   ok('zones page lists all five zones with lengths', /Outer Space 2 min/.test((await text('#howZones')).replace(/\s+/g, ' ')) && (await p.$$('#howZones .zn')).length === 5);
   await p.click('#howBack'); await p.waitForTimeout(200);
   ok('howBack returns home', await panelShown('menuPanel') && !(await panelShown('howPanel')));
-  // Sound: the mute button and M key toggle sound, and the choice is remembered
-  const muted0 = await p.evaluate(() => ChogAudio.isMuted());
-  await p.click('#muteBtn'); await p.waitForTimeout(100);
-  ok('muteBtn toggles sound', (await p.evaluate(() => ChogAudio.isMuted())) === !muted0 && (await p.evaluate(() => document.body.classList.contains('muted'))) === !muted0);
-  ok('mute choice is remembered', (await p.evaluate(() => localStorage.getItem('chogDashMuted'))) === (!muted0 ? '1' : '0'));
+  // Sound: the speaker button opens a panel with Music and Sound effects switches; M toggles all; choices are remembered
+  const sw = id => p.evaluate(i => document.getElementById(i).getAttribute('aria-checked'), id);
+  await p.click('#muteBtn'); await p.waitForTimeout(250);
+  ok('muteBtn opens the sound panel', await visible('#soundPanel') && (await sw('musicTgl')) === 'true' && (await sw('sfxTgl')) === 'true');
+  await p.click('#musicTgl'); await p.waitForTimeout(150);
+  ok('music switch turns only the music off', !(await p.evaluate(() => ChogAudio.musicOn())) && (await p.evaluate(() => ChogAudio.sfxOn())) && (await sw('musicTgl')) === 'false'
+    && (await p.evaluate(() => localStorage.getItem('chogDashMusic'))) === '0' && !(await p.evaluate(() => document.body.classList.contains('muted'))));
+  await p.click('#sfxTgl'); await p.waitForTimeout(150);
+  ok('both switches off = muted (speaker shows off)', (await p.evaluate(() => ChogAudio.isMuted())) && (await p.evaluate(() => document.body.classList.contains('muted')))
+    && (await p.evaluate(() => localStorage.getItem('chogDashSfx'))) === '0');
+  await p.keyboard.press('Escape'); await p.waitForTimeout(150);
+  ok('Esc closes the sound panel and stays home', !(await visible('#soundPanel')) && await panelShown('menuPanel'));
   await p.keyboard.press('KeyM'); await p.waitForTimeout(100);
-  ok('M key toggles sound back', (await p.evaluate(() => ChogAudio.isMuted())) === muted0);
+  ok('M key turns all sound back on', (await p.evaluate(() => ChogAudio.musicOn() && ChogAudio.sfxOn())) && !(await p.evaluate(() => document.body.classList.contains('muted'))));
+  await p.click('#muteBtn'); await p.waitForTimeout(200);
+  ok('panel shows both switches on after M', (await sw('musicTgl')) === 'true' && (await sw('sfxTgl')) === 'true');
+  await p.mouse.click(20, 400); await p.waitForTimeout(150);
+  ok('clicking outside closes the sound panel', !(await visible('#soundPanel')));
   ok('audio engine running after a click', await p.evaluate(() => !!ChogAudio._ctx() && ChogAudio._ctx().state === 'running'));
 
   await p.click('#lbBtn'); await p.waitForTimeout(600);
