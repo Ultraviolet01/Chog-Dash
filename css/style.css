@@ -38,7 +38,7 @@ input { font: 15px Arial, sans-serif; padding: 9px 10px; border-radius: 8px; bor
 #modeBadge.practice { color: var(--accent); }
 #modeBadge.nft { color: var(--accent2); }
 #modeBadge.demo { color: var(--accent2); border-color: rgba(79,209,197,0.6); }
-#laserBox { position: absolute; left: 16px; bottom: 16px; font-size: 16px; font-weight: bold; color: #ff8a8a;
+#laserBox { position: absolute; left: 16px; bottom: 16px; pointer-events: auto; cursor: pointer; font-size: 16px; font-weight: bold; color: #ff8a8a;
   text-shadow: 0 2px 4px #000; display: none; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 12px;
   background: rgba(10,15,30,0.7); border: 1px solid rgba(255,107,107,0.45); }
 .lz-key { display: inline-grid; place-items: center; min-width: 30px; height: 30px; border-radius: 7px; background: #1a2236; color: var(--ink);
@@ -51,7 +51,7 @@ input { font: 15px Arial, sans-serif; padding: 9px 10px; border-radius: 8px; bor
 #laserBox.empty { opacity: 0.45; }
 /* Touch screens: the laser counter becomes a round FIRE button under the right thumb (steer with the left) */
 @media (hover: none) and (pointer: coarse) {
-  #laserBox { left: auto; right: max(16px, env(safe-area-inset-right)); bottom: max(22px, calc(env(safe-area-inset-bottom) + 10px));
+  #laserBox { left: auto; right: max(16px, env(safe-area-inset-right)); bottom: max(100px, calc(env(safe-area-inset-bottom) + 86px));   /* above Safari's bottom strip, where taps open its toolbar */
     width: 84px; height: 84px; padding: 0; border-radius: 50%; flex-direction: column; justify-content: center; gap: 2px;
     pointer-events: auto; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
     background: radial-gradient(circle at 50% 40%, rgba(255,107,107,0.35), rgba(40,10,14,0.85) 70%); border: 2px solid #ff6b6b;
@@ -64,6 +64,19 @@ input { font: 15px Arial, sans-serif; padding: 9px 10px; border-radius: 8px; bor
   #laserBox:active, #laserBox.fire { transform: scale(0.93); }
   #laserBox.fire { animation: laserFire 0.35s ease-out; }
 }
+/* Same button wherever touch is detected (body.touch, set by the game), in case the media query doesn't match */
+body.touch #laserBox { left: auto; right: max(16px, env(safe-area-inset-right)); bottom: max(100px, calc(env(safe-area-inset-bottom) + 86px));   /* above Safari's bottom strip, where taps open its toolbar */
+  width: 84px; height: 84px; padding: 0; border-radius: 50%; flex-direction: column; justify-content: center; gap: 2px;
+  pointer-events: auto; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  background: radial-gradient(circle at 50% 40%, rgba(255,107,107,0.35), rgba(40,10,14,0.85) 70%); border: 2px solid #ff6b6b;
+  box-shadow: 0 0 18px rgba(255,80,80,0.35), inset 0 0 12px rgba(255,80,80,0.25); }
+body.touch .lz-key { display: none; }
+body.touch .lz-eye { display: block; width: 26px; height: 14px; border-radius: 50%; border: 2px solid #ffd0d0; position: relative; }
+body.touch .lz-eye::after { content: ""; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #ff3b3b; box-shadow: 0 0 8px #ff3b3b; }
+body.touch .lz-name { font-size: 11px; letter-spacing: 1.5px; color: #ffd0d0; }
+body.touch #laserCount { font-size: 12px; color: var(--ink); }
+body.touch #laserBox:active, body.touch #laserBox.fire { transform: scale(0.93); }
+body.touch #laserBox.fire { animation: laserFire 0.35s ease-out; }
 #dustBox { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: 220px; text-align: center;
   font-weight: 700; font-size: 14px; text-shadow: 0 2px 4px #000; }
 .dust-row { display: flex; align-items: center; justify-content: center; gap: 8px; }

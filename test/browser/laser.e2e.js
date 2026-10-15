@@ -99,6 +99,12 @@ const R = path.join(__dirname, '../../');
   await touch('touchEnd', []);
   await m.touchscreen.tap(btn.x, btn.y); await m.waitForTimeout(100);
   assert.strictEqual(await m.textContent('#laserCount'), '8/10', 'LASER button fires on its own');
+  // Browsers that only send touch events (some in-app wallet browsers) fire it too; one tap is one shot
+  await m.waitForTimeout(150);
+  await m.evaluate(() => { const el = document.getElementById('laserBox'); const t = new Touch({ identifier: 9, target: el, clientX: 1, clientY: 1 });
+    el.dispatchEvent(new TouchEvent('touchstart', { touches: [t], targetTouches: [t], changedTouches: [t], bubbles: true, cancelable: true })); });
+  assert.strictEqual(await m.textContent('#laserCount'), '7/10', 'a touch-event-only tap fires once');
+  assert.ok(await m.evaluate(() => document.body.classList.contains('touch')), 'touch screens are marked, so the round button shows even if the media query does not match');
   assert.strictEqual(await m.evaluate(() => ChogUI._game().state), 'playing');
   if (process.env.SHOTS) await m.screenshot({ path: path.join(process.env.SHOTS, 'laser-touch.png') });
   assert.deepStrictEqual(errs, []);

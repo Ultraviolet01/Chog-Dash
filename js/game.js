@@ -498,8 +498,25 @@
       }
       onPress();
     });
-    // The laser button fires on touch-down (no delay) and never starts a drag or a zoom
-    hud.laserBox.addEventListener("pointerdown", e => { e.preventDefault(); e.stopPropagation(); if (state === "playing") fireLaser(); });
+    // The laser button fires on touch-down (no delay) and never starts a drag or a zoom. Both pointer and touch events
+    // are handled (some in-app wallet browsers only send one of them); a press fires once.
+    // A tap sends a pointer event and a touch event a few ms apart: the second one of the same tap is skipped,
+    // while quick repeated taps still each fire
+    let lastLaserPress = { type: "", t: 0 };
+    const pressLaser = e => {
+      e.preventDefault(); e.stopPropagation();
+      const t = performance.now(), kind = e.type === "touchstart" ? "touch" : "pointer";
+      const same = kind !== lastLaserPress.type && t - lastLaserPress.t < 80;
+      lastLaserPress = { type: kind, t };
+      if (!same && state === "playing") fireLaser();
+    };
+    hud.laserBox.addEventListener("pointerdown", pressLaser);
+    hud.laserBox.addEventListener("touchstart", pressLaser, { passive: false });
+    hud.laserBox.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); });
+    // Touch screens get the round button even when the browser doesn't report a coarse pointer (some phones and
+    // in-app browsers don't), so the laser is never left as an untappable keyboard hint
+    // (not on laptops with a touch screen, where the mouse or trackpad is the main pointer)
+    if (("ontouchstart" in window || (navigator.maxTouchPoints || 0) > 0) && !matchMedia("(pointer: fine)").matches) document.body.classList.add("touch");
     // iOS Safari: no pinch or double-tap zoom while playing
     ["gesturestart", "dblclick"].forEach(ev => document.addEventListener(ev, e => { if (state !== "menu") e.preventDefault(); }, { passive: false }));
     window.addEventListener("pointermove", e => {
