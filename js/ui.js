@@ -17,7 +17,7 @@
     chog: null,             // { tokenId, name, metadata, gameplay, imageUrl, riderCanvas, riderPoses }
     demoChog: null,         // the same, for one of the 5 demo Chogs (demo: true)
     auth: null, authError: "",
-    runId: null, activeRunId: null, runStatus: { text: "", kind: "" }, sessionReq: 0, runCounter: 0,
+    runId: null, activeRunId: null, activeWait: null, sessionWait: null, startedReq: -1, runStatus: { text: "", kind: "" }, sessionReq: 0, runCounter: 0,
     selectReq: 0, holdingsReq: 0, signReq: 0, metaCache: {},
     username: null,
     lastRun: null,          // the finished run, for the run card
@@ -84,7 +84,7 @@
     $("modeNft").onclick = () => setHomeMode("nft");
     $("modeDemo").onclick = () => setHomeMode("demo");
     $("demoBack").onclick = () => show("menuPanel");
-    $("demoReset").onclick = () => { Demo.reset(); setStatus($("demoStatus"), "Demo progress reset: a 6-day streak and 2 streak lives again."); $("demoStatus").className = "lb-status good"; };
+    $("demoReset").onclick = () => { Demo.reset(); setStatus($("demoStatus"), "Demo progress reset: quests, badges and the streak start from zero."); $("demoStatus").className = "lb-status good"; };
     $("playBtn").onclick = play;
     $("walletChip").onclick = openNft;
     $("lbBtn").onclick = () => openLeaderboard();
@@ -451,11 +451,20 @@
     S.lastRun = null;
     $("msg").style.display = "none";
     S.runCounter++;
+    // The run's leaderboard session. On a phone the player often taps to fly before the server has answered;
+    // then the run waits for that answer (activeWait) and submits with it at the end, instead of being lost.
     S.activeRunId = S.runId;
+    S.activeWait = !S.runId && S.sessionWait && S.sessionWait.req === S.sessionReq ? S.sessionWait.promise : null;
+    S.startedReq = S.sessionReq;
     S.runId = null;
     stopReveal();
     renderQuestStrip();
     startLiveQuests();
+  }
+
+  // The run's session id: known at the start, or still on its way from the server (the run waits for it)
+  function runSession() {
+    return S.activeRunId ? Promise.resolve(S.activeRunId) : (S.activeWait || Promise.resolve(null));
   }
 
   function onEnd(result) {
@@ -482,9 +491,13 @@
       S.quests = Demo.view();
       goNotes(questLines(q));
       renderGoQuests();
-      if (!S.activeRunId) { goStatus(["Demo run: not on the DEMO leaderboard (not signed in)", "warn"]); return; }
+      if (!S.activeRunId && !S.activeWait) { goStatus(["Demo run: not on the DEMO leaderboard (not signed in)", "warn"]); return; }
       goStatus(["Submitting to the DEMO leaderboard...", "wait"]);
-      apiCall("/run/finish", { runId: S.activeRunId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed }, S.auth && S.auth.token)
+      runSession()
+        .then(runId => {
+          if (!runId) throw new Error("this run was not registered with the DEMO leaderboard");
+          return apiCall("/run/finish", { runId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed }, S.auth && S.auth.token);
+        })
         .then(r => {
           if (!live()) return;
           if (r.status === "validated" && S.lastRun) { S.lastRun.rank = r.rank || null; S.lastRun.total = r.finalScore; }
@@ -495,14 +508,18 @@
         .catch(e => { if (live()) goStatus(["Not submitted: " + e.message, "warn"]); });
       return;
     }
-    if (!S.activeRunId) {
+    if (!S.activeRunId && !S.activeWait) {
       goStatus(["Not submitted: " + (S.runStatus.kind === "warn" ? S.runStatus.text : "this run was not registered with the leaderboard"), "warn"]);
       return;
     }
     goStatus(["Submitting to the leaderboard...", "wait"]);
-    apiCall("/run/finish", { runId: S.activeRunId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed,
-      stardust: result.stardust || 0, powerups: result.powerups || 0, horns: result.horns || 0, nearMisses: result.nearMisses || 0,
-      livesUsed: result.livesUsed || 0, bankLivesUsed: result.bankLivesUsed || 0 }, S.auth && S.auth.token)
+    runSession()
+      .then(runId => {
+        if (!runId) throw new Error("this run was not registered with the leaderboard");
+        return apiCall("/run/finish", { runId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed,
+          stardust: result.stardust || 0, powerups: result.powerups || 0, horns: result.horns || 0, nearMisses: result.nearMisses || 0,
+          livesUsed: result.livesUsed || 0, bankLivesUsed: result.bankLivesUsed || 0 }, S.auth && S.auth.token);
+      })
       .then(r => {
         if (!live()) return;
         if (r.status === "validated" && S.lastRun) { S.lastRun.rank = r.rank || null; S.lastRun.total = r.finalScore; }
@@ -834,10 +851,12 @@
     }
     S.runStatus = { text: "Checking the DEMO leaderboard...", kind: "" };
     renderNftReady();
+    const call = apiCall("/run/start", { tokenId: S.demoChog.tokenId, demo: true }, S.auth.token);
+    S.sessionWait = { req, promise: call.then(r => r.runId, () => null) };
     try {
-      const r = await apiCall("/run/start", { tokenId: S.demoChog.tokenId, demo: true }, S.auth.token);
+      const r = await call;
       if (req !== S.sessionReq) return;
-      S.runId = r.runId;
+      if (S.startedReq !== req) S.runId = r.runId;   // (already flying: that run takes this session, see onStart)
       S.runStatus = { text: "Demo run for the DEMO leaderboard as " + S.username + " (server-checked, Tier " + r.tier + " x" + r.multiplier + ")", kind: "good" };
     } catch (e) {
       if (req !== S.sessionReq) return;
@@ -859,10 +878,12 @@
     }
     S.runStatus = { text: "Checking leaderboard eligibility...", kind: "" };
     renderNftReady();
+    const call = apiCall("/run/start", { tokenId: S.chog.tokenId }, S.auth.token);
+    S.sessionWait = { req, promise: call.then(r => r.runId, () => null) };
     try {
-      const r = await apiCall("/run/start", { tokenId: S.chog.tokenId }, S.auth.token);
+      const r = await call;
       if (req !== S.sessionReq) return;
-      S.runId = r.runId;
+      if (S.startedReq !== req) S.runId = r.runId;   // (already flying: that run takes this session, see onStart)
       S.runStatus = { text: "Eligible: this run will be submitted (server-verified Tier " + r.tier + ", x" + r.multiplier + ")", kind: "good" };
       // Streak lives from the bank, only before the run starts
       if (game.state === "ready") { S.bankLives = r.bankLives || 0; game.configure({ bankLives: S.bankLives }); }

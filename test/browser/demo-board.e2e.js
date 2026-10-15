@@ -95,6 +95,22 @@ const svg = n => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="40
   await p.click('#lbTabNft');
   await p.waitForFunction(() => /No pilots yet/.test(document.getElementById('lbList').textContent), null, { timeout: 5000 });
   assert.deepStrictEqual(await store.top(10), []);
+  // Phone players often tap to fly before the server has registered the run: that run still counts
+  await p.route('**/api/run/start', async r => { await new Promise(res => setTimeout(res, 2000)); r.continue(); });
+  await p.click('#lbBack'); await p.waitForTimeout(300);
+  await p.click('#playBtn'); await p.waitForTimeout(400);
+  await p.click('#demoList .demo-card[data-token="1798"]');
+  await p.waitForFunction(() => ChogUI._game().state === 'playing' || /Checking the DEMO leaderboard/.test(document.getElementById('msg').textContent), null, { timeout: 5000 });
+  if (await p.evaluate(() => ChogUI._game().state) !== 'playing') await p.keyboard.press('Space');
+  await p.waitForTimeout(200);
+  assert.strictEqual(await p.evaluate(() => ChogUI._game().state), 'playing', 'flying before the server answered');
+  assert.ok(!(await p.evaluate(() => ChogUI._state.activeRunId)), 'the run started without its session id');
+  await p.waitForTimeout(2500);
+  await p.evaluate(() => { const g = ChogUI._game()._debug; for (let i = 0; i < 3; i++) { const q = g.player.position; g.spawnAt(q.x, q.y + 0.35, -1 - i * 40, true); } });
+  await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 20000 });
+  await p.waitForFunction(() => /DEMO leaderboard: total distance \d+ m/.test(document.getElementById('goRank').textContent), null, { timeout: 10000 });
+  console.log('early start:', await text('#goRank'));
+  assert.strictEqual((await store.demo.top(10)).length, 1, 'still one entry per pilot');
   assert.deepStrictEqual(errs, [], 'no page errors');
   console.log('PASS demo leaderboard');
   await b.close(); server.close();

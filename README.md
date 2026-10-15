@@ -32,7 +32,7 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
     - CHOG #598 (Epic x1.25): no laser, Radioactive glowing rocket, Aqua Aura water trail.
     - CHOG #1290 Krown (Legendary x1.40): no laser, one-of-one rocket with a crown and a glow trail.
   - Tier scoring, rocket looks, quests, badges, the streak and streak lives work exactly as in Chog NFT mode (same rules), kept on the device.
-  - It starts on a 6-day streak with 2 streak lives banked, so finishing today's dailies and 5 minutes of flying shows the day-7 reward.
+  - It starts from zero like a new wallet (no streak, streak lives or badges), kept on that device only.
   - The DEMO leaderboard (a separate, real board): connect any wallet (it doesn't need a Chog), sign in and pick a pilot name. Demo runs are then checked by the server like Chog NFT runs (run time, distance, Laser Eyes) and ranked on the DEMO tab of Ranks. Without signing in, demo runs aren't ranked. Demo runs never touch the Chog NFT leaderboard or a holder's real streak lives.
   - The run card carries a DEMO stamp (and the DEMO rank). "Reset demo progress" in the demo picker starts the local quests and streak over.
   - Storage: the `chog_demo_leaderboard` table in supabase/schema.sql (run it again to add it).

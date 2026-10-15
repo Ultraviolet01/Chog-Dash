@@ -20,6 +20,9 @@ const svg = n => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="40
   const text = s => p.textContent(s);
   const d = fn => p.evaluate(fn);
 
+  // A device that opened the old demo still has its pre-filled 6-day streak saved: the demo now starts from zero
+  await p.addInitScript(() => { if (!sessionStorage.getItem('seeded')) { sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('chogDashDemo', JSON.stringify({ quest: null, badges: { streak: { best: 6, first: 1 } }, streak: { lastDay: 1, count: 6 }, log: {}, lives: 2, pin: null })); } });
   await p.goto('file://' + path.join(R, 'index.html'));
   await p.waitForTimeout(900);
   await p.click('#modeDemo'); await p.waitForTimeout(400);
@@ -49,12 +52,12 @@ const svg = n => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="40
   assert.match(ready, /Tier Rare: distance multiplier x1\.15/);
   assert.match(ready, /Laser Eyes: 10 charges/);
   assert.match(ready, /Skull rocket\. Aura trail: Electric Shock/);
-  assert.match(ready, /Streak lives: 2 banked/);
+  assert.doesNotMatch(ready, /Streak lives/, 'demo starts from zero: no streak lives');
   assert.match(ready, /not on the DEMO leaderboard/, 'not signed in: not ranked');
   assert.match(await text('#modeBadge'), /^DEMO · CHOG #1324/);
-  assert.strictEqual(await text('#livesCount'), '0 +2', 'demo starts with 2 streak lives');
+  assert.strictEqual(await text('#livesCount'), '0', 'demo starts with no streak lives');
   await p.waitForFunction(() => document.getElementById('questStrip').classList.contains('show'));
-  assert.match(await text('#questStrip'), /6-day streak/);
+  assert.match(await text('#questStrip'), /0-day streak · 0:00 \/ 5:00 flown/, 'demo starts with no streak (like a new wallet)');
   await shot('ready');
 
   await p.keyboard.press('Space'); await p.waitForTimeout(1500);
@@ -64,17 +67,15 @@ const svg = n => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="40
   assert.deepStrictEqual(fly, { laser: '9/10', look: 'skull', trail: true });
   await shot('flying');
 
-  // Crash three times: two streak lives save the run, the third hit ends it
-  for (let i = 0; i < 3; i++) {
-    await d(() => { const g = ChogUI._game()._debug, q = g.player.position; g.spawnAt(q.x, q.y + 0.35, -1, true); });
-    await p.waitForTimeout(i < 2 ? 2600 : 600);
-  }
+  // No streak lives yet: the first hit ends the run
+  await d(() => { const g = ChogUI._game()._debug, q = g.player.position; g.spawnAt(q.x, q.y + 0.35, -1, true); });
+  await p.waitForTimeout(600);
   await p.waitForFunction(() => document.getElementById('gameOver').classList.contains('show'), null, { timeout: 8000 });
   const end = await text('#gameOver');
   console.log('end:', end);
   assert.match(end, /Demo run: not on the DEMO leaderboard \(not signed in\)/);
   const after = await d(() => ({ bank: ChogDemo.lives(), played: ChogDemo.view().playMsToday }));
-  assert.strictEqual(after.bank, 0, 'both streak lives were spent');
+  assert.strictEqual(after.bank, 0, 'still no streak lives');
   assert.ok(after.played > 0, 'demo quests count the run');
 
   // Run card with the DEMO stamp
@@ -84,19 +85,19 @@ const svg = n => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="40
   if (process.env.SHOTS) fs.writeFileSync(path.join(process.env.SHOTS, 'demo-card.png'), Buffer.from((await d(() => document.getElementById('cardImg').src)).split(',')[1], 'base64'));
   await p.click('#cardClose');
 
-  // Day 7 of the demo streak: finishing today's dailies with 5+ minutes flown banks +1 streak life
+  // Day 1 of the demo streak: finishing today's dailies with 5+ minutes flown counts the day (no lives until day 7)
   const day7 = await d(() => {
     let r;
     for (let i = 0; i < 6 && !(r && r.streakDay); i++) r = ChogDemo.finish({ meters: 10000, durationMs: 300000, stardust: 400, powerups: 9, horns: 4, nearMisses: 30, livesUsed: 0 });
     return { streakDay: r.streakDay, livesEarned: r.livesEarned, bank: ChogDemo.lives() };
   });
-  assert.deepStrictEqual(day7, { streakDay: 7, livesEarned: 1, bank: 1 });
+  assert.deepStrictEqual(day7, { streakDay: 1, livesEarned: 0, bank: 0 });
 
   // Quests panel in demo mode
   await p.click('#endHomeBtn'); await p.waitForTimeout(300);
   await p.click('#questBtn'); await p.waitForTimeout(400);
   assert.match(await text('#questBody'), /Demo quests/);
-  assert.match(await text('#questBody'), /7DAY STREAK|7 *DAY STREAK/);
+  assert.match(await text('#questBody'), /(^|[^0-9])1 *DAY STREAK/);
   await shot('quests');
   // Never touches the leaderboard server
   assert.deepStrictEqual(errs, [], 'no page errors');

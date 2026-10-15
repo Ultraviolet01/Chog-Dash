@@ -4,25 +4,24 @@
  * one-of-one), with aura trails and two with Laser Eyes. Metadata is embedded (copied from the collection's tokenURI
  * JSON), so the demo needs no chain calls; the artwork loads from IPFS like any Chog.
  *
- * Demo runs are never submitted to the leaderboard. Quests, badges, the streak and streak lives work exactly as
- * in Chog NFT mode (same rules, js/quests.js), but are kept on this device only. The demo starts on a 6-day
- * streak with 2 streak lives banked, so finishing today's 3 dailies and 5 minutes of flying reaches day 7.
+ * Signed in with a pilot name, demo runs go on the separate DEMO leaderboard (never the Chog NFT one). Quests, badges,
+ * the streak and streak lives work exactly as in Chog NFT mode (same rules, js/quests.js), but are kept on this device
+ * only. The demo starts from zero, like a new wallet: no streak, no streak lives, no badges.
  */
 (function (root) {
   const Q = root.ChogQuests;
 
   const CHOGS = root.ChogDemoChogs;   // js/demo-chogs.js
 
-  const KEY = "chogDashDemo";
+  const KEY = "chogDashDemo", VERSION = 2;   // version 1 started on a pre-filled 6-day streak; that progress is dropped
+  // A fresh demo, the same as a new wallet in Chog NFT mode
   function seed() {
-    const t = Date.now(), day = Q.dayNumber(t), log = {};
-    for (let d = day - 6; d < day; d++) log[d] = { done: 3, min: 6, counted: true };
-    return { quest: null, badges: { streak: { best: 6, first: t } }, streak: { lastDay: day - 1, count: 6 }, log, lives: 2, pin: null };
+    return { v: VERSION, quest: null, badges: null, streak: null, log: null, lives: 0, pin: null };
   }
   function load() {
     let s = null;
     try { s = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
-    return s && typeof s === "object" ? s : seed();
+    return s && typeof s === "object" && s.v === VERSION ? s : seed();
   }
   function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
 
@@ -33,7 +32,7 @@
     const s = load();
     s.lives = Math.max(0, (s.lives || 0) - (result.bankLivesUsed || 0));
     const out = Q.progressRun(s, Q.runStats(result), Date.now());
-    save(Object.assign(out.rec, { pin: s.pin }));
+    save(Object.assign(out.rec, { pin: s.pin, v: VERSION }));
     return out.result;
   }
   function lives() { return load().lives || 0; }
