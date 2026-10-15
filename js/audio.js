@@ -1,9 +1,10 @@
 /*
  * Chog Dash sound: everything is synthesised with the Web Audio API (no sound files).
  *
- * - Background music: a light, upbeat space tune (plucked arpeggio, warm bass, soft pads, sparkles); a soft beat
- *   joins in during a run, and each zone has its own chord loop, a little faster each time. A low engine hum rises
- *   with speed during a run.
+ * - Background music: the recorded track "Beyond the Outer Rim" (audio/beyond-the-outer-rim.mp3), looped with a
+ *   crossfade. If it can't load (offline, or the page opened straight from disk), a synthesised space tune plays
+ *   instead (plucked arpeggio, warm bass, soft pads; a soft beat during a run; a chord loop per zone).
+ * - A low engine hum rises with speed during a run.
  * - Each pickup has its own tone (Stardust chimes climb in pitch along a streak, like rings in other games).
  * - Dash: a boost whoosh with a rising zap, a roaring engine while it lasts, and a crunch per smash.
  * - Events: launch, crash, near miss, Laser Eyes (zap, then a blast when it destroys something or a clang when a
@@ -63,7 +64,7 @@
   function unlock() {
     if (!ensure()) return;
     if (ctx.state === "suspended") ctx.resume();
-    startPad();
+    startMusic();
   }
   ["pointerdown", "keydown", "touchstart"].forEach(ev => window.addEventListener(ev, unlock, { capture: true, passive: true }));
 
@@ -80,10 +81,10 @@
       sfxVerb.gain.setTargetAtTime(sfxOn ? 1 : 0, now(), 0.05);
     }
   }
-  function setMusic(on) { musicOn = !!on; save(); }
+  function setMusic(on) { musicOn = !!on; save(); if (musicOn) loadTrack(); pauseTrack(!musicOn); }
   function setSfx(on) { sfxOn = !!on; save(); }
   // Mute all, or bring both back
-  function setMuted(m) { musicOn = sfxOn = !m; save(); }
+  function setMuted(m) { musicOn = sfxOn = !m; save(); if (musicOn) loadTrack(); pauseTrack(!musicOn); }
 
 
   // ---------- Building blocks ----------
@@ -326,6 +327,63 @@
       step++;
     }
   }
+  // ---------- Background music: the recorded track, looped with a crossfade ----------
+  // Streamed through two <audio> elements (no big decoded buffer in memory); near the end of one, the other starts
+  // from the top and the two crossfade.
+  const TRACK_URL = "audio/beyond-the-outer-rim.mp3";
+  const TRACK_LOOP = 169.5, TRACK_XF = 3, TRACK_VOL = 0.32;   // the track fades out from ~168 s; the next copy fades in over it
+  let trackState = "idle", trackEls = null, trackGain = null, trackCur = 0, trackSwitching = false, trackTimer = null;
+  // Starts loading the track (only once, and only while music is on)
+  function loadTrack() {
+    if (trackState !== "idle") return;
+    // Opened straight from disk the browser won't let Web Audio read the file, so the synth tune plays instead
+    if (location.protocol === "file:" || typeof Audio === "undefined") { trackState = "failed"; startMusic(); return; }
+    trackState = "loading";
+    trackEls = [0, 1].map(() => { const a = new Audio(); a.preload = "auto"; a.src = TRACK_URL; return { el: a, src: null, g: null }; });
+    trackEls[0].el.addEventListener("error", () => { if (trackState !== "playing") { trackState = "failed"; startMusic(); } });
+    trackEls[0].el.addEventListener("canplay", () => { if (trackState === "loading") { trackState = "ready"; startMusic(); } });
+  }
+  // Starts the music once sound is unlocked: the track when it can play, the synth tune if it can't load
+  function startMusic() {
+    if (!ctx || (window.OfflineAudioContext && ctx instanceof OfflineAudioContext)) return;
+    if (trackState === "failed") { startPad(); return; }
+    if (!trackEls) return;
+    if (!trackGain) {
+      trackGain = ctx.createGain(); trackGain.gain.value = TRACK_VOL; trackGain.connect(musicBus);
+      trackEls.forEach(t => { t.src = ctx.createMediaElementSource(t.el); t.g = ctx.createGain(); t.g.gain.value = 0.0001; t.src.connect(t.g); t.g.connect(trackGain); });
+      // Inside the first tap or key press: let both players start later (iOS asks for a gesture per player)
+      const b = trackEls[1].el; const pr = b.play(); if (pr && pr.then) pr.then(() => { if (!trackSwitching) b.pause(); }, () => {});
+    }
+    if (trackState !== "ready" && trackState !== "loading") return;
+    if (trackTimer) return;
+    trackState = trackState === "ready" ? "playing" : trackState;
+    const t = trackEls[trackCur];
+    t.el.currentTime = 0;
+    fade(t.g, 1, 2.5);
+    const pr = t.el.play(); if (pr && pr.catch) pr.catch(() => {});
+    trackTimer = setInterval(tickTrack, 250);
+  }
+  function fade(g, to, secs) { const t0 = now(); g.gain.cancelScheduledValues(t0); g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t0); g.gain.linearRampToValueAtTime(Math.max(0.0001, to), t0 + secs); }
+  // Near the end of the playing copy, the other starts from the top and they crossfade
+  function tickTrack() {
+    if (trackState === "loading" && trackEls[0].el.readyState >= 3) trackState = "playing";
+    const cur = trackEls[trackCur];
+    if (trackSwitching || !musicOn || (cur.el.paused && !cur.el.ended) || (!cur.el.ended && cur.el.currentTime < TRACK_LOOP - TRACK_XF)) return;
+    trackSwitching = true;
+    const next = trackEls[1 - trackCur];
+    next.el.currentTime = 0;
+    const pr = next.el.play(); if (pr && pr.catch) pr.catch(() => {});
+    fade(next.g, 1, TRACK_XF); fade(cur.g, 0, TRACK_XF);
+    setTimeout(() => { cur.el.pause(); trackCur = 1 - trackCur; trackSwitching = false; }, TRACK_XF * 1000 + 100);
+  }
+  // Music switched off: pause the track (no download or decoding in the background); on again: carry on
+  function pauseTrack(paused) {
+    if (!trackTimer || trackSwitching) return;
+    const t = trackEls[trackCur].el;
+    if (paused) t.pause(); else { const pr = t.play(); if (pr && pr.catch) pr.catch(() => {}); }
+  }
+  if (musicOn) loadTrack();
+
   function startPad() {
     if (pad || !ctx) return;
     pad = { started: true };
@@ -385,5 +443,8 @@
     return [buf.getChannelData(0), buf.getChannelData(1)];
   }
 
-  root.ChogAudio = { play, unlock, setMuted, isMuted: () => !musicOn && !sfxOn, setMusic, setSfx, musicOn: () => musicOn, sfxOn: () => sfxOn, setZone, setEngine, _ctx: () => ctx, _record, _recordAmbient, _names: () => Object.keys(SFX) };
+  root.ChogAudio = { play, unlock, setMuted, isMuted: () => !musicOn && !sfxOn, setMusic, setSfx, musicOn: () => musicOn, sfxOn: () => sfxOn, setZone, setEngine, _ctx: () => ctx, _record, _recordAmbient, _names: () => Object.keys(SFX),
+    // For tests: where the music is, and a jump within the track
+    _track: () => ({ state: trackState, cur: trackCur, time: trackEls ? trackEls[trackCur].el.currentTime : 0, paused: trackEls ? trackEls[trackCur].el.paused : true, synth: !!pad }),
+    _trackSeek: secs => { if (trackEls) trackEls[trackCur].el.currentTime = secs; } };
 })(window);

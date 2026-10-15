@@ -52,9 +52,13 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
 
 ## Sound
 
-- All sound is synthesised in the browser (`js/audio.js`, Web Audio API): no sound files.
-- Background music: a light, upbeat space tune (plucked arpeggio, warm bass, soft pads, sparkles). A soft beat joins in during a run; each zone has its own chord loop, a little faster each time. In a run, an engine hum rises with speed (it roars while Dash is active).
-- Each pickup has its own tone: Stardust chimes climb in pitch along a streak; Golden Horn fanfare; Dash boost whoosh; Magnet wobble; Slow-Mo downward sweep; Nova boom; Radar sonar ping; Mystery Box roll, then the revealed power's tone.
+- Background music: the track "Beyond the Outer Rim" (`audio/beyond-the-outer-rim.mp3`, 2:52, MP3 128 kbps, about 2.7 MB).
+  - Streamed through two audio players, so it never sits fully decoded in memory; near the end, the other player starts from the top and the two crossfade, so it loops without a gap.
+  - It only downloads while Music is on, and pauses when Music is switched off.
+  - If it can't load (offline, or `index.html` opened straight from disk), a synthesised space tune plays instead.
+  - The local dev server serves `/audio/` with byte ranges, like Vercel, so the browser can seek in the track.
+- Sound effects are synthesised in the browser (`js/audio.js`, Web Audio API): no effect files. In a run, an engine hum rises with speed (it roars while Dash is active).
+- Each pickup has its own tone: Stardust chimes climb in pitch along a streak; Golden Horn fanfare; Dash boost whoosh; Magnet wobble; Slow-Mo downward sweep; Nova screen-clear blast with a shockwave and crackling rocks; Radar sonar ping; Mystery Box roll, then the revealed power's tone.
 - Also: launch, crash, near miss, warp gate, extra life, life used, smash crunch, button clicks.
 - Laser Eyes: a zap with a short buzzing beam, then a blast when it destroys something, or a metallic clang when a huge asteroid blocks it.
 - Sound button (top right) opens a panel with separate switches for Music and Sound effects (the engine hum counts as an effect).

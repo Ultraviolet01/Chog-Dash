@@ -130,6 +130,9 @@ function ok(name, cond, detail) {
   await p.mouse.click(20, 400); await p.waitForTimeout(150);
   ok('clicking outside closes the sound panel', !(await visible('#soundPanel')));
   ok('audio engine running after a click', await p.evaluate(() => !!ChogAudio._ctx() && ChogAudio._ctx().state === 'running'));
+  await p.waitForTimeout(1500);
+  const trk = await p.evaluate(() => ChogAudio._track());
+  ok('background music is the recorded track, streaming (not the synth fallback)', trk.state === 'playing' && !trk.paused && trk.time > 0 && !trk.synth, JSON.stringify(trk));
 
   await p.click('#lbBtn'); await p.waitForTimeout(600);
   ok('lbBtn opens leaderboard', await panelShown('lbPanel'), await text('#lbStatus'));

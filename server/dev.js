@@ -15,8 +15,8 @@ const ROUTES = {
   "/api/profile": "profileSet", "/api/quests": "questsGet", "/api/badge/pin": "badgePin", "/api/demo-leaderboard": "demoLeaderboard",
 };
 const TYPES = { ".html": "text/html", ".js": "application/javascript", ".css": "text/css", ".json": "application/json",
-  ".png": "image/png", ".svg": "image/svg+xml", ".md": "text/plain" };
-const PUBLIC = ["/index.html", "/css/", "/js/"];   // only these are served as static files
+  ".png": "image/png", ".svg": "image/svg+xml", ".md": "text/plain", ".mp3": "audio/mpeg" };
+const PUBLIC = ["/index.html", "/css/", "/js/", "/audio/"];   // only these are served as static files
 
 function startServer({ port = 3000, handlers } = {}) {
   const server = http.createServer(async (req, res) => {
@@ -35,7 +35,16 @@ function startServer({ port = 3000, handlers } = {}) {
     if (!file.startsWith(ROOT) || !PUBLIC.some(pre => p === pre || p.startsWith(pre)) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
       res.writeHead(404); return res.end("Not found");
     }
-    res.writeHead(200, { "content-type": TYPES[path.extname(file)] || "application/octet-stream" });
+    const type = TYPES[path.extname(file)] || "application/octet-stream", size = fs.statSync(file).size;
+    // Byte ranges, so the browser can seek in the music track (as it can on Vercel)
+    const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || "");
+    if (m && (m[1] || m[2])) {
+      const start = m[1] ? Number(m[1]) : Math.max(0, size - Number(m[2])), end = m[1] && m[2] ? Math.min(Number(m[2]), size - 1) : size - 1;
+      if (start >= size || start > end) { res.writeHead(416, { "content-range": "bytes */" + size }); return res.end(); }
+      res.writeHead(206, { "content-type": type, "accept-ranges": "bytes", "content-range": `bytes ${start}-${end}/${size}`, "content-length": end - start + 1 });
+      return fs.createReadStream(file, { start, end }).pipe(res);
+    }
+    res.writeHead(200, { "content-type": type, "accept-ranges": "bytes", "content-length": size });
     fs.createReadStream(file).pipe(res);
   });
   return new Promise(resolve => server.listen(port, () => resolve(server)));
