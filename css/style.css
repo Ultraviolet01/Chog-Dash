@@ -763,6 +763,7 @@ body.flying #questStrip { display: none; }
 .how-demo b { color: var(--ink); }
 .lb-tabs { display: flex; width: max-content; margin: -6px auto 18px; }
 .lb-tabs .mode { padding: 8px 18px; }
+.lb-tabs.mode-switch .mode.on { background: var(--ink); color: #0b0f1c; }   /* no sliding pill here, so the chosen tab fills itself */
 .demo-board .lb-title h2 { text-shadow: 0 3px 0 #000, 0 0 18px rgba(79,209,197,0.45); }
 .demo-board .lb-sub { color: var(--accent2); }
 .demo-board #lbTabDemo.on { background: var(--accent2); color: #062320; }
