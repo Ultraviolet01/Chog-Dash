@@ -58,19 +58,46 @@
     supportsInterface: (p, iface) => call(p, SEL.supportsInterface + encBytes4(iface)).then(decodeBool).catch(() => false),
   };
 
-  // ---------- Wallet discovery (EIP-6963, with window.ethereum as a fallback) ----------
+  // ---------- Wallets: MetaMask, Rabby and Phantom only ----------
+  // Found through EIP-6963 (each wallet announces itself by its rdns), with the older window.ethereum flags as a
+  // fallback. Other installed wallets are not listed. Logos: web3icons (MIT), as data URLs so they need no request.
+  const ICONS = {
+      "metamask": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cg%20clip-path%3D%22url(%23metamask__a)%22%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M24%200H0v24h24z%22%2F%3E%3Cpath%20fill%3D%22%23FF5C16%22%20d%3D%22m18.9%2018.925-3.434-.993-2.59%201.504h-1.807l-2.592-1.504-3.433.993L4%2015.5l1.044-3.802L4%208.484%205.044%204.5l5.365%203.114h3.127L18.9%204.5l1.045%203.984-1.045%203.214%201.045%203.802z%22%2F%3E%3Cpath%20fill%3D%22%23FF5C16%22%20d%3D%22m5.045%204.5%205.364%203.116-.213%202.14zm3.433%2011.001%202.36%201.747-2.36.684zm2.172-2.888-.454-2.856-2.904%201.942h-.001l.009%202%201.177-1.086zM18.9%204.5l-5.364%203.116.213%202.14zm-3.433%2011.001-2.36%201.747%202.36.684zm1.187-3.801v-.002h-.001l-2.904-1.941-.453%202.856h2.171l1.178%201.086z%22%2F%3E%3Cpath%20fill%3D%22%23E34807%22%20d%3D%22m8.477%2017.932-3.433.993L4%2015.501h4.477zm2.172-5.32.656%204.13-.91-2.297-3.097-.746%201.178-1.087zm4.818%205.32%203.433.993%201.045-3.424h-4.478zm-2.171-5.32-.656%204.13.909-2.297%203.097-.746-1.179-1.087z%22%2F%3E%3Cpath%20fill%3D%22%23FF8D5D%22%20d%3D%22m4%2015.5%201.044-3.802H7.29l.008%202%203.098.747.909%202.296-.468.505-2.36-1.747zm15.945%200L18.9%2011.698h-2.245l-.009%202-3.097.747-.909%202.296.467.505%202.36-1.747zm-6.409-7.886h-3.127l-.213%202.139%201.109%206.985h1.335l1.11-6.985z%22%2F%3E%3Cpath%20fill%3D%22%23661800%22%20d%3D%22M5.044%204.5%204%208.484l1.044%203.214H7.29l2.905-1.943zM10%2013.441H8.982l-.553.528%201.967.474zM18.9%204.5l1.045%203.984-1.045%203.214h-2.245l-2.906-1.943zm-4.954%208.941h1.02l.553.529-1.97.475zm-1.071%204.632.232-.825-.467-.506h-1.336l-.467.506.232.825%22%2F%3E%3Cpath%20fill%3D%22%23C0C4CD%22%20d%3D%22M12.875%2018.073v1.364h-1.806v-1.364z%22%2F%3E%3Cpath%20fill%3D%22%23E7EBF6%22%20d%3D%22m8.478%2017.93%202.592%201.506v-1.363l-.232-.826zm6.99%200-2.593%201.506v-1.363l.232-.826z%22%2F%3E%3C%2Fg%3E%3Cdefs%3E%3CclipPath%20id%3D%22metamask__a%22%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M0%200h24v24H0z%22%2F%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%3C%2Fsvg%3E",
+      "rabby": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cg%20clip-path%3D%22url(%23rabby__a)%22%3E%3Cpath%20fill%3D%22url(%23rabby__b)%22%20d%3D%22M24%200H0v24h24z%22%2F%3E%3Cpath%20fill%3D%22url(%23rabby__c)%22%20d%3D%22M19.918%2013.04c.629-1.461-2.478-5.543-5.446-7.243-1.87-1.317-3.82-1.136-4.215-.558-.866%201.27%202.869%202.345%205.367%203.6a2.9%202.9%200%200%200-1.34%201.235c-.932-1.058-2.976-1.969-5.375-1.235-1.616.495-2.96%201.66-3.479%203.422a1%201%200%200%200-.412-.091c-.562%200-1.018.474-1.018%201.059s.456%201.059%201.018%201.059c.104%200%20.43-.073.43-.073l5.204.04c-2.082%203.435-3.726%203.937-3.726%204.532s1.573.434%202.164.212c2.83-1.062%205.868-4.372%206.389-5.325%202.19.284%204.03.318%204.44-.634%22%2F%3E%3Cpath%20fill%3D%22url(%23rabby__d)%22%20fill-rule%3D%22evenodd%22%20d%3D%22M15.624%208.839c.116-.048.097-.225.066-.365-.073-.321-1.334-1.617-2.518-2.197-1.614-.791-2.802-.75-2.978-.386.329.701%201.853%201.36%203.444%202.047.679.293%201.37.591%201.986.901%22%20clip-rule%3D%22evenodd%22%2F%3E%3Cpath%20fill%3D%22url(%23rabby__e)%22%20fill-rule%3D%22evenodd%22%20d%3D%22M13.576%2015.894a9%209%200%200%200-1.114-.357c.447-.832.541-2.064.119-2.843-.592-1.092-1.336-1.674-3.063-1.674-.95%200-3.508.333-3.554%202.555q-.008.349.016.644l4.672.035a16.7%2016.7%200%200%201-1.736%202.397c.62.165%201.131.304%201.601.431.446.121.854.232%201.28.345a20%2020%200%200%200%201.78-1.533%22%20clip-rule%3D%22evenodd%22%2F%3E%3Cpath%20fill%3D%22url(%23rabby__f)%22%20d%3D%22M5.368%2013.99c.19%201.688%201.113%202.35%202.997%202.545%201.884.196%202.964.065%204.403.201%201.202.114%202.275.751%202.673.53.358-.197.157-.913-.322-1.372-.621-.596-1.481-1.01-2.994-1.157.301-.859.217-2.063-.251-2.719-.678-.947-1.927-1.376-3.51-1.189-1.652.196-3.235%201.043-2.996%203.161%22%2F%3E%3C%2Fg%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22rabby__b%22%20x1%3D%228.721%22%20x2%3D%2219.846%22%20y1%3D%2211.746%22%20y2%3D%2214.778%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%238697FF%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23ABB7FF%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22rabby__c%22%20x1%3D%228.721%22%20x2%3D%2219.846%22%20y1%3D%2211.746%22%20y2%3D%2214.778%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23fff%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23fff%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22rabby__d%22%20x1%3D%2217.92%22%20x2%3D%229.621%22%20y1%3D%2211.527%22%20y2%3D%223.531%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%238697FF%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%238697FF%22%20stop-opacity%3D%220%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22rabby__e%22%20x1%3D%2213.799%22%20x2%3D%225.983%22%20y1%3D%2216.184%22%20y2%3D%2211.865%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%238697FF%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%238697FF%22%20stop-opacity%3D%220%22%2F%3E%3C%2FlinearGradient%3E%3ClinearGradient%20id%3D%22rabby__f%22%20x1%3D%229.382%22%20x2%3D%2214.821%22%20y1%3D%2211.66%22%20y2%3D%2218.301%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23fff%22%2F%3E%3Cstop%20offset%3D%22.984%22%20stop-color%3D%22%23D1D8FF%22%2F%3E%3C%2FlinearGradient%3E%3CclipPath%20id%3D%22rabby__a%22%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M0%200h24v24H0z%22%2F%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%3C%2Fsvg%3E",
+      "phantom": "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cg%20clip-path%3D%22url(%23phantom__a)%22%3E%3Cpath%20fill%3D%22%23AB9FF2%22%20d%3D%22M24%200H0v24h24z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M5.893%2018.4c2.042%200%203.576-1.706%204.492-3.054a2.5%202.5%200%200%200-.173.883c0%20.787.47%201.348%201.398%201.348%201.275%200%202.636-1.074%203.341-2.23q-.075.25-.074.464c0%20.55.322.895.978.895%202.066%200%204.145-3.52%204.145-6.597C20%207.711%2018.738%205.6%2015.57%205.6%2010.002%205.6%204%2012.137%204%2016.36c0%201.658.928%202.04%201.893%202.04m7.759-8.553c0-.597.347-1.014.854-1.014.495%200%20.841.417.841%201.014%200%20.596-.346%201.026-.841%201.026-.508%200-.854-.43-.854-1.026m2.648%200c0-.597.347-1.014.854-1.014.495%200%20.841.417.841%201.014%200%20.596-.346%201.026-.841%201.026-.507%200-.854-.43-.854-1.026%22%2F%3E%3C%2Fg%3E%3Cdefs%3E%3CclipPath%20id%3D%22phantom__a%22%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M0%200h24v24H0z%22%2F%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%3C%2Fsvg%3E"
+  };
+  const injected = () => {
+    if (typeof window === "undefined" || !window.ethereum) return [];
+    return window.ethereum.providers && window.ethereum.providers.length ? window.ethereum.providers : [window.ethereum];
+  };
+  const WALLETS = [
+    { id: "metamask", name: "MetaMask", rdns: ["io.metamask", "io.metamask.flask", "io.metamask.mobile"], icon: ICONS.metamask,
+      get: "https://metamask.io/download/",
+      // Opens this page inside the MetaMask app's browser (phones without a wallet in the browser)
+      app: url => "https://metamask.app.link/dapp/" + url.replace(/^https?:\/\//, ""),
+      legacy: () => injected().find(p => p.isMetaMask && !p.isRabby && !p.isPhantom && !p.isBraveWallet && !p.isOkxWallet && !p.isCoinbaseWallet) },
+    { id: "rabby", name: "Rabby Wallet", rdns: ["io.rabby"], icon: ICONS.rabby,
+      get: "https://rabby.io/",
+      legacy: () => injected().find(p => p.isRabby) },
+    { id: "phantom", name: "Phantom", rdns: ["app.phantom"], icon: ICONS.phantom,
+      get: "https://phantom.com/download",
+      app: url => "https://phantom.app/ul/browse/" + encodeURIComponent(url) + "?ref=" + encodeURIComponent(url.replace(/(https?:\/\/[^/]+).*/, "$1")),
+      legacy: () => (typeof window !== "undefined" && window.phantom && window.phantom.ethereum) || injected().find(p => p.isPhantom) },
+  ];
   const discovered = [];
   if (typeof window !== "undefined") {
     window.addEventListener("eip6963:announceProvider", e => {
       const d = e.detail;
-      if (d && d.provider && !discovered.some(w => w.info.uuid === d.info.uuid)) discovered.push(d);
+      if (d && d.provider && d.info && !discovered.some(w => w.info.uuid === d.info.uuid)) discovered.push(d);
     });
     window.dispatchEvent(new Event("eip6963:requestProvider"));
   }
+  // All three wallets, each with its provider when installed (provider: null when not)
   function listWallets() {
-    if (discovered.length) return discovered.map(d => ({ name: d.info.name, icon: d.info.icon, provider: d.provider }));
-    if (typeof window !== "undefined" && window.ethereum) return [{ name: "Browser wallet", icon: null, provider: window.ethereum }];
-    return [];
+    return WALLETS.map(w => {
+      const d = discovered.find(x => w.rdns.includes(x.info.rdns));
+      return { id: w.id, name: w.name, icon: w.icon, get: w.get, app: w.app || null, provider: d ? d.provider : (w.legacy() || null) };
+    });
   }
 
   async function connect(provider) {

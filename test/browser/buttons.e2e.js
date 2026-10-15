@@ -57,7 +57,7 @@ function ok(name, cond, detail) {
   await p.addInitScript(addr => {
     let chainId = '0x1';   // start on the wrong network
     const listeners = {};
-    window.ethereum = {
+    window.ethereum = { isMetaMask: true,
       on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); },
       async request({ method, params }) {
         if (method === 'eth_requestAccounts') return [addr];
@@ -171,7 +171,12 @@ function ok(name, cond, detail) {
   ok('nftBack returns home', await panelShown('menuPanel'));
   await p.click('#modeNft'); await p.click('#playBtn'); await p.waitForTimeout(500);
   ok('PICK CHOG opens Chog NFT panel', await panelShown('nftPanel'));
+  const wrows = await p.$$eval('#walletButtons .wl-row', rs => rs.map(r => r.dataset.wallet + ':' + r.querySelector('.wl-tag').textContent));
+  ok('wallet list: only MetaMask, Rabby and Phantom, the installed one first with its status', JSON.stringify(wrows) === JSON.stringify(['metamask:Installed', 'rabby:Get', 'phantom:Get']), JSON.stringify(wrows));
+  ok('every wallet row has its logo', (await p.$$eval('#walletButtons .wl-ic', is => is.filter(i => i.complete && i.naturalWidth > 0).length)) === 3);
   await p.click('#walletButtons button'); await p.waitForTimeout(600);
+  ok('connected wallet row says Connected and is remembered as last used', (await text('#walletButtons .wl-row.on .wl-tag')) === 'Connected'
+    && (await p.evaluate(() => localStorage.getItem('chogDashLastWallet'))) === 'metamask');
   ok('wallet connect button connects', /Connected/.test(await text('#walletStatus')), await text('#walletStatus'));
   ok('wrong network detected, switchNet shown', await visible('#switchNet') && /chain 1/.test(await text('#walletStatus')));
   await p.click('#switchNet'); await p.waitForTimeout(800);

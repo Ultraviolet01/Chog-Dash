@@ -38,7 +38,7 @@ const svg = n => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="40
   await p.exposeFunction('nodeRpc', c => rpc(c));
   await p.exposeFunction('nodeSign', hex => acct.signMessage({ message: { raw: hex } }));
   await p.addInitScript(addr => {
-    window.ethereum = { on() {}, async request({ method, params }) {
+    window.ethereum = { isMetaMask: true, on() {}, async request({ method, params }) {
       if (method === 'eth_requestAccounts') return [addr];
       if (method === 'eth_chainId') return '0x8f';
       if (method === 'eth_call') return window.nodeRpc(params[0]);

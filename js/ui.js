@@ -882,6 +882,9 @@
     setTimeout(renderWallets, 250);   // give wallets time to announce themselves
   }
 
+  // Wallet picker, laid out like other games' and dapps' connect dialogs: one row per wallet with its logo, and
+  // Installed / Last used / Connected, or Get (not installed) / Open app (on a phone, opens Chog Dash in the wallet app)
+  const LAST_WALLET = "chogDashLastWallet";
   function renderWallets() {
     const box = $("walletButtons");
     box.innerHTML = "";
@@ -891,21 +894,37 @@
       setStatus(st, "Wallets can't connect to a page opened as a file. Run Chog Dash from a web server (see README), or use practice mode.", "err");
       return;
     }
-    const wallets = Chain.listWallets();
-    if (!wallets.length) {
-      setStatus(st, "No browser wallet found. Install a wallet that supports Monad, or open this page in your wallet app's browser. You can still play practice mode.", "err");
-      return;
-    }
+    let last = null;
+    try { last = localStorage.getItem(LAST_WALLET); } catch (e) {}
+    const phone = matchMedia("(pointer: coarse)").matches;
+    const rank = w => (w.provider ? 2 : 0) + (w.provider && w.id === last ? 1 : 0);
+    const wallets = Chain.listWallets().sort((a, b) => rank(b) - rank(a));
     wallets.forEach(w => {
+      const connected = !!S.account && !!w.provider && w.provider === S.provider;
+      const useApp = !w.provider && phone && w.app;
+      const tag = connected ? ["Connected", "on"] : w.provider ? (w.id === last ? ["Last used", "ok"] : ["Installed", "ok"]) : useApp ? ["Open app", ""] : ["Get", ""];
+      const sub = connected ? short(S.account) : w.provider ? "Detected in this browser" : useApp ? "Opens in the app" : "Not installed";
       const b = document.createElement("button");
-      b.textContent = S.account ? "Reconnect " + w.name : "Connect " + w.name;
-      b.onclick = () => connectWallet(w.provider);
+      b.type = "button";
+      b.className = "wl-row" + (w.provider ? "" : " missing") + (connected ? " on" : "");
+      b.dataset.wallet = w.id;
+      b.innerHTML = '<img class="wl-ic" alt="" src="' + w.icon + '"><span class="wl-txt"><b>' + esc(w.name) + "</b><small>" + esc(sub) +
+        '</small></span><span class="wl-tag ' + tag[1] + '">' + tag[0] + "</span>";
+      b.onclick = () => {
+        if (w.provider) connectWallet(w.provider, w.id);
+        else if (useApp) location.href = w.app(location.href);
+        else window.open(w.get, "_blank", "noopener");
+      };
       box.appendChild(b);
     });
-    if (!S.account) setStatus(st, "Choose your wallet. You'll be asked to approve the connection.");
+    if (S.account) return;
+    if (!wallets.some(w => w.provider)) {
+      setStatus(st, "None of these wallets is in this browser yet. Pick one to install it, then refresh this page." +
+        (phone ? " On a phone, Open app loads Chog Dash inside the wallet's own browser." : "") + " You can still play practice and demo mode.");
+    } else setStatus(st, "Pick your wallet. You'll be asked to approve the connection.");
   }
 
-  async function connectWallet(provider) {
+  async function connectWallet(provider, id) {
     const st = $("walletStatus");
     setStatus(st, "Waiting for the wallet...");
     try {
@@ -917,7 +936,8 @@
       S.provider = provider;
       S.account = r.account;
       S.chainId = r.chainId;
-      afterConnect();
+      if (id) try { localStorage.setItem(LAST_WALLET, id); } catch (e) {}
+      renderWallets();
     } catch (e) {
       setStatus(st, e && e.code === 4001 ? "Connection request was rejected." : "Could not connect: " + (e.message || e), "err");
     }
