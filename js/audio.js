@@ -64,6 +64,7 @@
   function unlock() {
     if (!ensure()) return;
     if (ctx.state === "suspended") ctx.resume();
+    if (musicOn) loadTrack();
     startMusic();
   }
   ["pointerdown", "keydown", "touchstart"].forEach(ev => window.addEventListener(ev, unlock, { capture: true, passive: true }));
@@ -382,7 +383,10 @@
     const t = trackEls[trackCur].el;
     if (paused) t.pause(); else { const pr = t.play(); if (pr && pr.catch) pr.catch(() => {}); }
   }
-  if (musicOn) loadTrack();
+  // The track waits until the game has loaded, so it doesn't compete with the game's own files for bandwidth
+  // (the first tap starts it sooner if it hasn't begun).
+  function loadTrackLater() { if (musicOn) setTimeout(loadTrack, 800); }
+  if (document.readyState === "complete") loadTrackLater(); else window.addEventListener("load", loadTrackLater);
 
   function startPad() {
     if (pad || !ctx) return;
