@@ -75,6 +75,24 @@ const launchOpts = { executablePath: process.env.CHROME_PATH || '/opt/pw-browser
     assert.ok(await p.isVisible('#againBtn'), name + ': PLAY AGAIN shown');
     const againH = await p.evaluate(() => document.getElementById('againBtn').getBoundingClientRect().height);
     assert.ok(againH >= 44, name + ': PLAY AGAIN is a big tap target (' + againH + ' px)');
+    if (vw.height > vw.width) {
+      // A short screen (a wallet app's browser): the buttons stay on screen; the card's middle scrolls instead
+      // Filled like a signed-in demo run: a rank, quest notes and today's quests (the tallest card)
+      await p.evaluate(() => {
+        const r = document.getElementById('goRank'); r.className = 'go-rank good'; r.innerHTML = '<span class="go-rk">#2</span><span>DEMO leaderboard: total distance 363 m, rank 2</span>';
+        // (plus extra lines, so the card is taller than the screen whatever the device)
+        document.getElementById('goNotes').innerHTML = ['Quest complete: Frequent flyer', 'Frequent flyer: Bronze badge', 'Quest complete: Mileage', 'Mileage: Bronze badge',
+          'Quest complete: Untouchable', 'Untouchable: Bronze badge', 'Weekly: Horn hunter', 'Streak: day 1'].map(t => '<div class="go-note">' + t + '</div>').join('');
+        const row = n => '<div class="go-q"><span class="go-qt">' + n + '</span><span class="go-qbar"><i style="width:40%"></i></span><span class="go-qp">1 / 3</span></div>';
+        document.getElementById('goQuests').innerHTML = '<div class="go-qh">TODAY\'S QUESTS<b>1/3</b></div>' + row('Frequent flyer') + row('Mileage') + row('Untouchable');
+        const st = document.getElementById('goStats'); st.dataset.n = 5; st.style.setProperty('--n', 5);
+        st.innerHTML = ['TIME', 'STARDUST', 'NEAR MISSES', 'ZONE', 'LASER'].map((t, i) => '<div class="go-tile" style="--i:' + i + '"><span>' + t + '</span><b>0</b></div>').join('');
+      });
+      await p.setViewportSize({ width: 375, height: 640 }); await p.waitForTimeout(400);
+      const fit = await p.evaluate(() => ['againBtn', 'endHomeBtn'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; }));
+      assert.deepStrictEqual(fit, [true, true], name + ': PLAY AGAIN and Home fully on screen at 375x640 with an overfull card');
+      await p.setViewportSize(vw); await p.waitForTimeout(300);
+    }
     await p.tap('#againBtn');
     await p.waitForFunction(() => ChogUI._game().state === 'playing', null, { timeout: 3000 });
     assert.deepStrictEqual(errs, [], name + ': no page errors');

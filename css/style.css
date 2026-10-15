@@ -899,17 +899,52 @@ body.game-over #dist, body.game-over #score { visibility: hidden; }   /* the car
 .go-qbar i { display: block; height: 100%; background: var(--c); }
 .go-qp { flex: none; min-width: 76px; text-align: right; color: var(--muted); }
 .go-q.done .go-qp { color: var(--c); }
+/* Upright phones: a tighter card (three stats across, smaller type), and if it still doesn't fit (short screens,
+   wallet apps' browsers) the middle scrolls while PLAY AGAIN and the buttons stay pinned at the bottom */
 @media (max-width: 520px) {
-  .go-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #gameOver { padding: 10px 12px; }
+  .go-card { padding: 12px 12px 10px; }
+  .go-body { max-height: calc(100vh - 44px); max-height: calc(100dvh - 44px); overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .go-body::-webkit-scrollbar { display: none; }
+  #endBar { position: sticky; bottom: 0; z-index: 2; margin-top: 10px; padding-top: 8px;
+    background: linear-gradient(to bottom, rgba(10,15,30,0), rgba(10,15,30,0.97) 26%); }
+  .go-title { font-size: 28px; }
+  .go-mode { margin-top: 4px; font-size: 11px; }
+  .go-hero { gap: 12px; margin: 8px 0 4px; }
+  .go-face { width: 50px; height: 50px; }
+  .go-total { font-size: 40px; }
+  .go-total small { font-size: 18px; }
+  .go-formula { font-size: 11px; }
+  .go-best { margin: 6px auto 2px; }
+  .go-best .nb { font-size: 24px; }
+  .go-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-top: 8px; }
+  .go-stats[data-n="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }                 /* 4 stats: one row */
+  .go-stats[data-n="5"] { grid-template-columns: repeat(6, minmax(0, 1fr)); }                 /* 5 stats: 3 + 2 wider */
+  .go-stats[data-n="5"] .go-tile { grid-column: span 2; }
+  .go-stats[data-n="5"] .go-tile:nth-child(n+4) { grid-column: span 3; }
+  .go-tile { padding: 5px 4px; border-radius: 9px; }
+  .go-tile span { font-size: 9px; letter-spacing: 1px; }
+  .go-tile b { font-size: 13px; }
+  .go-tile.zone b { font-size: 11px; }
+  .go-rank { margin-top: 8px; padding: 6px 10px; font-size: 12px; gap: 8px; }
+  .go-rk { font-size: 18px; }
+  .go-notes { margin-top: 4px; }
+  .go-note { font-size: 12px; margin-top: 1px; }
+  .go-quests { margin-top: 8px; padding: 6px 8px; }
+  .go-q { padding: 2px 0; font-size: 11px; gap: 6px; }
+  .go-q .qbadge.mini { width: 18px; height: 18px; }
+  .go-qp { min-width: 64px; }
+  .again { font-size: 22px; padding-top: 10px; padding-bottom: 10px; }
+  .again svg { width: 24px; height: 24px; }
+  .end-row { margin-top: 8px; gap: 8px; }
   .end-sm { font-size: 13px; white-space: nowrap; gap: 5px; }
-  .go-card { padding: 14px 14px 12px; }
-  .go-title { font-size: 32px; }
-  .go-total { font-size: 42px; }
-  .go-face { width: 56px; height: 56px; }
+  .end-hint { display: none; }
 }
 /* Short landscape screens (phones on their side): two columns, the result on the left, actions on the right */
 @media (max-height: 520px) and (min-width: 600px) {
-  .go-card { width: min(820px, 100%); display: flex; gap: 16px; align-items: center; text-align: center; }
+  .go-card { width: min(820px, 100%); }
+  .go-body { display: flex; gap: 16px; align-items: center; text-align: center; }
   .go-left, .go-right { flex: 1; min-width: 0; }
   .go-right #endBar { margin-top: 8px; }
 }

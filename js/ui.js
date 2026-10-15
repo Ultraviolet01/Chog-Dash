@@ -573,6 +573,7 @@
       ["ZONE", z.zone.name + (z.loop > 1 ? " · loop " + z.loop : ""), ZONE_COLORS[z.zone.id]],
     ].concat(laser ? [["LASER", (result.laserUsed || 0) + " / " + laser.charges]] : []);
     $("goStats").style.setProperty("--n", tiles.length);
+    $("goStats").dataset.n = tiles.length;
     $("goStats").innerHTML = tiles.map(([k, v, col], i) => '<div class="go-tile' + (k === "ZONE" ? " zone" : "") + '" style="--i:' + i + (col ? ";--zc:" + col : "") + '"><span>' + k + "</span><b>" + esc(v) + "</b></div>").join("");
     $("goNotes").innerHTML = "";
     goStatus(["", ""]);
