@@ -505,7 +505,8 @@
     const newBest = value > prevBest && prevBest > 0;
     const tierColor = practice ? "var(--accent)" : ({ common: "#cfd6e3", uncommon: "#6ee7a8", rare: "#4fa8ff", epic: "#b6ff3a", legendary: "#ffcf4d" })[String(g.tier || "").toLowerCase()] || "var(--accent)";
     const el = $("gameOver");
-    el.style.setProperty("--tc", tierColor);
+    el.style.setProperty("--tc", newBest ? "#ffcf4d" : tierColor);   // the card glows in the tier colour, gold for a new best
+    el.classList.toggle("best", newBest);
     $("goMode").textContent = practice ? "PRACTICE" : S.mode === "demo" ? "DEMO · " + c.name : c.name + " · " + (g.tier || "");
     $("goLabel").textContent = practice ? "DISTANCE" : "TOTAL DISTANCE";
     $("goFormula").textContent = practice ? "" : result.meters.toLocaleString() + " m flown x " + g.multiplier.toFixed(2) + " (Tier " + (g.tier || "unknown") + ")";
@@ -529,7 +530,7 @@
       ["ZONE", z.zone.name + (z.loop > 1 ? " · loop " + z.loop : ""), ZONE_COLORS[z.zone.id]],
     ].concat(laser ? [["LASER", (result.laserUsed || 0) + " / " + laser.charges]] : []);
     $("goStats").style.setProperty("--n", tiles.length);
-    $("goStats").innerHTML = tiles.map(([k, v, col]) => '<div class="go-tile' + (k === "ZONE" ? " zone" : "") + '"' + (col ? ' style="--zc:' + col + '"' : "") + '><span>' + k + "</span><b>" + esc(v) + "</b></div>").join("");
+    $("goStats").innerHTML = tiles.map(([k, v, col], i) => '<div class="go-tile' + (k === "ZONE" ? " zone" : "") + '" style="--i:' + i + (col ? ";--zc:" + col : "") + '"><span>' + k + "</span><b>" + esc(v) + "</b></div>").join("");
     $("goNotes").innerHTML = "";
     goStatus(["", ""]);
     renderGoQuests();
@@ -537,10 +538,12 @@
     cancelAnimationFrame(goAnim);
     const total = $("goTotal"), t0 = performance.now(), dur = Math.min(1400, 500 + value / 8);
     total.textContent = "0";
+    total.parentNode.classList.remove("landed");
     const tick = now => {
       const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
       total.textContent = Math.round(value * e).toLocaleString();
       if (k < 1) goAnim = requestAnimationFrame(tick);
+      else total.parentNode.classList.add("landed");   // a small pop when the count lands
     };
     $("msg").style.display = "none";
     clearTimeout(S.goTimer);
