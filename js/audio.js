@@ -176,10 +176,15 @@
       tone({ type: "sine", freq: 900, to: 110, peak: 0.25, attack: 0.02, decay: 1.1, verb: 0.7 });
       tone({ type: "triangle", freq: 600, to: 75, peak: 0.12, attack: 0.02, decay: 1.2, verb: 0.7, detune: 12 });
     },
-    nova() {   // boom + sparkle
-      tone({ type: "sine", freq: 110, to: 30, peak: 0.6, decay: 0.8, verb: 0.3 });
-      hiss({ peak: 0.45, attack: 0.005, decay: 0.9, type: "lowpass", freq: 3000, to: 200, verb: 0.5 });
-      [96, 100, 103, 108].forEach((m, i) => bell(m, 0.08 + i * 0.05, 0.07));
+    nova() {   // screen clear: a bright blast that small speakers can play, a shockwave sweep, rocks crackling apart, a shimmer
+      tone({ type: "sine", freq: 170, to: 42, peak: 0.6, attack: 0.002, decay: 0.7, verb: 0.25 });   // deep punch
+      tone({ type: "sawtooth", freq: 520, to: 70, peak: 0.28, attack: 0.002, decay: 0.55, filter: 2400, verb: 0.35, detune: 10 });   // body (mid range)
+      tone({ type: "square", freq: 1600, to: 200, peak: 0.12, attack: 0.002, decay: 0.3, filter: 4000, verb: 0.3 });   // zap on top
+      hiss({ peak: 0.7, attack: 0.003, decay: 1.1, type: "lowpass", freq: 7000, to: 180, verb: 0.55 });   // shockwave rolling out
+      hiss({ t: 0.01, peak: 0.3, attack: 0.004, decay: 0.45, type: "bandpass", freq: 6000, to: 900, q: 1.5, verb: 0.3 });   // sizzle
+      [0.07, 0.13, 0.2, 0.26, 0.34, 0.41, 0.5].forEach((t, i) =>   // rocks breaking, spreading out
+        hiss({ t, peak: 0.3 - i * 0.03, attack: 0.002, decay: 0.12, type: "bandpass", freq: 2200 - i * 180, to: 500, q: 2.5, verb: 0.25 }));
+      [84, 88, 91, 96, 100, 103].forEach((m, i) => bell(m, 0.12 + i * 0.06, 0.09));   // shimmer rising as the screen clears
     },
     radar() {   // sonar ping with echoes
       [0, 0.32, 0.64].forEach((t, i) => tone({ freq: 1320, t, peak: 0.2 / (i + 1), attack: 0.003, decay: 0.5, verb: 0.6 }));
