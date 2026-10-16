@@ -2,7 +2,9 @@
 
 ## Ranking
 
-- One entry per player: each username's best total distance, flying any Chog they own.
+- Weekly: the Chog NFT leaderboard resets every Monday 00:00 UTC (`GET /api/leaderboard?week=`, this week by default). Past weeks stay viewable. The top 10 of each week share its prize pool (docs/POOL.md).
+- With the prize pool on, only runs that used a ticket are ranked (a ticket is spent at take-off, `POST /api/run/fly`).
+- One entry per player per week: each username's best total distance, flying any Chog they own. Earlier runs win ties.
 - Screen (Ranks), laid out like a game leaderboard:
   - Podium for the top 3 (gold, silver, bronze), each with the Chog they set the record with.
   - Rows from 4th place down: rank, Chog portrait, username, Chog name and tier, total distance in large numbers.
@@ -26,7 +28,7 @@
 2. Run start (each time the ready screen shows): the server checks on-chain that the wallet owns the token, reads the token's metadata itself, and records the tier, multiplier and laser charges in a run session.
 3. Run finish: the client sends distance, run time and laser shots. The server:
    - accepts each run only once, from the same wallet;
-   - rejects a run time longer than the session has existed;
+   - rejects a run time longer than the run has existed (counted from take-off);
    - rejects a distance faster than the game allows (speed depends only on distance, so the maximum distance for a run time is known);
    - rejects more laser shots than the Chog's charges;
    - re-checks ownership on-chain;

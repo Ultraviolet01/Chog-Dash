@@ -12,7 +12,8 @@ const { privateKeyToAccount, generatePrivateKey } = require("viem/accounts");
 const { supabaseStore } = require("../lib/store.js");
 const { createHandlers } = require("../lib/handlers.js");
 
-const TYPES = { p_value: "jsonb", p_record: "jsonb", p_keys: "text[]", p_ttl: "integer", p_total: "integer", p_n: "integer" };
+const TYPES = { p_value: "jsonb", p_record: "jsonb", p_keys: "text[]", p_ttl: "integer", p_total: "integer", p_n: "integer",
+  p_week: "integer", p_delta: "integer", p_min: "integer" };
 
 async function setup() {
   const { PGlite } = await import("@electric-sql/pglite");
@@ -150,4 +151,32 @@ test("supabase store: one player's best record", async () => {
   assert.strictEqual(await store.best("0xa"), null);
   await store.updateBest("0xa", 300, { wallet: "0xa", finalScore: 300, image: "ipfs://x/1.webp" });
   assert.deepStrictEqual(await store.best("0xa"), { wallet: "0xa", finalScore: 300, image: "ipfs://x/1.webp" });
+});
+
+test("supabase store: ticket counter never goes below zero, and adds atomically", async () => {
+  const { store } = await setup();
+  assert.strictEqual(await store.add("tickets:w", -1, 0), null, "no tickets: can't spend one");
+  assert.strictEqual(await store.add("tickets:w", 3, 0), 3);
+  assert.strictEqual(await store.add("tickets:w", -1, 0), 2);
+  const spends = await Promise.all([1, 2, 3].map(() => store.add("tickets:w", -1, 0)));
+  assert.deepStrictEqual(spends.filter(v => v != null).length, 2, "only 2 of 3 parallel spends succeed");
+  assert.strictEqual(await store.get("tickets:w"), 0);
+});
+
+test("supabase store: weekly boards are separate, earlier runs win ties, and a player can be removed", async () => {
+  const { store } = await setup();
+  const rec = (w, t) => ({ wallet: w, finalScore: t });
+  const w1 = store.week(2950), w2 = store.week(2951);
+  await w1.updateBest("a", 500, rec("a", 500));
+  await w1.updateBest("b", 500, rec("b", 500));
+  await w1.updateBest("c", 900, rec("c", 900));
+  assert.strictEqual(await w1.updateBest("c", 800, rec("c", 800)), false, "a lower run doesn't replace the best");
+  await w2.updateBest("b", 100, rec("b", 100));
+  assert.deepStrictEqual((await w1.top(10)).map(r => r.wallet), ["c", "a", "b"], "a set 500 first, so a ranks above b");
+  assert.deepStrictEqual((await w2.top(10)).map(r => r.wallet), ["b"], "another week is its own board");
+  assert.deepStrictEqual([await w1.rank("a"), await w1.rank("b"), await w1.rank("z")], [2, 2, null]);
+  assert.strictEqual((await w1.best("c")).finalScore, 900);
+  await w1.remove("c");
+  assert.deepStrictEqual((await w1.top(10)).map(r => r.wallet), ["a", "b"], "disqualified");
+  assert.strictEqual(await w2.rank("b"), 1, "removing from one week leaves the others alone");
 });

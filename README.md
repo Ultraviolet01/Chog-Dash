@@ -22,7 +22,11 @@ A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis]
   - Ownership is checked on-chain again when a run starts and when it's submitted. The Chog's own artwork is used as the rider.
   - Abilities and the tier distance multiplier come from the token's real metadata.
   - The rocket's look comes from its traits too (looks only): painted in its Background colour, an Aura trail, special Skull and Radioactive rockets, and a unique rocket for each one-of-one Legendary. See docs/TRAIT-MAPPING.md.
-  - Validated runs go on the official NFT leaderboard.
+  - Validated runs go on the weekly Chog NFT leaderboard (resets every Monday 00:00 UTC).
+  - Tickets and the weekly prize pool (details in docs/POOL.md):
+    - One ticket = one ranked run, $0.50 worth of $CHOG, paid from your wallet into a public pool contract on Monad. A ticket is used when the rocket takes off.
+    - No ticket: you can still fly; the run just isn't ranked.
+    - Every week the top 10 share that week's pool (25/18/13/10/8/7/6/5/4/4%); unearned shares roll over. No fee.
 - **Demo mode (anyone, for judging and visitors)**
   - The DEMO tab on the home screen. No Chog needed. Pick one of 5 real Chog Genesis NFTs and fly it with every Chog NFT feature.
   - One Chog from each tier, so every kind of rocket shows up, two with Laser Eyes:
@@ -148,14 +152,17 @@ The run passes through five zones that repeat in order. Each zone lasts longer t
   - `npm install`
   - `npm run dev`, then open http://localhost:3000
   - Wallets can't connect to a page opened as a file, so NFT mode needs a server.
-- Deploy: the repo is ready for Vercel (static files plus the `api/` functions).
-  1. Create a Supabase project and run `supabase/schema.sql` in its SQL editor.
-  2. Set the variables in `.env.example` on Vercel: `SESSION_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (and optionally `MONAD_RPC_URL`).
+- Deploy: the repo is ready for Vercel (static files plus one `api/` function for every route).
+  1. Create a Supabase project and run `supabase/schema.sql` in its SQL editor (run it again after updates).
+  2. Set the variables in `.env.example` on Vercel: `SESSION_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `POOL_ADMIN` (the pool owner's wallet address), and optionally `MONAD_RPC_URL`.
+  3. Prize pool: open `/admin.html`, connect the `POOL_ADMIN` wallet and deploy the pool contract (see docs/POOL.md).
 
 ## Checks and tests
 
 - `npm run test:browser`: headless browser tests of mouse control, the zone loop, the laser rules and the full NFT flow, against a mock wallet, contract and IPFS.
-- `npm test`: unit and API tests (trait mapping, tier scoring, contract decoding, gateway fallback, sign-in, run validation, leaderboard).
+- `npm test`: unit and API tests (trait mapping, tier scoring, contract decoding, gateway fallback, sign-in, run validation, leaderboard, tickets and the weekly pool, the browser's transaction encoding).
+- `npm run test:contract`: the pool contract's Foundry tests (needs Foundry).
+- `npm run test:fork`: tickets end to end on a local fork of Monad mainnet with real $CHOG (needs `anvil --fork-url https://rpc.monad.xyz --port 8546`).
 - `npm run verify-contract`: reads the live contract (chain ID, interfaces, supply, token ID range, tokenURI). Writes `data/contract-report.json`.
 - `npm run audit-metadata`: loads every token's metadata, lists every trait type and value, and reports what the gameplay mapping does with each. Writes `data/collection-audit.json` and `docs/TRAIT-AUDIT.md`.
 
@@ -166,7 +173,10 @@ The run passes through five zones that repeat in order. Each zone lasts longer t
   - `js/traits.js`: trait normalisation, ability mapping, scoring (shared with the server).
   - `js/chain.js`, `js/metadata.js`: wallet, contract reads, IPFS gateway fallback.
   - `js/art.js`, `js/scenery.js`, `js/game.js`, `js/ui.js`: rider art, space scenery, game, menus.
-- `api/`, `lib/`: leaderboard server (Vercel functions).
+- `admin.html`, `js/admin.js`: the pool owner's page (deploy, results, pay winners).
+  - `js/tickets.js`: ticket and pool transactions from the player's or owner's wallet.
+- `contracts/`: the pool contract and its tests (Foundry); `js/pool-artifact.js` is its build (`npm run build:pool`).
+- `api/`, `lib/`: leaderboard server (one Vercel function, `api/router.js`, that vercel.json routes every API path to); `lib/pool.js`: tickets and the weekly pool.
 - `server/dev.js`: local server for the game plus API.
 - `scripts/`: contract and metadata audits.
 - `docs/`: verification status, trait mapping, art, leaderboard design.

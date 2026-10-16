@@ -215,8 +215,8 @@ function ok(name, cond, detail) {
   ok('E fires again (9 -> 8)', (await text('#laserCount')) === '8/10');
   await p.evaluate(() => { const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -1, true); });
   await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 5000 });
-  await p.waitForFunction(() => /Validated|Not/.test(document.getElementById('goRank').textContent), null, { timeout: 15000 });
-  ok('NFT run submitted and validated', /Validated/.test(await text('#goRank')), (await text('#goRank')).slice(0, 120));
+  await p.waitForFunction(() => /This week: total|Not/.test(document.getElementById('goRank').textContent), null, { timeout: 15000 });
+  ok('NFT run submitted and validated (on this week\'s board)', /This week: total distance/.test(await text('#goRank')), (await text('#goRank')).slice(0, 120));
   await p.waitForFunction(() => document.getElementById('gameOver').classList.contains('show'), null, { timeout: 5000 });
   ok('game over shows PLAY AGAIN, Share run, Ranks and Home', await visible('#againBtn') && await visible('#cardBtn') && await visible('#endLbBtn') && await visible('#endHomeBtn'));
   await p.waitForTimeout(700);   // retries are ignored for 0.6 s after a crash, so a frantic click doesn't skip the result

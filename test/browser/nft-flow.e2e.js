@@ -119,7 +119,7 @@ const chain = {
   await shot('play');
   console.log('hud:', await text('#score'), '|', await text('#laserBox'));
   await p.waitForFunction(() => document.getElementById('gameOver').classList.contains('show'), null, { timeout: 60000 });
-  await p.waitForFunction(() => /Validated|Not/.test(document.getElementById('goRank').textContent), null, { timeout: 15000 });
+  await p.waitForFunction(() => /This week: total|Not/.test(document.getElementById('goRank').textContent), null, { timeout: 15000 });
   const end = await text('#goRank');
   assert.match(await text('#gameOver'), /GAME OVER/);
   assert.match(await text('#goFormula'), /m flown x 1\.15 \(Tier Rare\)/);
@@ -128,7 +128,7 @@ const chain = {
   assert.strictEqual(used.bankUsed, 2, 'both streak lives spent before the crash');
   assert.strictEqual(await store.get('lives:' + ME), 0, 'server took them out of the bank');
   console.log('end:', end);
-  assert.match(end, /Validated\. Total distance \d+ m \(x1\.15\), rank 1/);
+  assert.match(end, /This week: total distance \d+ m \(x1\.15\), rank 1/);
   // Today's quests show on the game over card, refreshed with this run
   await p.waitForFunction(() => document.querySelectorAll('#goQuests .go-q').length === 3, null, { timeout: 5000 });
   console.log('game over quests:', await text('#goQuests'));

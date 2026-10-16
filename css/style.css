@@ -987,3 +987,76 @@ body.game-over #dist, body.game-over #score { visibility: hidden; }   /* the car
 .wl-row.missing .wl-tag { color: var(--accent); border-color: rgba(255,184,77,0.45); }
 @media (pointer: coarse) { .wl-row { padding: 12px; min-height: 56px; } }
 @media (prefers-reduced-motion: reduce) { .wl-row { transition: none; } }
+
+/* ---------- Tickets and the weekly prize pool (Chog NFT mode) ---------- */
+/* The bar on the Chog NFT ready screen: tickets, this week's pool, Buy */
+.ticket-bar { position: absolute; left: 50%; bottom: 62px; transform: translateX(-50%); display: none; align-items: center; gap: 14px;
+  padding: 8px 10px 8px 14px; border-radius: 14px; pointer-events: auto; background: rgba(10,15,30,0.9); border: 1px solid rgba(255,184,77,0.45);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.45); z-index: 4; white-space: nowrap; }
+.ticket-bar.show { display: flex; animation: fadeIn 0.3s ease-out; }
+body.flying .ticket-bar, body.game-over .ticket-bar { display: none; }
+.tb-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); }
+.tb-item svg { width: 18px; height: 18px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.tb-item b { font: 15px 'Bungee', Impact, sans-serif; color: var(--ink); letter-spacing: 0; }
+.ticket-bar.empty .tb-item:first-child b { color: #ffb3a1; }
+.tb-buy { padding: 8px 14px; font-size: 13px; border-radius: 10px; }
+.ticket-bar.empty .tb-buy { animation: goInvite 2.4s ease-in-out infinite; }
+@media (max-width: 520px) {
+  /* Phones: before take-off the bar takes the Stardust row's place (that row only matters in flight), clear of the
+     quest strip and the LASER button */
+  .ticket-bar { gap: 10px; padding: 6px 8px 6px 10px; bottom: max(12px, env(safe-area-inset-bottom)); }
+  body:has(.ticket-bar.show) #dustBox { display: none; }
+  .tb-item span { display: none; }
+  .tb-item:nth-child(2)::before { content: "POOL"; font-size: 10px; letter-spacing: 1px; }
+}
+
+/* The ticket panel */
+.tk .lb-wrap { max-width: 640px; }
+.tk-pool { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 4px 0 14px; }
+.tk-pool > div { background: #0b1020; border: 1px solid #1d2740; border-radius: 12px; padding: 10px; text-align: center; }
+.tk-pool span { display: block; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); }
+.tk-pool b { display: block; font: 18px 'Bungee', Impact, sans-serif; color: var(--accent); margin: 4px 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk-pool small { font-size: 11px; color: var(--muted); font-weight: 700; }
+.tk-buy { background: rgba(13,19,34,0.95); border: 1px solid rgba(255,184,77,0.45); border-radius: 16px; padding: 14px; }
+.tk-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.tk-label { font-weight: 700; }
+.tk-step { display: flex; align-items: center; gap: 10px; }
+.tk-step button { width: 40px; height: 40px; padding: 0; font-size: 20px; }
+.tk-step b { font: 24px 'Bungee', Impact, sans-serif; min-width: 34px; text-align: center; }
+.tk-quick { display: flex; gap: 6px; margin-left: auto; }
+.tk-quick button { padding: 6px 12px; min-width: 40px; }
+.tk-quick button.on { border-color: var(--accent); color: var(--accent); }
+.tk-price { margin-top: 12px; font-size: 13px; color: var(--muted); font-weight: 700; }
+.tk-total { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.tk-total span { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); }
+.tk-total b { font: 18px 'Bungee', Impact, sans-serif; color: var(--ink); }
+.tk-bal { margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.tk-bal.warn { color: #ffb3a1; }
+.tk-go { width: 100%; margin-top: 12px; font: 20px 'Bungee', Impact, sans-serif; padding: 12px; border-radius: 12px; box-shadow: 0 5px 0 #8a5a12; }
+.tk-go:disabled { box-shadow: none; }
+.tk-get { display: block; text-align: center; margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--accent2); }
+.tk-steps { display: none; list-style: none; padding: 0; margin: 12px 0 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.tk-steps.on { display: grid; gap: 4px; }
+.tk-steps li::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; border: 2px solid var(--line); vertical-align: -1px; }
+.tk-steps li.doing { color: var(--ink); }
+.tk-steps li.doing::before { border-color: var(--accent); border-top-color: transparent; animation: spin 0.8s linear infinite; }
+.tk-steps li.done { color: var(--ok); }
+.tk-steps li.done::before { background: var(--ok); border-color: var(--ok); }
+.tk-steps li.bad { color: #ffb3a1; }
+.tk-steps li.bad::before { background: var(--danger); border-color: var(--danger); }
+.tk-rules { margin: 14px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.tk .lb-rule a { color: var(--accent2); }
+@media (max-width: 520px) { .tk-pool b { font-size: 15px; white-space: normal; overflow-wrap: anywhere; line-height: 1.15; } .tk-pool > div { padding: 8px 6px; } .tk-quick { margin-left: 0; } }
+
+/* Ranks: the week selector and each top-10 place's prize */
+.lb-week { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 auto 14px; max-width: 760px;
+  padding: 8px 10px; border-radius: 12px; background: #0b1020; border: 1px solid rgba(255,184,77,0.35); }
+.lb-week button { padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+.lbw-mid { text-align: center; min-width: 0; }
+.lbw-mid b { display: block; font: 15px 'Bungee', Impact, sans-serif; color: var(--accent); }
+.lbw-mid span { display: block; font-size: 12px; font-weight: 700; color: var(--muted); }
+.prize { font-size: 11px; font-weight: 700; color: var(--accent); background: rgba(255,184,77,0.12); border: 1px solid rgba(255,184,77,0.4);
+  border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.pod .prize { display: inline-block; margin-top: 4px; }
+.lb-row .prize { flex: none; margin-right: 8px; }
+@media (prefers-reduced-motion: reduce) { .ticket-bar.show, .ticket-bar.empty .tb-buy { animation: none; } }

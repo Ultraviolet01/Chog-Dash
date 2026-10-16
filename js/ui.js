@@ -4,7 +4,7 @@
  */
 (function (root) {
   const cfg = root.ChogConfig, T = root.ChogTraits, Chain = root.ChogChain, Meta = root.ChogMetadata, Art = root.ChogArt,
-    Demo = root.ChogDemo;
+    Demo = root.ChogDemo, TKT = root.ChogTickets;
   const $ = id => document.getElementById(id);
   const dev = new URLSearchParams(location.search).get("dev") || "";
   const PRACTICE_BEST = "chogDashPracticeBest";
@@ -20,6 +20,8 @@
     chog: null,             // { tokenId, name, metadata, gameplay, imageUrl, riderCanvas, riderPoses }
     demoChog: null,         // the same, for one of the 5 demo Chogs (demo: true)
     auth: null, authError: "",
+    // Tickets and the weekly pool (Chog NFT mode): ticketsOn once a pool contract is live; pool = GET /pool
+    ticketsOn: false, tickets: null, pool: null, tkCount: 1,
     runId: null, activeRunId: null, activeWait: null, sessionWait: null, startedReq: -1, runStatus: { text: "", kind: "" }, sessionReq: 0, runCounter: 0,
     selectReq: 0, holdingsReq: 0, signReq: 0, metaCache: {},
     username: null,
@@ -30,7 +32,7 @@
   const short = a => (a ? a.slice(0, 6) + "..." + a.slice(-4) : "");
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function show(panelId) {
-    ["menuPanel", "nftPanel", "lbPanel", "howPanel", "questPanel", "demoPanel"].forEach(id => $(id).classList.toggle("show", id === panelId));
+    ["menuPanel", "nftPanel", "lbPanel", "howPanel", "questPanel", "demoPanel", "ticketPanel"].forEach(id => $(id).classList.toggle("show", id === panelId));
     if (panelId !== "questPanel") clearInterval(questTimer);
     if (panelId === "menuPanel") { refreshHome(); $("questStrip").classList.remove("show"); stopReveal(); }
   }
@@ -96,6 +98,16 @@
     $("howBtn").onclick = openHow;
     $("nftBack").onclick = () => { const back = S.nftReturn || "menuPanel"; S.nftReturn = null; back === "demoPanel" ? openDemo() : show(back); };
     $("lbBack").onclick = () => show("menuPanel");
+    $("lbPrev").onclick = () => openLeaderboard("nft", lbWeek - 1);
+    $("lbNext").onclick = () => openLeaderboard("nft", lbWeek + 1);
+    $("tbBuy").addEventListener("pointerdown", e => e.stopPropagation());   // not a tap on the game (which would take off)
+    $("tbBuy").onclick = openTickets;
+    $("tkBack").onclick = closeTickets;
+    $("tkMinus").onclick = () => setTicketCount(S.tkCount - 1);
+    $("tkPlus").onclick = () => setTicketCount(S.tkCount + 1);
+    document.querySelectorAll(".tk-quick button").forEach(b => { b.onclick = () => setTicketCount(Number(b.dataset.n)); });
+    $("tkBuyBtn").onclick = () => buyTickets(S.tkCount);
+    $("tkGetChog").href = cfg.tickets.buyUrl;
     $("howBack").onclick = () => show("menuPanel");
     $("questBtn").onclick = openQuests;
     $("questBack").onclick = () => show("menuPanel");
@@ -213,7 +225,7 @@
         "<li><b>Laser Eyes</b> (laser Eyes trait): " + cfg.abilities.laserEyes.charges + " shots that destroy what's in your path. " +
           (isTouch ? "Tap the LASER button (bottom right) to fire" : "Press " + keycap("E") + " to fire") + "</li>" +
         "<li><b>Total distance</b> = distance flown x tier:</li></ul><div class='tiers'>" + tiers + "</div>" +
-        "<ul><li>Your Chog's traits style the rocket and its aura trail</li><li>Ranked on the leaderboard under your username</li><li>Daily and weekly quests earn badges</li><li>Quest streaks bank extra lives: 7 days +1, 14 days +3, 21 days +5</li></ul></div>" +
+        "<ul><li>Your Chog's traits style the rocket and its aura trail</li><li>Tickets: $0.50 in $CHOG per ranked run. The weekly leaderboard's top 10 share the week's prize pool (resets Monday 00:00 UTC)</li><li>Ranked under your username</li><li>Daily and weekly quests earn badges</li><li>Quest streaks bank extra lives: 7 days +1, 14 days +3, 21 days +5</li></ul></div>" +
       '<p class="how-demo"><span class="demo-tag">DEMO</span> No Chog yet? The <b>DEMO</b> tab lets you fly 5 demo Chogs with every Chog NFT feature, and has its own DEMO leaderboard.</p>';
     // Page 6: a sample streak, 4 days in, with the day-7 reward ahead
     $("howStreak").innerHTML = '<div class="hs-top">' + bigFlame(4, false) + '<div class="qs-big">4<span>DAY STREAK</span></div></div>' +
@@ -387,6 +399,7 @@
   }
 
   function backToMenu() {
+    $("ticketBar").classList.remove("show");
     showEndBar(false);
     S.autoStart = false;
     closeCard();
@@ -460,6 +473,15 @@
     S.activeWait = !S.runId && S.sessionWait && S.sessionWait.req === S.sessionReq ? S.sessionWait.promise : null;
     S.startedReq = S.sessionReq;
     S.runId = null;
+    renderTicketBar();
+    // Tell the server the rocket took off: a Chog NFT run spends its ticket now (and the run time counts from here)
+    if (S.mode === "nft" || S.mode === "demo") {
+      const flying = runSession();
+      S.activeFly = flying.then(id => (id ? apiCall("/run/fly", { runId: id }, S.auth && S.auth.token) : null)).then(r => {
+        if (r && r.tickets != null) S.tickets = r.tickets;
+        return r;
+      }).catch(() => null);
+    }
     stopReveal();
     renderQuestStrip();
     startLiveQuests();
@@ -472,6 +494,7 @@
 
   function onEnd(result) {
     setFlying(false);
+    $("ticketBar").classList.remove("show");
     clearInterval(liveTimer);
     $("questToast").classList.remove("show");
     rememberRun(result);
@@ -527,8 +550,10 @@
         if (!live()) return;
         if (r.status === "validated" && S.lastRun) { S.lastRun.rank = r.rank || null; S.lastRun.total = r.finalScore; }
         goStatus(r.status === "validated"
-          ? ["Validated. Total distance " + r.finalScore + " m (x" + r.multiplier + ")" + (r.rank ? ", rank " + r.rank : ""), "good", r.rank]
-          : ["Not validated: " + (r.reason || r.status), "warn"]);
+          ? ["This week: total distance " + r.finalScore + " m (x" + r.multiplier + ")" + (r.rank ? ", rank " + r.rank : ""), "good", r.rank]
+          : r.status === "unranked"
+            ? ["Not ranked: no ticket for this run. Buy tickets to compete for the weekly pool", "warn"]
+            : ["Not validated: " + (r.reason || r.status), "warn"]);
         goNotes(questLines(r.quests));
         if (r.quests && r.quests.badges.length) revealBadges(r.quests.badges);
         if (r.quests && r.quests.livesEarned) revealBadges([{ lives: r.quests.livesEarned, day: r.quests.streakDay }]);
@@ -841,6 +866,7 @@
       portraitTip(),
       startText(),
     ]);
+    renderTicketBar();
   }
 
   // Demo: a server run session puts the run on the DEMO leaderboard (signed in, any wallet, with a pilot name)
@@ -888,7 +914,13 @@
       const r = await call;
       if (req !== S.sessionReq) return;
       if (S.startedReq !== req) S.runId = r.runId;   // (already flying: that run takes this session, see onStart)
-      S.runStatus = { text: "Eligible: this run will be submitted (server-verified Tier " + r.tier + ", x" + r.multiplier + ")", kind: "good" };
+      S.ticketsOn = !!r.ticketsOn; S.tickets = r.tickets;
+      S.runStatus = !S.ticketsOn
+        ? { text: "Eligible: this run will be submitted (server-verified Tier " + r.tier + ", x" + r.multiplier + ")", kind: "good" }
+        : S.tickets > 0
+          ? { text: "Ranked run: uses 1 of your " + S.tickets + " ticket" + (S.tickets === 1 ? "" : "s") + " when you take off (Tier " + r.tier + ", x" + r.multiplier + ")", kind: "good" }
+          : { text: "No ticket: this run won't be ranked. Buy tickets to compete for this week's prize pool", kind: "warn" };
+      if (S.ticketsOn) loadPool();
       // Streak lives from the bank, only before the run starts
       if (game.state === "ready") { S.bankLives = r.bankLives || 0; game.configure({ bankLives: S.bankLives }); }
     } catch (e) {
@@ -1040,6 +1072,7 @@
     setStatus($("pilotStatus"), S.username ? "" : "Choose a pilot name to enter the leaderboard.", S.username ? "" : "warn");
     refreshHome();
     loadHoldings();
+    claimPending();
   }
 
   async function savePilot() {
@@ -1269,12 +1302,14 @@
   }
 
   // Two real leaderboards: Chog NFT runs, and demo runs (the 5 demo Chogs, any signed-in wallet)
-  let lbBoard = "nft";
-  function renderBoard(r) {
+  let lbBoard = "nft", lbWeek = null;
+  // prizes: wallet -> label shown on the entry (this week: each rank's share; a finished week: what it pays)
+  function renderBoard(r, prizes) {
+    const prize = e => (prizes && prizes[e.rank] ? '<div class="prize">' + esc(prizes[e.rank]) + "</div>" : "");
     const podium = $("lbPodium"), list = $("lbList"), mine = S.auth && S.auth.account, demo = lbBoard === "demo";
     podium.innerHTML = ""; list.innerHTML = "";
     if (!r.entries.length) {
-      list.innerHTML = '<div class="lb-empty"><div class="t">' + (demo ? "No demo pilots yet" : "No pilots yet") + "</div><p>" +
+      list.innerHTML = '<div class="lb-empty"><div class="t">' + (demo ? "No demo pilots yet" : r.current === false ? "Nobody flew that week" : "No pilots yet this week") + "</div><p>" +
         (demo ? "Fly a demo Chog, signed in with any wallet, and take the top spot." : "Fly a Chog you own and take the top spot.") + "</p></div>";
       const b = document.createElement("button");
       b.textContent = demo ? "Fly a demo Chog" : "Fly a Chog";
@@ -1290,7 +1325,7 @@
       d.className = "pod lb-entry r" + e.rank + (mine && e.wallet === mine ? " mine" : "");
       d.innerHTML = '<div class="medal">' + e.rank + "</div>";
       d.appendChild(chogImg(e.image, "face"));
-      d.insertAdjacentHTML("beforeend", entryNames(e) + '<div class="big">' + fmtM(e.totalMeters) + "</div>");
+      d.insertAdjacentHTML("beforeend", entryNames(e) + '<div class="big">' + fmtM(e.totalMeters) + "</div>" + prize(e));
       podium.appendChild(d);
     });
     r.entries.slice(3).forEach(e => {
@@ -1298,7 +1333,7 @@
       d.className = "lb-row lb-entry" + (mine && e.wallet === mine ? " mine" : "");
       d.innerHTML = '<div class="rk">' + e.rank + "</div>";
       d.appendChild(chogImg(e.image, "face"));
-      d.insertAdjacentHTML("beforeend", '<div class="names">' + entryNames(e) + '</div><div class="big">' + fmtM(e.totalMeters) + "</div>");
+      d.insertAdjacentHTML("beforeend", '<div class="names">' + entryNames(e) + "</div>" + prize(e) + '<div class="big">' + fmtM(e.totalMeters) + "</div>");
       list.appendChild(d);
     });
   }
@@ -1319,7 +1354,7 @@
     bar.innerHTML = '<span class="you">YOU</span><div class="names"><div class="who">' +
       esc(signedIn ? (S.username || short(S.account)) : "Not signed in") + '</div><div class="hint">' +
       (demo ? (signedIn ? "Not ranked yet. Finish a demo run to get on the DEMO board." : "Connect any wallet (no Chog needed) and pick a pilot name to get on the DEMO board.")
-        : signedIn ? "Not ranked yet. Finish a Chog NFT run to get on the board." : "Connect a wallet in Chog NFT mode to see your rank.") + "</div></div>";
+        : signedIn ? (S.ticketsOn ? "Not ranked this week. Fly a ticketed Chog NFT run to get on the board." : "Not ranked yet. Finish a Chog NFT run to get on the board.") : "Connect a wallet in Chog NFT mode to see your rank.") + "</div></div>";
     const b = document.createElement("button");
     b.textContent = signedIn ? "Fly" : "Connect";
     b.onclick = demo
@@ -1328,19 +1363,22 @@
     bar.appendChild(b);
   }
 
-  // board: "nft" or "demo"; by default the one that matches the mode you're in
-  async function openLeaderboard(board) {
+  // board: "nft" or "demo"; by default the one that matches the mode you're in. week: a past week of the Chog NFT board.
+  const weekLabel = ms => new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  async function openLeaderboard(board, week) {
     lbBoard = board || (S.mode === "demo" || (!S.mode && homeMode === "demo") ? "demo" : "nft");
     const demo = lbBoard === "demo";
+    if (demo || week == null) lbWeek = null;
     show("lbPanel");
     $("lbTabNft").classList.toggle("on", !demo);
     $("lbTabDemo").classList.toggle("on", demo);
     $("lbPanel").classList.toggle("demo-board", demo);
-    $("lbSub").textContent = demo ? "ALL TIME · DEMO RUNS" : "ALL TIME · CHOG NFT RUNS";
+    $("lbWeek").style.display = demo ? "none" : "";
+    $("lbSub").textContent = demo ? "ALL TIME · DEMO RUNS" : "WEEKLY · CHOG NFT RUNS";
     $("lbRule").textContent = demo
       ? "The DEMO leaderboard: runs with the 5 demo Chogs by any signed-in wallet, checked by the server like Chog NFT runs (run time, distance and Laser Eyes limits). Total distance = distance flown x the demo Chog's tier. Separate from the Chog NFT leaderboard."
-      : "Total distance = distance flown x the Chog's tier multiplier. Each player's best run with any Chog they own counts. Only validated Chog NFT runs appear here; practice and demo runs never do.";
-    $("lbRefresh").onclick = () => openLeaderboard(lbBoard);
+      : "Weekly: resets every Monday 00:00 UTC. Total distance = distance flown x the Chog's tier multiplier; each player's best ticketed run of the week counts. The top 10 share the week's prize pool (" + cfg.tickets.split.join("/") + "%); shares nobody earns roll over. Practice and demo runs never appear here.";
+    $("lbRefresh").onclick = () => openLeaderboard(lbBoard, lbBoard === "nft" ? lbWeek : null);
     const st = $("lbStatus");
     $("lbPodium").innerHTML = "";
     $("lbList").innerHTML = '<div class="lb-row skeleton"></div>'.repeat(4);
@@ -1348,15 +1386,187 @@
     renderMe(null);
     const want = lbBoard;
     try {
-      const r = await apiCall(demo ? "/demo-leaderboard" : "/leaderboard", null, authValid() ? S.auth.token : null);
+      const tok = authValid() ? S.auth.token : null;
+      const r = await apiCall(demo ? "/demo-leaderboard" : "/leaderboard" + (week != null ? "?week=" + week : ""), null, tok);
       if (want !== lbBoard) return;   // switched tab meanwhile
-      renderBoard(r);
+      let prizes = null;
+      if (!demo) {
+        lbWeek = r.week;
+        $("lbWeekLabel").textContent = r.current ? "THIS WEEK" : "WEEK OF " + weekLabel(r.startsAt).toUpperCase();
+        $("lbNext").style.visibility = r.current ? "hidden" : "visible";
+        $("lbWeekInfo").textContent = "";
+        // The prize: this week's pool and each rank's share, or what a finished week pays
+        const extra = r.current ? loadPool() : apiCall("/pool/results?week=" + r.week, null, tok).catch(() => null);
+        extra.then(x => {
+          if (want !== lbBoard || lbWeek !== r.week || !x) return;
+          if (r.current) {
+            if (!x.enabled) { $("lbWeekInfo").textContent = "Resets in " + countdown(r.endsAt - Date.now()); return; }
+            $("lbWeekInfo").textContent = "Pool " + chogText(x.current) + " · resets in " + countdown(r.endsAt - Date.now());
+            const pz = {}; cfg.tickets.split.forEach((pc, i) => { pz[i + 1] = pc + "%"; });
+            renderBoard(r, pz);
+          } else {
+            $("lbWeekInfo").textContent = x.paid ? "Paid out" : x.available != null ? "Pool " + chogText(x.available) + (x.payable ? " · ready to pay" : " · results under review") : "";
+            const pz = {}; x.winners.forEach(w => { if (w.amount) pz[w.rank] = chogText(w.amount); });
+            renderBoard(r, pz);
+          }
+        });
+      }
+      renderBoard(r, prizes);
       renderMe(r.me);
     } catch (e) {
       if (want !== lbBoard) return;
       $("lbList").innerHTML = "";
       st.className = "lb-status err";
       st.textContent = e.offline ? "The leaderboard server isn't reachable from here. It runs on the deployed site (see README)." : e.message;
+    }
+  }
+
+  // ---------- Tickets and the weekly prize pool (Chog NFT mode) ----------
+  // One ticket = one ranked Chog NFT run. The player's wallet pays $CHOG into the pool contract (js/tickets.js);
+  // the server credits the tickets after reading the payment on-chain. A ticket is used when the rocket takes off.
+  const PENDING_KEY = "chogDashTicketTx";
+  const chogText = wei => (wei == null ? "-" : TKT.format(wei) + " CHOG");
+  const usdText = (wei, usd) => (wei == null || !usd ? "" : "about $" + (Number(BigInt(wei) / 10n ** 15n) / 1000 * usd).toFixed(2));
+  function countdown(ms) {
+    const m = Math.max(0, Math.round(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60);
+    return d ? d + "d " + h + "h" : h ? h + "h " + (m % 60) + "m" : (m % 60) + "m";
+  }
+  async function loadPool() {
+    try { S.pool = await apiCall("/pool", null, authValid() ? S.auth.token : null); }
+    catch (e) { return S.pool; }
+    S.ticketsOn = !!S.pool.enabled;
+    if (S.pool.me) S.tickets = S.pool.me.tickets;
+    renderTicketBar();
+    if ($("ticketPanel").classList.contains("show")) renderTicketPanel();
+    return S.pool;
+  }
+  // The bar on the Chog NFT ready screen
+  function renderTicketBar() {
+    const on = S.mode === "nft" && S.ticketsOn && game && game.state === "ready";
+    $("ticketBar").classList.toggle("show", !!on);
+    if (!on) return;
+    $("tbCount").textContent = S.tickets == null ? "-" : S.tickets;
+    $("ticketBar").classList.toggle("empty", !S.tickets);
+    $("tbPool").textContent = S.pool && S.pool.current != null ? chogText(S.pool.current) : "-";
+  }
+
+  function openTickets() {
+    if (!authValid()) { S.nftReturn = null; openNft(); return; }
+    S.tkReturn = $("lbPanel").classList.contains("show") ? "lbPanel" : null;
+    show("ticketPanel");
+    setStatus($("tkStatus"), "");
+    $("tkSteps").className = "tk-steps";
+    renderTicketPanel();
+    loadPool();
+    if (S.provider && S.account) TKT.chogBalance(S.provider, S.account).then(b => { S.chogBalance = b; renderTicketPanel(); }).catch(() => {});
+  }
+  function closeTickets() {
+    const back = S.tkReturn; S.tkReturn = null;
+    if (back) { show(back); return; }
+    show(null);   // back to the ready screen
+    if (game.state === "ready" && S.mode === "nft") { requestRunSession(); renderNftReady(); }
+  }
+  function setTicketCount(n) { S.tkCount = Math.max(1, Math.min(cfg.tickets.maxPerBuy, n || 1)); renderTicketPanel(); }
+  function renderTicketPanel() {
+    const p = S.pool || {}, n = S.tkCount;
+    $("tkPool").textContent = chogText(p.current);
+    $("tkPoolUsd").textContent = usdText(p.current, p.chogUsd);
+    $("tkReset").textContent = p.weekEndsAt ? countdown(p.weekEndsAt - Date.now()) : "-";
+    $("tkHave").textContent = S.tickets == null ? "-" : S.tickets;
+    $("tkCount").textContent = n;
+    document.querySelectorAll(".tk-quick button").forEach(b => b.classList.toggle("on", Number(b.dataset.n) === n));
+    const per = p.perTicket ? BigInt(p.perTicket) : null;
+    $("tkPrice").textContent = per ? "1 ticket = " + chogText(per) + " ($" + cfg.tickets.priceUsd.toFixed(2) + " at $" + Number(p.chogUsd).toPrecision(3) + " per CHOG)" : "Price loading...";
+    $("tkTotal").textContent = per ? chogText(per * BigInt(n)) + " (about $" + (cfg.tickets.priceUsd * n).toFixed(2) + ")" : "-";
+    const short = per && S.chogBalance != null && S.chogBalance < per * BigInt(n);
+    $("tkBal").textContent = S.chogBalance != null ? "Your wallet: " + chogText(S.chogBalance) + (short ? ". Not enough for " + n + " ticket" + (n === 1 ? "" : "s") : "") : "";
+    $("tkBal").className = "tk-bal" + (short ? " warn" : "");
+    $("tkBuyBtn").textContent = "Buy " + n + " ticket" + (n === 1 ? "" : "s");
+    $("tkBuyBtn").disabled = !p.enabled || !!S.tkBusy;
+    $("tkContract").innerHTML = p.address
+      ? 'Pool contract: <a target="_blank" rel="noopener" href="' + cfg.collection.explorerUrls[0] + "/address/" + p.address + '">' + short2(p.address) + "</a> on Monad. Anyone can check every purchase and payout."
+      : "Tickets aren't on sale yet: the pool contract hasn't been set up.";
+  }
+  const short2 = a => a.slice(0, 6) + "..." + a.slice(-4);
+  function tkStep(name, state) {
+    const li = document.querySelector('#tkSteps li[data-s="' + name + '"]');
+    if (li) li.className = state || "";
+    $("tkSteps").className = "tk-steps on";
+  }
+
+  async function buyTickets(n) {
+    const st = $("tkStatus");
+    if (S.tkBusy) return;
+    if (!authValid() || !S.provider || !S.account) { setStatus(st, "Connect your wallet and sign in first (Chog NFT mode).", "err"); return; }
+    if (S.chainId !== cfg.collection.chainId) {
+      try { await Chain.switchToMonad(S.provider); S.chainId = cfg.collection.chainId; }
+      catch (e) { setStatus(st, "Switch your wallet to " + cfg.collection.chainName + " to buy tickets.", "err"); return; }
+    }
+    S.tkBusy = true; renderTicketPanel();
+    document.querySelectorAll("#tkSteps li").forEach(li => { li.className = ""; });
+    const fail = (msg, stepName) => { if (stepName) tkStep(stepName, "bad"); setStatus(st, msg, "err"); };
+    let step = "quote";
+    try {
+      tkStep("quote", "doing"); setStatus(st, "Checking the price...");
+      const q = await apiCall("/tickets/quote", { count: n }, S.auth.token);
+      const amount = BigInt(q.amount);
+      const bal = await TKT.chogBalance(S.provider, S.account);
+      S.chogBalance = bal;
+      if (bal < amount) { fail("You need " + chogText(amount) + " but this wallet has " + chogText(bal) + ". Get $CHOG on nad.fun, then try again.", "quote"); return; }
+      tkStep("quote", "done");
+      step = "approve";
+      if ((await TKT.allowance(S.provider, S.account, q.pool)) < amount) {
+        tkStep("approve", "doing"); setStatus(st, "Approve " + chogText(amount) + " for the pool in your wallet...");
+        const ah = await TKT.approve(S.provider, S.account, q.pool, amount);
+        setStatus(st, "Waiting for the approval to confirm...");
+        await TKT.wait(S.provider, ah);
+      }
+      tkStep("approve", "done");
+      step = "pay";
+      tkStep("pay", "doing"); setStatus(st, "Confirm the payment of " + chogText(amount) + " in your wallet...");
+      const hash = await TKT.buy(S.provider, S.account, q.pool, amount, q.ref);
+      savePending(hash);
+      setStatus(st, "Payment sent. Waiting for it to confirm on Monad...");
+      await TKT.wait(S.provider, hash);
+      tkStep("pay", "done");
+      step = "claim";
+      tkStep("claim", "doing"); setStatus(st, "Adding your tickets...");
+      const c = await claimTx(hash);
+      tkStep("claim", "done");
+      S.tickets = c.tickets;
+      setStatus(st, "Done: " + n + " ticket" + (n === 1 ? "" : "s") + " added. You have " + c.tickets + ". Good luck this week!", "ok");
+      sfx("quest");
+      loadPool();
+      TKT.chogBalance(S.provider, S.account).then(b => { S.chogBalance = b; renderTicketPanel(); }).catch(() => {});
+    } catch (e) {
+      const rejected = e && (e.code === 4001 || /rejected|denied/i.test(e.message || ""));
+      fail(rejected ? "Cancelled in your wallet. Nothing was paid." : (step === "claim" ? "Paid, but the tickets couldn't be added yet (" + e.message + "). They'll be added automatically next time you sign in." : e.message || String(e)), step);
+    } finally {
+      S.tkBusy = false; renderTicketPanel();
+    }
+  }
+  // A payment waiting to be credited (kept on this device, so a closed tab or lost connection doesn't lose tickets)
+  function pendingList() { try { return JSON.parse(localStorage.getItem(PENDING_KEY)) || []; } catch (e) { return []; } }
+  function savePending(hash) {
+    const l = pendingList().filter(x => x.hash !== hash); l.push({ hash, wallet: S.account, at: Date.now() });
+    try { localStorage.setItem(PENDING_KEY, JSON.stringify(l.slice(-20))); } catch (e) {}
+  }
+  function dropPending(hash) { try { localStorage.setItem(PENDING_KEY, JSON.stringify(pendingList().filter(x => x.hash !== hash))); } catch (e) {} }
+  async function claimTx(hash) {
+    for (let i = 0; i < 20; i++) {
+      const r = await apiCall("/tickets/claim", { txHash: hash }, S.auth.token);
+      if (r.status === "credited") { dropPending(hash); return r; }
+      await new Promise(res => setTimeout(res, 2500));
+    }
+    throw new Error("the payment isn't visible on-chain yet");
+  }
+  async function claimPending() {
+    if (!authValid()) return;
+    for (const p of pendingList().filter(x => x.wallet === S.account)) {
+      try {
+        const r = await apiCall("/tickets/claim", { txHash: p.hash }, S.auth.token);
+        if (r.status === "credited") { dropPending(p.hash); S.tickets = r.tickets; renderTicketBar(); }
+      } catch (e) { if (e.status === 400) dropPending(p.hash); }   // not a valid purchase: stop retrying
     }
   }
 

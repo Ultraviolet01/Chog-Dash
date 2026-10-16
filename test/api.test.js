@@ -199,8 +199,10 @@ test("leaderboard shows the Chog image and, when signed in, the player's own ran
   const bobs = await h.leaderboard({ token: tb });
   assert.deepStrictEqual(bobs.me, { rank: null, username: "Bob", wallet: bob.address.toLowerCase() });
   assert.strictEqual((await h.leaderboard({ token: "garbage" })).me, null, "bad token is ignored");
-  store.best = async () => { throw new Error("function missing"); };
+  const week = store.week;
+  store.week = w => Object.assign({}, week(w), { best: async () => { throw new Error("function missing"); } });
   const degraded = await h.leaderboard({ token: ta });
+  store.week = week;
   assert.strictEqual(degraded.entries.length, 1, "board still loads if the own-rank lookup fails");
   assert.strictEqual(degraded.me, null);
 });

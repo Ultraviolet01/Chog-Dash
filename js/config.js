@@ -96,6 +96,21 @@
       ],
     },
 
+    // Tickets and the weekly prize pool (Chog NFT mode). GAME-DESIGN.
+    // One ticket = one ranked Chog NFT run, paid in $CHOG into the pool contract (contracts/ChogDashPool.sol).
+    // All ticket money goes to the week's pool (no fee); after the week the top 10 share it by `split` (percent).
+    tickets: {
+      token: "0x350035555e10d9afaf1566aaebfced5ba6c27777",   // verified: name Chog, symbol CHOG, 18 decimals, on Monad
+      symbol: "CHOG",
+      decimals: 18,
+      priceUsd: 0.5,                // one ticket
+      split: [25, 18, 13, 10, 8, 7, 6, 5, 4, 4],   // rank 1..10; shares nobody earns roll over to the next week
+      maxPerBuy: 20,
+      quoteSeconds: 600,            // a price quote can be paid within 10 minutes
+      reviewHours: 24,              // after a week ends, results can be checked before the payout
+      buyUrl: "https://nad.fun/tokens/0x350035555E10d9AfAF1566AaebfCeD5BA6C27777",
+    },
+
     leaderboard: {
       apiBase: "/api",
       // Ranking rule: one entry per player (username), by best total distance (distance x tier multiplier)

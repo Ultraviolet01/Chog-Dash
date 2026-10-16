@@ -2,3 +2,5 @@ node_modules/
 .env
 .vercel/
 data/metadata-cache/
+contracts/out/
+contracts/cache/

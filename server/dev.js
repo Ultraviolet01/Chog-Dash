@@ -6,17 +6,12 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { dispatch } = require("../lib/http.js");
+const { dispatch, ROUTES } = require("../lib/http.js");
 
 const ROOT = path.join(__dirname, "..");
-const ROUTES = {
-  "/api/auth/nonce": "authNonce", "/api/auth/verify": "authVerify",
-  "/api/run/start": "runStart", "/api/run/finish": "runFinish", "/api/leaderboard": "leaderboard",
-  "/api/profile": "profileSet", "/api/quests": "questsGet", "/api/badge/pin": "badgePin", "/api/demo-leaderboard": "demoLeaderboard",
-};
 const TYPES = { ".html": "text/html", ".js": "application/javascript", ".css": "text/css", ".json": "application/json",
   ".png": "image/png", ".svg": "image/svg+xml", ".md": "text/plain", ".mp3": "audio/mpeg" };
-const PUBLIC = ["/index.html", "/css/", "/js/", "/audio/"];   // only these are served as static files
+const PUBLIC = ["/index.html", "/admin.html", "/css/", "/js/", "/audio/"];   // only these are served as static files
 
 function startServer({ port = 3000, handlers } = {}) {
   const server = http.createServer(async (req, res) => {
@@ -26,7 +21,7 @@ function startServer({ port = 3000, handlers } = {}) {
       for await (const chunk of req) raw += chunk;
       let body = null;
       try { body = raw ? JSON.parse(raw) : null; } catch (e) {}
-      const out = await dispatch(ROUTES[url.pathname], { method: req.method, body, authorization: req.headers.authorization }, handlers);
+      const out = await dispatch(ROUTES[url.pathname], { method: req.method, body, authorization: req.headers.authorization, query: Object.fromEntries(url.searchParams) }, handlers);
       res.writeHead(out.status, { "content-type": "application/json", "cache-control": "no-store" });
       return res.end(JSON.stringify(out.body));
     }
