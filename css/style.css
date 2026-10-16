@@ -493,7 +493,8 @@ th { color: var(--muted); font-weight: normal; }
 .how-dots .how-dot.on { width: 26px; border-radius: 6px; background: var(--accent); }
 @media (pointer: coarse) { .how-dots .how-dot { min-height: 10px; } .how-dots { padding: 12px 0; } }
 #howNext.how-play { font: 18px 'Bungee', Impact, sans-serif; letter-spacing: 1px; box-shadow: 0 4px 0 #8a5a12; }
-@media (max-width: 560px) { .how-head h2 { font-size: 20px; } .how-page { min-height: 0; } }
+@media (max-width: 560px) { .how-head h2 { font-size: 20px; } .how-page { min-height: 0; }
+  .how-nav { gap: 8px; } .how-nav > button { min-width: 0; padding-left: 16px; padding-right: 16px; } .how-dots { gap: 6px; } }
 @media (prefers-reduced-motion: reduce) { .how-track { transition: none; } .pk-ic, .how-finger .touch, .how-finger .touch-dot, .how-mouse .wheel { animation: none; } }
 .md-chog img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 
@@ -756,6 +757,22 @@ body.flying #questStrip { display: none; }
 
 /* How to play, page 6: a sample streak */
 .how-streak { display: block; max-width: 560px; margin: 0 auto; }
+/* How to play, page 7: ticket -> pool -> top 10, and the top 10 shares as bars */
+.how-tk { flex-direction: column; gap: 14px; }
+.tk-flow { display: flex; align-items: stretch; justify-content: center; gap: 8px; width: 100%; max-width: 560px; }
+.tk-step { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 8px; border-radius: 12px; text-align: center;
+  background: rgba(13,19,34,0.9); border: 1px solid rgba(255,184,77,0.45); }
+.tk-step svg { width: 26px; height: 26px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.tk-step b { font: 18px 'Bungee', Impact, sans-serif; color: var(--accent); }
+.tk-step span { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.tk-arrow { align-self: center; width: 14px; height: 14px; flex: none; border-top: 2px solid var(--accent2); border-right: 2px solid var(--accent2); transform: rotate(45deg); }
+.tk-split { display: flex; align-items: flex-end; justify-content: center; gap: 6px; width: 100%; max-width: 560px; }
+.tk-bar { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.tk-bar i { display: block; width: 100%; max-width: 30px; border-radius: 6px 6px 2px 2px; background: linear-gradient(180deg, var(--accent), #c97a1c); }
+.tk-bar:nth-child(n+4) i { background: linear-gradient(180deg, var(--accent2), #2a8f86); }
+.tk-pc { font-size: 11px; font-weight: 700; color: var(--ink); }
+.tk-rk { font-size: 11px; color: var(--muted); }
+@media (max-width: 520px) { .tk-step b { font-size: 15px; } .tk-step span { font-size: 11px; } .tk-flow { gap: 5px; } .tk-split { gap: 3px; } .tk-pc { font-size: 10px; } }
 .hs-top { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .how-streak .sflame { width: 48px; height: 48px; }
 .how-streak .qs-big { font-size: 30px; }

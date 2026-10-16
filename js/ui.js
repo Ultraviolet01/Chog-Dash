@@ -158,7 +158,7 @@
 
   // ---------- How to play: five swipeable pages ----------
   let howPage = 0, howBuilt = false;
-  const HOW_PAGES = 6;
+  const HOW_PAGES = 7;
   function openHow() {
     if (!howBuilt) { buildHow(); howBuilt = true; }
     // Page 5 shows your own Chog once you've picked one
@@ -235,6 +235,22 @@
     $("howStreak").innerHTML = '<div class="hs-top">' + bigFlame(4, false) + '<div class="qs-big">4<span>DAY STREAK</span></div></div>' +
       '<div class="road">' + [1, 2, 3, 4, 5, 6, 7].map(d => '<div class="rd' + (d <= 4 ? " lit" : "") + (d === 5 ? " today" : "") + (d === 7 ? " reward" : "") + '">' +
         (d === 7 ? '<div class="rd-gift">' + G(HEART) + "<b>+1</b></div>" : G(Q.GLYPH_PATHS.flame)) + '<span class="rd-d">' + (d === 5 ? "TODAY" : "DAY " + d) + "</span></div>").join("") + "</div>";
+    // Page 7: tickets and the weekly prize pool (the shares come from config)
+    const TK = cfg.tickets, price = "$" + TK.priceUsd.toFixed(2), top = Math.max(...TK.split);
+    const TICKET = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/></svg>';
+    $("howTicketViz").innerHTML =
+      '<div class="tk-flow"><div class="tk-step">' + TICKET + "<b>" + price + "</b><span>1 ticket = 1 ranked run</span></div>" +
+      '<i class="tk-arrow" aria-hidden="true"></i><div class="tk-step"><b>POOL</b><span>All ticket $CHOG, no fee</span></div>' +
+      '<i class="tk-arrow" aria-hidden="true"></i><div class="tk-step"><b>TOP 10</b><span>Paid every week</span></div></div>' +
+      '<div class="tk-split" aria-label="Prize shares for ranks 1 to 10">' + TK.split.map((pc, i) =>
+        '<div class="tk-bar"><span class="tk-pc">' + pc + '%</span><i style="height:' + Math.round(8 + 46 * pc / top) + 'px"></i><span class="tk-rk">' + (i + 1) + "</span></div>").join("") + "</div>";
+    $("howTicketText").innerHTML = [
+      "<b>Tickets:</b> " + price + " in $CHOG each. 1 ticket = 1 ranked Chog NFT run. Buy up to " + TK.maxPerBuy + " at a time from <b>Tickets</b> on the home screen. They never expire.",
+      "<b>Buying:</b> get $CHOG on nad.fun. Your wallet approves the exact amount, then pays it into the pool contract on Monad.",
+      "<b>Used at take-off:</b> a ticket is spent when your rocket takes off. Your best ticketed run of the week counts.",
+      "<b>Weekly prizes:</b> the board resets every Monday 00:00 UTC. The top 10 share the pool (shares above), paid to their wallets after a " + TK.reviewHours + "-hour check. Unearned shares roll over.",
+      "<b>No ticket?</b> You can still fly and do quests, but the run isn't ranked. Practice and Demo are always free.",
+    ].map(t => "<li>" + t + "</li>").join("");
     // Dots, buttons, keys and swipe
     $("howDots").innerHTML = Array.from({ length: HOW_PAGES }, (_, k) => '<button class="how-dot" role="tab" aria-label="Page ' + (k + 1) + '"></button>').join("");
     [...$("howDots").children].forEach((d, k) => { d.onclick = () => goHow(k); });
