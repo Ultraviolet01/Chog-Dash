@@ -85,6 +85,7 @@
   // ---------- Start ----------
   function start() {
     game = root.ChogGame.init({ onReady, onStart, onEnd, onRetry: playAgain });
+    loadPool();   // shows the Tickets button once the pool contract is live
     $("modePractice").onclick = () => setHomeMode("practice");
     $("modeNft").onclick = () => setHomeMode("nft");
     $("modeDemo").onclick = () => setHomeMode("demo");
@@ -100,8 +101,7 @@
     $("lbBack").onclick = () => show("menuPanel");
     $("lbPrev").onclick = () => openLeaderboard("nft", lbWeek - 1);
     $("lbNext").onclick = () => openLeaderboard("nft", lbWeek + 1);
-    $("tbBuy").addEventListener("pointerdown", e => e.stopPropagation());   // not a tap on the game (which would take off)
-    $("tbBuy").onclick = openTickets;
+    $("ticketBtn").onclick = openTickets;
     $("tkBack").onclick = closeTickets;
     $("tkMinus").onclick = () => setTicketCount(S.tkCount - 1);
     $("tkPlus").onclick = () => setTicketCount(S.tkCount + 1);
@@ -119,6 +119,7 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => movePill(true));
     // Space or Enter on the home screen plays
     window.addEventListener("keydown", e => {
+      if ($("noTicket").classList.contains("show")) { if (e.code === "Escape") closeNoTicket(); return; }   // the prompt's own buttons take Space/Enter
       if (!$("menuPanel").classList.contains("show") || e.repeat) return;
       if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); play(); }
     });
@@ -131,7 +132,10 @@
     $("holdingsRetry").onclick = loadHoldings;
     $("pilotSave").onclick = savePilot;
     $("pilotInput").addEventListener("keydown", e => { if (e.key === "Enter") savePilot(); });
-    $("rideBtn").onclick = rideChog;
+    $("rideBtn").onclick = () => rideChog();
+    $("ntBuy").onclick = () => { closeNoTicket(); openTickets(); };
+    $("ntPlay").onclick = () => { closeNoTicket(); rideChog({ unranked: true }); };
+    $("ntClose").onclick = closeNoTicket;
     $("cardBtn").onclick = openCard;
     $("againBtn").onclick = playAgain;
     $("endHomeBtn").onclick = backToMenu;
@@ -358,9 +362,12 @@
     const chog = demo ? S.demoChog : S.chog;
     const hint = demo
       ? (chog ? "Demo: ride " + chog.name + ". Every Chog NFT feature, no Chog needed." : "Try Chog NFT mode with 5 demo Chogs. No Chog needed. DEMO leaderboard.")
+      : nft && S.ticketsOn
+      ? (chog ? "Ride " + chog.name + ". " : "Ride a Chog you own. ") + ticketHint()
       : nft
       ? (chog ? "Ride " + chog.name + ". Abilities from its traits. Ranked." : "Ride a Chog you own. Abilities from its traits. Ranked.")
       : "Fly as Rookie, the practice pilot. No wallet. Not ranked.";
+    $("modeHint").classList.toggle("warn", nft && !demo && S.ticketsOn && S.tickets === 0);
     const label = demo || (nft && !chog) ? "PICK CHOG" : "PLAY";   // demo: always choose from the 5 demo Chogs
     const lab = $("playBtn").querySelector(".play-label");
     if ($("modeHint").textContent !== hint) { $("modeHint").textContent = hint; if (animate) swapIn($("modeHint")); }
@@ -371,8 +378,15 @@
     $("walletChipText").textContent = S.account ? (S.username || short(S.account)) : "Connect wallet";
     $("walletDot").classList.toggle("on", !!S.account && S.chainId === cfg.collection.chainId);
     $("keyHint").textContent = "Press SPACE to " + (label === "PICK CHOG" ? "pick a Chog" : "play") + "  ·  F for full screen";
+    renderTicketBtn();
     if (!animate) movePill(true);   // e.g. the home screen was hidden while the pill moved
     placeHero();
+  }
+  // Chog NFT mode with the pool live: your tickets and this week's pool, under the mode switch
+  function ticketHint() {
+    const pool = "Pool " + poolUsd(S.pool && S.pool.current, S.pool && S.pool.chogUsd);
+    if (!authValid() || S.tickets == null) return pool + " this week · $" + cfg.tickets.priceUsd.toFixed(2) + " a ticket.";
+    return S.tickets > 0 ? S.tickets + " ticket" + (S.tickets === 1 ? "" : "s") + " · " + pool + " · Ranked." : "No tickets · " + pool + " · Buy tickets to be ranked.";
   }
   // On tall screens, place the home screen rocket in the gap between PLAY and the bottom buttons
   function placeHero() {
@@ -399,7 +413,6 @@
   }
 
   function backToMenu() {
-    $("ticketBar").classList.remove("show");
     showEndBar(false);
     S.autoStart = false;
     closeCard();
@@ -473,7 +486,7 @@
     S.activeWait = !S.runId && S.sessionWait && S.sessionWait.req === S.sessionReq ? S.sessionWait.promise : null;
     S.startedReq = S.sessionReq;
     S.runId = null;
-    renderTicketBar();
+    renderTicketBtn();
     // Tell the server the rocket took off: a Chog NFT run spends its ticket now (and the run time counts from here)
     if (S.mode === "nft" || S.mode === "demo") {
       const flying = runSession();
@@ -494,7 +507,6 @@
 
   function onEnd(result) {
     setFlying(false);
-    $("ticketBar").classList.remove("show");
     clearInterval(liveTimer);
     $("questToast").classList.remove("show");
     rememberRun(result);
@@ -866,7 +878,7 @@
       portraitTip(),
       startText(),
     ]);
-    renderTicketBar();
+    renderTicketBtn();
   }
 
   // Demo: a server run session puts the run on the DEMO leaderboard (signed in, any wallet, with a pilot name)
@@ -1073,6 +1085,7 @@
     refreshHome();
     loadHoldings();
     claimPending();
+    loadPool();
   }
 
   async function savePilot() {
@@ -1231,7 +1244,7 @@
     return ["Rocket: " + look.name + (look.trail ? ". Aura trail: " + look.trail.name : ". No aura trail")];
   }
 
-  async function rideChog() {
+  async function rideChog(opts) {
     const c = S.chog;
     if (!c) return;
     const rs = $("rideStatus");
@@ -1257,6 +1270,8 @@
     }
     setStatus(rs, "");
     $("rideBtn").disabled = false;
+    // No tickets left: ask first (buy, or fly this run unranked) instead of the player finding out on the ready screen
+    if (S.ticketsOn && authValid() && S.tickets === 0 && !(opts && opts.unranked)) { openNoTicket(); return; }
 
     const laser = c.gameplay.abilities.find(a => a.id === "laserEyes");
     S.mode = "nft";
@@ -1401,12 +1416,12 @@
           if (want !== lbBoard || lbWeek !== r.week || !x) return;
           if (r.current) {
             if (!x.enabled) { $("lbWeekInfo").textContent = "Resets in " + countdown(r.endsAt - Date.now()); return; }
-            $("lbWeekInfo").textContent = "Pool " + chogText(x.current) + " · resets in " + countdown(r.endsAt - Date.now());
+            $("lbWeekInfo").textContent = "Pool " + poolUsd(x.current, x.chogUsd) + " · resets in " + countdown(r.endsAt - Date.now());
             const pz = {}; cfg.tickets.split.forEach((pc, i) => { pz[i + 1] = pc + "%"; });
             renderBoard(r, pz);
           } else {
-            $("lbWeekInfo").textContent = x.paid ? "Paid out" : x.available != null ? "Pool " + chogText(x.available) + (x.payable ? " · ready to pay" : " · results under review") : "";
-            const pz = {}; x.winners.forEach(w => { if (w.amount) pz[w.rank] = chogText(w.amount); });
+            $("lbWeekInfo").textContent = x.paid ? "Paid out" : x.available != null ? "Pool " + poolUsd(x.available, S.pool && S.pool.chogUsd) + (x.payable ? " · ready to pay" : " · results under review") : "";
+            const pz = {}; x.winners.forEach(w => { if (w.amount) pz[w.rank] = poolUsd(w.amount, S.pool && S.pool.chogUsd); });
             renderBoard(r, pz);
           }
         });
@@ -1426,7 +1441,8 @@
   // the server credits the tickets after reading the payment on-chain. A ticket is used when the rocket takes off.
   const PENDING_KEY = "chogDashTicketTx";
   const chogText = wei => (wei == null ? "-" : TKT.format(wei) + " CHOG");
-  const usdText = (wei, usd) => (wei == null || !usd ? "" : "about $" + (Number(BigInt(wei) / 10n ** 15n) / 1000 * usd).toFixed(2));
+  // The pool in dollars at today's $CHOG price (in $CHOG when there's no price)
+  const poolUsd = (wei, usd) => (wei == null ? "-" : !usd ? chogText(wei) : "$" + (Number(BigInt(wei) / 10n ** 15n) / 1000 * usd).toFixed(2));
   function countdown(ms) {
     const m = Math.max(0, Math.round(ms / 60000)), d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60);
     return d ? d + "d " + h + "h" : h ? h + "h " + (m % 60) + "m" : (m % 60) + "m";
@@ -1436,23 +1452,19 @@
     catch (e) { return S.pool; }
     S.ticketsOn = !!S.pool.enabled;
     if (S.pool.me) S.tickets = S.pool.me.tickets;
-    renderTicketBar();
+    if ($("menuPanel").classList.contains("show")) refreshHome(); else renderTicketBtn();
     if ($("ticketPanel").classList.contains("show")) renderTicketPanel();
     return S.pool;
   }
-  // The bar on the Chog NFT ready screen
-  function renderTicketBar() {
-    const on = S.mode === "nft" && S.ticketsOn && game && game.state === "ready";
-    $("ticketBar").classList.toggle("show", !!on);
-    if (!on) return;
-    $("tbCount").textContent = S.tickets == null ? "-" : S.tickets;
-    $("ticketBar").classList.toggle("empty", !S.tickets);
-    $("tbPool").textContent = S.pool && S.pool.current != null ? chogText(S.pool.current) : "-";
+  // The Tickets button on the home screen (Chog NFT mode, once the pool contract is live), with your ticket count
+  function renderTicketBtn() {
+    $("ticketBtn").classList.toggle("hidden", !S.ticketsOn || homeMode !== "nft");
+    $("ticketBtnCount").textContent = S.tickets ? S.tickets : "";
   }
 
   function openTickets() {
     if (!authValid()) { S.nftReturn = null; openNft(); return; }
-    S.tkReturn = $("lbPanel").classList.contains("show") ? "lbPanel" : null;
+    S.tkReturn = ["lbPanel", "menuPanel", "nftPanel"].find(id => $(id).classList.contains("show")) || null;
     show("ticketPanel");
     setStatus($("tkStatus"), "");
     $("tkSteps").className = "tk-steps";
@@ -1460,6 +1472,15 @@
     loadPool();
     if (S.provider && S.account) TKT.chogBalance(S.provider, S.account).then(b => { S.chogBalance = b; renderTicketPanel(); }).catch(() => {});
   }
+  // The "no tickets" prompt before a Chog NFT run
+  function openNoTicket() {
+    const p = S.pool || {};
+    $("ntPool").textContent = poolUsd(p.current, p.chogUsd);
+    $("ntPrice").textContent = "$" + cfg.tickets.priceUsd.toFixed(2);
+    $("noTicket").classList.add("show");
+    $("ntBuy").focus();
+  }
+  function closeNoTicket() { $("noTicket").classList.remove("show"); }
   function closeTickets() {
     const back = S.tkReturn; S.tkReturn = null;
     if (back) { show(back); return; }
@@ -1469,8 +1490,8 @@
   function setTicketCount(n) { S.tkCount = Math.max(1, Math.min(cfg.tickets.maxPerBuy, n || 1)); renderTicketPanel(); }
   function renderTicketPanel() {
     const p = S.pool || {}, n = S.tkCount;
-    $("tkPool").textContent = chogText(p.current);
-    $("tkPoolUsd").textContent = usdText(p.current, p.chogUsd);
+    $("tkPool").textContent = poolUsd(p.current, p.chogUsd);
+    $("tkPoolUsd").textContent = p.chogUsd && p.current != null ? chogText(p.current) : "";
     $("tkReset").textContent = p.weekEndsAt ? countdown(p.weekEndsAt - Date.now()) : "-";
     $("tkHave").textContent = S.tickets == null ? "-" : S.tickets;
     $("tkCount").textContent = n;
@@ -1565,7 +1586,7 @@
     for (const p of pendingList().filter(x => x.wallet === S.account)) {
       try {
         const r = await apiCall("/tickets/claim", { txHash: p.hash }, S.auth.token);
-        if (r.status === "credited") { dropPending(p.hash); S.tickets = r.tickets; renderTicketBar(); }
+        if (r.status === "credited") { dropPending(p.hash); S.tickets = r.tickets; renderTicketBtn(); }
       } catch (e) { if (e.status === 400) dropPending(p.hash); }   // not a valid purchase: stop retrying
     }
   }

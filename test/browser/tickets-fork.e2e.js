@@ -90,10 +90,10 @@ const installWallet = (page, name) => page.addInitScript(fn => {
   const errs = [];
   try {
     // ---------- The pool owner deploys and registers the pool from admin.html ----------
-    const a = await b.newPage({ viewport: { width: 1100, height: 900 } });
+    const a = await b.newPage({ viewport: process.env.SHOTS ? { width: 1920, height: 900 } : { width: 1100, height: 900 } });
     a.on('pageerror', e => errs.push('admin: ' + e.message));
     await walletShim(a, admin, 'adminWallet'); await installWallet(a, 'adminWallet');
-    await a.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
+    if (!process.env.SHOTS) await a.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));   // screenshots use the real fonts
     await a.goto('http://localhost:3461/admin.html');
     await a.waitForSelector('#wallets button', { timeout: 5000 });
     await a.click('#wallets button');
@@ -106,60 +106,96 @@ const installWallet = (page, name) => page.addInitScript(fn => {
     assert.strictEqual(pool.enabled, true);
     assert.strictEqual(await real.pool(pool.address, 'owner').then(o => o.toLowerCase()), admin.address.toLowerCase(), 'owned by the admin wallet');
     assert.strictEqual(pool.perTicket, (302n * 10n ** 18n).toString(), '$0.50 at $0.00166 = 302 CHOG');
-    if (process.env.SHOTS) await a.screenshot({ path: path.join(process.env.SHOTS, 'admin.png'), fullPage: true });
+    if (process.env.SHOTS) await a.screenshot({ path: path.join(process.env.SHOTS, '12-admin.png'), fullPage: true });
 
     // ---------- A player buys 2 tickets in the game ----------
-    const p = await b.newPage({ viewport: { width: 1280, height: 760 } });
+    const p = await b.newPage({ viewport: process.env.SHOTS ? { width: 1920, height: 900 } : { width: 1280, height: 760 } });
     p.on('pageerror', e => errs.push('game: ' + e.message));
     await walletShim(p, player, 'playerWallet'); await installWallet(p, 'playerWallet');
     await p.route('**/three.min.js', r => r.fulfill({ body: fs.readFileSync(R + 'node_modules/three/build/three.min.js'), contentType: 'application/javascript' }));
-    await p.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
+    if (!process.env.SHOTS) await p.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
     await p.route('**/ipfs/**', r => (r.request().url().includes('imgcid') ? r.fulfill({ body: svg, contentType: 'image/svg+xml', headers: { 'access-control-allow-origin': '*' } })
       : r.fulfill({ body: JSON.stringify(meta), contentType: 'application/json', headers: { 'access-control-allow-origin': '*' } })));
+    const shot = async (name, wait = 0) => { if (!process.env.SHOTS) return; if (wait) await p.waitForTimeout(wait); await p.screenshot({ path: path.join(process.env.SHOTS, name + '.png') }); };
+    const hint = () => p.textContent('#modeHint');
     await p.goto('http://localhost:3461/');
     await p.waitForTimeout(800);
-    await p.click('#modeNft'); await p.click('#playBtn'); await p.waitForTimeout(400);
+    // Home, Chog NFT mode, not signed in: the pool and what a ticket does; Tickets only in Chog NFT mode
+    assert.ok(await p.$('#ticketBtn.hidden'), 'no Tickets button in practice mode');
+    await p.click('#modeNft');
+    await p.waitForFunction(() => /Pool \$0\.00 this week · \$0\.50 a ticket\./.test(document.getElementById('modeHint').textContent), null, { timeout: 10000 });
+    assert.ok(await p.isVisible('#ticketBtn'), 'Tickets button in Chog NFT mode');
+    await shot('01-home-nft', 900);
+    await p.click('#playBtn'); await p.waitForTimeout(400);
     await p.click('#walletButtons button');
     await p.waitForFunction(() => document.querySelectorAll('.tok').length === 1, null, { timeout: 20000 });
     await p.fill('#pilotInput', 'Fork_Pilot'); await p.click('#pilotSave');
     await p.waitForFunction(() => document.getElementById('pilotStatus').textContent.includes('Saved'), null, { timeout: 5000 });
     await p.click('.tok[data-token="7"]');
     await p.waitForFunction(() => !document.getElementById('rideBtn').disabled, null, { timeout: 15000 });
+    await shot('02-pick-chog');
+    // No tickets: Ride asks first
     await p.click('#rideBtn');
+    await p.waitForSelector('#noTicket.show', { timeout: 15000 });
+    assert.match(await p.textContent('#ntPool'), /^\$0\.00$/);
+    await shot('03-no-tickets-prompt', 400);
+    // Buy tickets opens the panel; Back returns to the Chog picker
+    await p.click('#ntBuy');
+    await p.waitForSelector('#ticketPanel.show');
+    await p.click('#tkBack');
+    await p.waitForSelector('#nftPanel.show');
+    // Play unranked: flies, but the ready screen says it isn't ranked; nothing else about tickets there
+    await p.click('#rideBtn');
+    await p.waitForSelector('#noTicket.show', { timeout: 15000 });
+    await p.click('#ntPlay');
     await p.waitForFunction(() => /No ticket/.test(document.getElementById('msg').textContent), null, { timeout: 15000 });
-    assert.ok(await p.isVisible('#ticketBar'), 'ticket bar on the ready screen');
-    assert.strictEqual(await p.textContent('#tbCount'), '0');
-    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, 'tickets-ready-empty.png') });
-    await p.click('#tbBuy');
+    assert.ok(!(await p.isVisible('#noTicket')), 'the prompt closed');
+    assert.strictEqual(await p.$('#ticketBar'), null, 'no ticket bar on the gameplay screen');
+    await shot('04-ready-unranked');
+    // Back home: the hint says no tickets
+    await p.click('#hudMenuBtn');
+    await p.waitForFunction(() => /No tickets · Pool \$0\.00 · Buy tickets to be ranked/.test(document.getElementById('modeHint').textContent), null, { timeout: 10000 });
+    assert.strictEqual((await p.textContent('#ticketBtnCount')).trim(), '', 'no ticket count yet');
+    await shot('05-home-no-tickets', 900);
+    await p.click('#ticketBtn');
     await p.waitForFunction(() => /302 CHOG/.test(document.getElementById('tkPrice').textContent), null, { timeout: 10000 });
+    assert.match(await p.textContent('#tkPool'), /^\$0\.00$/, 'the pool shown in dollars');
     await p.waitForFunction(() => /Your wallet: 5,000 CHOG/.test(document.getElementById('tkBal').textContent), null, { timeout: 10000 });
     await p.click('#tkPlus');
     assert.match(await p.textContent('#tkTotal'), /604 CHOG/);
-    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, 'tickets-panel.png') });
+    await shot('06-tickets-panel');
     await p.click('#tkBuyBtn');
     await p.waitForFunction(() => /2 tickets added/.test(document.getElementById('tkStatus').textContent), null, { timeout: 90000 });
     console.log('bought:', await p.textContent('#tkStatus'));
     assert.strictEqual(await p.textContent('#tkHave'), '2');
-    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, 'tickets-bought.png') });
+    await shot('07-tickets-bought');
     const paid = start - await bal(PL);
     assert.strictEqual(paid, 604n * 10n ** 18n, 'the wallet paid 2 x 302 CHOG');
     assert.strictEqual(await bal(pool.address), 604n * 10n ** 18n, 'the pool holds it');
 
     // ---------- Fly: one ticket spent at take-off; the run lands on the weekly board ----------
     await p.click('#tkBack');
+    await p.waitForFunction(() => document.getElementById('ticketBtnCount').textContent === '2', null, { timeout: 5000 });
+    await p.waitForFunction(() => /2 tickets · Pool \$1\.00 · Ranked/.test(document.getElementById('modeHint').textContent), null, { timeout: 10000 });
+    await shot('08-home-with-tickets', 900);
+    await p.click('#playBtn');
     await p.waitForFunction(() => /uses 1 of your 2 tickets/.test(document.getElementById('msg').textContent), null, { timeout: 15000 });
+    assert.ok(!(await p.isVisible('#noTicket')), 'no prompt with tickets');
+    await shot('09-ready-ranked');
     await p.keyboard.press('Space');
     await p.waitForTimeout(1500);
     assert.strictEqual(await p.evaluate(() => ChogUI._state.tickets), 1, 'a ticket was used at take-off');
     await p.evaluate(() => { const g = ChogUI._game()._debug; for (let i = 0; i < 3; i++) { const q = g.player.position; g.spawnAt(q.x, q.y + 0.35, -1 - i * 40, true); } });
     await p.waitForFunction(() => /This week: total distance \d+ m .*rank 1/.test(document.getElementById('goRank').textContent), null, { timeout: 20000 });
     console.log('end:', await p.textContent('#goRank'));
+    await shot('10-game-over', 2500);
     await p.click('#endLbBtn');
     await p.waitForFunction(() => document.querySelectorAll('#lbPanel .lb-entry').length === 1 && /25%/.test(document.getElementById('lbPodium').textContent), null, { timeout: 10000 });
     console.log('weekly board:', (await p.textContent('#lbWeek')).replace(/\s+/g, ' ').trim());
-    assert.match(await p.textContent('#lbWeekInfo'), /Pool 604 CHOG/);
-    await p.waitForTimeout(1200);
-    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, 'tickets-board.png') });
+    assert.match(await p.textContent('#lbWeekInfo'), /Pool \$1\.00/);
+    await shot('11-weekly-ranks', 1200);
+    await p.click('#lbBack');
+    await p.waitForFunction(() => /1 ticket · Pool \$1\.00 · Ranked/.test(document.getElementById('modeHint').textContent), null, { timeout: 10000 });
 
     // ---------- 8 days later: the owner pays the finished week from admin.html ----------
     const DAYS8 = 8 * 86400;
@@ -172,7 +208,7 @@ const installWallet = (page, name) => page.addInitScript(fn => {
     await a.waitForFunction(() => /READY TO PAY/.test(document.getElementById('weekInfo').textContent), null, { timeout: 20000 });
     console.log('admin week:', (await a.textContent('#weekInfo')).replace(/\s+/g, ' ').trim(), '|', await a.textContent('#weekStatus'));
     assert.match(await a.textContent('#winners'), /Fork_Pilot.*25%.*151 CHOG/s);
-    if (process.env.SHOTS) await a.screenshot({ path: path.join(process.env.SHOTS, 'admin-pay.png'), fullPage: true });
+    if (process.env.SHOTS) await a.screenshot({ path: path.join(process.env.SHOTS, '13-admin-pay.png'), fullPage: true });
     await a.click('#payBtn');
     await a.waitForFunction(() => /PAID/.test(document.getElementById('weekInfo').textContent), null, { timeout: 60000 });
     const won = await bal(PL) - before;

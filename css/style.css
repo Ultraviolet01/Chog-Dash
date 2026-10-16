@@ -178,6 +178,10 @@ body.flying, body.flying #gameCanvas { cursor: none; }
 .icon-btn { white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px 10px 12px; border-radius: 14px;
   background: rgba(10,15,30,0.75); border: 1px solid var(--line); color: var(--ink); }
 .icon-btn:hover { border-color: var(--accent); }
+.icon-btn .tb-count { font: 13px 'Bungee', Impact, sans-serif; color: var(--accent); }
+.icon-btn .tb-count:empty { display: none; }
+.icon-btn.hidden { display: none; }
+.mode-hint.warn { color: #ffcfb8; }
 .icon-btn svg { width: 22px; height: 22px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 @keyframes pop { from { opacity: 0; transform: skew(-8deg) scale(0.8); } to { opacity: 1; transform: skew(-8deg) scale(1); } }
 @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
@@ -196,6 +200,13 @@ body.flying, body.flying #gameCanvas { cursor: none; }
   .play { margin: 0 auto; }
   .home-bottom { left: 50%; transform: translateX(-50%); }
   .home-bottom { animation: none; }
+}
+/* Phones: the home buttons as a row of icons with small labels underneath, so all four fit */
+@media (max-width: 520px) {
+  .home-bottom { gap: 6px; width: calc(100% - 32px); justify-content: center; }
+  .icon-btn { flex: 1 1 0; min-width: 0; flex-direction: column; gap: 3px; padding: 8px 4px 7px; font-size: 11px; border-radius: 12px; }
+  .icon-btn svg { width: 20px; height: 20px; }
+  .icon-btn .tb-count { position: absolute; top: 5px; right: 8px; font-size: 11px; }
 }
 @media (pointer: coarse) { .key-hint { display: none; } }
 @media (max-width: 600px) { .fs-label { display: none; } }
@@ -989,26 +1000,19 @@ body.game-over #dist, body.game-over #score { visibility: hidden; }   /* the car
 @media (prefers-reduced-motion: reduce) { .wl-row { transition: none; } }
 
 /* ---------- Tickets and the weekly prize pool (Chog NFT mode) ---------- */
-/* The bar on the Chog NFT ready screen: tickets, this week's pool, Buy */
-.ticket-bar { position: absolute; left: 50%; bottom: 62px; transform: translateX(-50%); display: none; align-items: center; gap: 14px;
-  padding: 8px 10px 8px 14px; border-radius: 14px; pointer-events: auto; background: rgba(10,15,30,0.9); border: 1px solid rgba(255,184,77,0.45);
-  box-shadow: 0 6px 24px rgba(0,0,0,0.45); z-index: 4; white-space: nowrap; }
-.ticket-bar.show { display: flex; animation: fadeIn 0.3s ease-out; }
-body.flying .ticket-bar, body.game-over .ticket-bar { display: none; }
-.tb-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); }
-.tb-item svg { width: 18px; height: 18px; fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
-.tb-item b { font: 15px 'Bungee', Impact, sans-serif; color: var(--ink); letter-spacing: 0; }
-.ticket-bar.empty .tb-item:first-child b { color: #ffb3a1; }
-.tb-buy { padding: 8px 14px; font-size: 13px; border-radius: 10px; }
-.ticket-bar.empty .tb-buy { animation: goInvite 2.4s ease-in-out infinite; }
-@media (max-width: 520px) {
-  /* Phones: before take-off the bar takes the Stardust row's place (that row only matters in flight), clear of the
-     quest strip and the LASER button */
-  .ticket-bar { gap: 10px; padding: 6px 8px 6px 10px; bottom: max(12px, env(safe-area-inset-bottom)); }
-  body:has(.ticket-bar.show) #dustBox { display: none; }
-  .tb-item span { display: none; }
-  .tb-item:nth-child(2)::before { content: "POOL"; font-size: 10px; letter-spacing: 1px; }
-}
+
+/* The "no tickets" prompt */
+.nt { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center; padding: 16px;
+  background: rgba(3,5,12,0.72); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.nt.show { display: flex; animation: fadeIn 0.2s ease-out; }
+.nt-card { position: relative; width: 100%; max-width: 380px; padding: 22px 20px 18px; border-radius: 16px;
+  background: var(--panel, #0d1322); border: 1px solid rgba(255,184,77,0.45); box-shadow: 0 16px 50px rgba(0,0,0,0.55); animation: rise 0.25s ease-out both; }
+.nt-card h3 { margin: 0 0 10px; font: 22px 'Bungee', Impact, sans-serif; color: var(--accent); letter-spacing: 1px; }
+.nt-list { margin: 0; padding-left: 18px; color: #e3e7f0; font-size: 14px; line-height: 1.5; }
+.nt-list b { color: var(--ink); }
+.nt-play { width: 100%; margin-top: 10px; padding: 10px; }
+.nt-x { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; padding: 0; font-size: 22px; line-height: 1; border-radius: 10px; }
+@media (prefers-reduced-motion: reduce) { .nt.show, .nt-card { animation: none; } }
 
 /* The ticket panel */
 .tk .lb-wrap { max-width: 640px; }
@@ -1059,4 +1063,3 @@ body.flying .ticket-bar, body.game-over .ticket-bar { display: none; }
   border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
 .pod .prize { display: inline-block; margin-top: 4px; }
 .lb-row .prize { flex: none; margin-right: 8px; }
-@media (prefers-reduced-motion: reduce) { .ticket-bar.show, .ticket-bar.empty .tb-buy { animation: none; } }

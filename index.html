@@ -52,12 +52,6 @@
   <div id="questToast"></div>
   <div id="newBest" aria-live="polite"></div>
   <div id="questStrip"></div>
-  <!-- Chog NFT ready screen: tickets and this week's prize pool -->
-  <div id="ticketBar" class="ticket-bar">
-    <div class="tb-item"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/></svg><span>TICKETS</span><b id="tbCount">0</b></div>
-    <div class="tb-item"><span>WEEKLY POOL</span><b id="tbPool">-</b></div>
-    <button id="tbBuy" class="tb-buy">Buy tickets</button>
-  </div>
   <div id="msg"></div>
 </div>
 <div id="flash"></div>
@@ -140,6 +134,10 @@
     <button id="lbBtn" class="icon-btn" title="Leaderboard">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3a5 5 0 0 1-10 0V4z"/><path d="M7 5H4v2a3 3 0 0 0 3 3M17 5h3v2a3 3 0 0 1-3 3M12 12v4M8 20h8M9 16h6v4H9z"/></svg>
       <span>Ranks</span>
+    </button>
+    <button id="ticketBtn" class="icon-btn hidden" title="Tickets and the weekly prize pool (Chog NFT mode)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/></svg>
+      <span>Tickets</span><b id="ticketBtnCount" class="tb-count"></b>
     </button>
     <button id="questBtn" class="icon-btn" title="Quests (Chog holders)">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 21V4M5 4h12l-2.5 4L17 12H5"/></svg>
@@ -261,6 +259,21 @@
         <table><thead><tr><th>Trait (original)</th><th>Value (original)</th></tr></thead><tbody id="traitRows"></tbody></table>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Before a Chog NFT run with no tickets left: buy, or fly unranked -->
+<div id="noTicket" class="nt" role="dialog" aria-modal="true" aria-labelledby="ntTitle">
+  <div class="nt-card">
+    <button id="ntClose" class="nt-x ghost" aria-label="Close">&times;</button>
+    <h3 id="ntTitle">NO TICKETS</h3>
+    <ul class="nt-list">
+      <li>Without a ticket this run won't be on the weekly leaderboard.</li>
+      <li>This week's pool: <b id="ntPool">-</b>, shared by the top 10.</li>
+      <li>1 ticket = 1 ranked run, <b id="ntPrice">$0.50</b> in $CHOG.</li>
+    </ul>
+    <button id="ntBuy" class="tk-go">Buy tickets</button>
+    <button id="ntPlay" class="ghost nt-play">Play unranked</button>
   </div>
 </div>
 
