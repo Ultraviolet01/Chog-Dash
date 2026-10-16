@@ -656,18 +656,17 @@
       laserCharges--;
       laserUsed++;
       const ox = player.position.x, oy = player.position.y + rider.position.y;
-      // A huge asteroid in the path stops the beam; eligible obstacles in front of it are destroyed
-      let stopZ = -G.laserRange;
+      // The beam pierces everything in its path, huge asteroids included, out to its full range
+      const stopZ = -G.laserRange;
       const inPath = o => {
         const dx = o.mesh.position.x - ox, dy = o.mesh.position.y - oy, r = G.laserRadius + o.hitR * 0.8;
         return o.mesh.position.z < 1 && o.mesh.position.z > -G.laserRange && dx * dx + dy * dy < r * r;
       };
-      obstacles.forEach(o => { if (o.huge && inPath(o) && o.mesh.position.z > stopZ) stopZ = o.mesh.position.z; });
       let hits = 0;
       obstacles = obstacles.filter(o => {
-        if (!o.huge && inPath(o) && o.mesh.position.z > stopZ) {
+        if (inPath(o)) {
           hits++;
-          burst(o.mesh.position, [o.mesh.material], 10, 5);
+          burst(o.mesh.position, [o.mesh.material], o.huge ? 24 : 10, o.huge ? 9 : 5);   // a huge one breaks into more pieces
           scene.remove(o.mesh);
           return false;
         }
@@ -679,11 +678,10 @@
       beams.visible = true;
       muzzle.position.set(ox, oy, -0.5); muzzle.visible = true;
       impact.position.set(ox, oy, stopZ); impact.visible = true;
-      impact.userData.big = hits > 0 || stopZ > -G.laserRange;   // a bigger burst when it hit something
+      impact.userData.big = hits > 0;   // a bigger burst when it hit something
       beamLife = BEAM_LIFE;
-      // What the beam hit: something destroyed (blast), a huge asteroid blocking it (clang), or nothing
-      const blocked = stopZ > -G.laserRange;
-      if (hits || blocked) setTimeout(() => sfx(hits ? "laserHit" : "laserBlock"), 60);
+      // A blast for what it destroyed (nothing in the path: just the zap)
+      if (hits) setTimeout(() => sfx("laserHit"), 60);
       shake = Math.max(shake, 0.07);   // a small kick
       hud.laserFlash.classList.remove("on"); void hud.laserFlash.offsetWidth; hud.laserFlash.classList.add("on");
       updateLaserHud();

@@ -7,8 +7,8 @@
  * - A low engine hum rises with speed during a run.
  * - Each pickup has its own tone (Stardust chimes climb in pitch along a streak, like rings in other games).
  * - Dash: a boost whoosh with a rising zap, a roaring engine while it lasts, and a crunch per smash.
- * - Events: launch, crash, near miss, Laser Eyes (zap, then a blast when it destroys something or a clang when a
- *   huge asteroid blocks it), warp gate, extra life, life used, UI clicks.
+ * - Events: launch, crash, near miss, Laser Eyes (zap, then a blast for what it destroys), warp gate, extra life,
+ *   life used, UI clicks.
  * - Browsers only allow sound after the player interacts, so the context starts on the first input.
  * - Music and sound effects can each be switched off (M switches all sound); the choice is remembered on the
  *   device (localStorage). The engine hum counts as a sound effect.
@@ -242,12 +242,6 @@
       hiss({ peak: 0.6, attack: 0.002, decay: 0.5, type: "lowpass", freq: 3500, to: 250, verb: 0.45 });
       hiss({ t: 0.02, peak: 0.25, attack: 0.005, decay: 0.3, type: "bandpass", freq: 5000, to: 1500, q: 2, verb: 0.2 });   // sizzle
       [0.08, 0.15, 0.24, 0.31].forEach((t, i) => tone({ type: "triangle", freq: 900 - i * 140, to: 500 - i * 80, t, peak: 0.08, attack: 0.002, decay: 0.09, verb: 0.3 }));
-    },
-    laserBlock() {   // a huge asteroid stops the beam: a dull metallic clang
-      tone({ type: "triangle", freq: 330, peak: 0.5, attack: 0.002, decay: 0.55, verb: 0.4 });
-      tone({ type: "sine", freq: 330 * 2.71, peak: 0.2, attack: 0.002, decay: 0.4, verb: 0.4 });
-      tone({ type: "sine", freq: 110, to: 70, peak: 0.35, attack: 0.002, decay: 0.2, verb: 0 });
-      hiss({ peak: 0.35, attack: 0.002, decay: 0.12, type: "bandpass", freq: 1200, q: 1.5, verb: 0.2 });
     },
     warp() {   // zone gate: rising swell into a shimmer
       hiss({ peak: 0.4, attack: 0.3, decay: 1.0, type: "bandpass", freq: 300, to: 5000, q: 0.7, verb: 0.6 });
