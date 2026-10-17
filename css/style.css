@@ -273,12 +273,14 @@ th { color: var(--muted); font-weight: normal; }
   border: 1px solid #ff5a76; border-radius: 6px; white-space: pre-wrap; }
 
 /* ---------- Leaderboard ---------- */
-/* The leaderboard panel itself doesn't scroll (the panel's blur makes it the frame for the YOU bar, so a scrolling
-   panel would carry the bar along): the header stays on top, the YOU bar at the bottom, and only .lb-scroll scrolls */
-.lb { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }   /* room for the YOU bar */
-.panel.lb.show { display: flex; flex-direction: column; overflow: hidden; }
-.lb-wrap { flex: 1 1 auto; min-height: 0; width: 100%; box-sizing: border-box; display: flex; flex-direction: column;
-  max-width: 720px; margin: 2vh auto 0; padding: 0 16px; }
+.lb { padding-bottom: 84px; }
+.lb-wrap { max-width: 720px; margin: 2vh auto 0; padding: 0 16px; }
+/* Ranks only: the panel itself doesn't scroll (the panel's blur makes it the frame for the YOU bar, so a scrolling
+   panel would carry the bar along): the header stays on top, the YOU bar at the bottom, and only .lb-scroll scrolls.
+   (Tickets, Demo and Quests share the .lb look but scroll as whole panels.) */
+#lbPanel { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }   /* room for the YOU bar */
+#lbPanel.show { display: flex; flex-direction: column; overflow: hidden; }
+#lbPanel .lb-wrap { flex: 1 1 auto; min-height: 0; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; }
 .lb-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
   margin: 0 -16px; padding: 14px 16px 16px;
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
