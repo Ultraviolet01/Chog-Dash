@@ -2,13 +2,38 @@
 
 A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis](https://opensea.io/collection/chog-genesis) NFT collection on Monad. You ride a rocket through open space and dodge asteroids and debris for as long as you can.
 
+Play it at https://chog-dash.vercel.app (desktop and phone browsers, nothing to install).
+
 ## Home screen
 
-- Live 3D scene with the rider on its rocket as the hero, a big PLAY button and a Practice / Chog NFT switch.
+- Live 3D scene with the rider on its rocket as the hero, a big PLAY button and a Practice / Chog NFT / Demo switch.
+- The line under the switch explains the mode. In Chog NFT mode it also shows your tickets and this week's prize pool.
 - Top: your best distance (or the selected Chog's best total distance) and a wallet chip.
-- Bottom: Ranks (leaderboard) and How to play. Space or Enter also plays.
+- Bottom: Ranks (leaderboard), Tickets (Chog NFT mode, once the pool contract is live), Quests and How to play. Space or Enter also plays.
 
-## Two ways to play
+## Three modes
+
+| | Practice | Chog NFT | Demo |
+|---|---|---|---|
+| Who | Anyone | Chog Genesis holders | Anyone |
+| Wallet | Not needed | Monad wallet with a Chog | Optional (any wallet, for the DEMO board) |
+| Rider | Rookie, the practice pilot | Your own Chog | One of 5 real Chogs |
+| Traits, abilities, tier scoring | No | Yes | Yes |
+| Quests, badges, streak | No | Yes (saved on the server) | Yes (saved on the device) |
+| Leaderboard | None | Weekly Chog NFT board | DEMO board |
+| Cost | Free | $0.50 in $CHOG per ranked run | Free |
+| Prizes | No | Weekly $CHOG prize pool (top 10) | No |
+
+### Why we made Demo mode
+
+- **Most people don't own a Chog yet.** Chog NFT mode is the heart of the game, but without a Chog you could only see Practice, which leaves out everything that makes a Chog special: traits, Laser Eyes, rocket looks, tier scoring, quests and the streak.
+- **Try before you buy.** Demo lets anyone fly 5 real Chog Genesis NFTs, one from each tier, with every Chog NFT feature. Players see what holding a Chog gets them before they buy a Chog or $CHOG.
+- **Judges and reviewers.** Hackathon judges, partners and press can test the whole experience in seconds, with no NFT, no tokens and no setup.
+- **Testing without real money.** Chog NFT mode uses real $CHOG on Monad mainnet, with no testnet version. Demo is where new features get tried safely, and where we test the game without spending tickets.
+- **Still competitive.** Signing in with any wallet puts demo runs on their own DEMO leaderboard, checked by the server like real runs, so visitors have something to chase from their first run.
+- **Kept apart.** Demo runs never touch the Chog NFT leaderboard, the prize pool or a holder's real streak, so the ranked game stays fair.
+
+### Mode details
 
 - **Practice mode (anyone)**
   - Play as Rookie, the practice pilot, on a rocket. No wallet needed.
@@ -180,6 +205,23 @@ The run passes through five zones that repeat in order. Each zone lasts longer t
 - `server/dev.js`: local server for the game plus API.
 - `scripts/`: contract and metadata audits.
 - `docs/`: verification status, trait mapping, art, leaderboard design.
+
+## Roadmap
+
+- **Now (live on Monad mainnet)**
+  - Practice, Chog NFT and Demo modes, with 8 pickups, 5 zones and Laser Eyes.
+  - Tickets ($0.50 in $CHOG) and the weekly $CHOG prize pool, shared by the top 10 every Monday. Public pool contract, no fee.
+  - Weekly Chog NFT and DEMO leaderboards.
+  - Daily and weekly quests, tiered badges with rarity, streaks and streak lives.
+  - Shareable run cards (X 16:9 or square) with one-tap share to X.
+- **Next**
+  - Own domain and standard "Sign-In with Ethereum" messages, so wallets show fewer warnings.
+  - Weekly winner announcements and payout recaps for the community.
+  - Seasonal events and new zones.
+- **Later**
+  - A small pool fee once the player base grows, to fund development and bigger prize events (it needs a new contract; today's contract has no fee).
+  - Guest riders from other Monad NFT collections.
+  - Tournaments with sponsored prize pools.
 
 ## Status
 
