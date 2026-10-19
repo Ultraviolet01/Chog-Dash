@@ -136,6 +136,11 @@
     $("pilotSave").onclick = savePilot;
     $("pilotInput").addEventListener("keydown", e => { if (e.key === "Enter") savePilot(); });
     $("rideBtn").onclick = () => rideChog();
+    $("careerPill").onclick = () => $("bestChip").onclick();
+    $("bestChip").onclick = () => {
+      const demo = homeMode === "demo", chog = demo ? S.demoChog : homeMode === "nft" ? S.chog : null;
+      if (chog) openCareer(chog.tokenId, { demo });
+    };
     $("chosenCareerBtn").onclick = () => S.chog && openCareer(S.chog.tokenId);
     $("careerBack").onclick = closeCareer;
     $("careerShare").onclick = () => {
@@ -415,6 +420,15 @@
     if (lab.textContent !== label) { lab.textContent = label; if (animate) swapIn(lab); }
     $("playBtn").classList.toggle("pick", label !== "PLAY");
     $("bestLabel").textContent = nft && chog ? "BEST TOTAL" : "BEST";
+    // The selected Chog's level; the chip opens its career
+    const cr = nft && chog ? careerOf(chog) : null;
+    if (nft && chog && !chog.demo && !cr) loadCareerInfo(chog.tokenId);
+    $("bestLv").textContent = cr ? "LV " + cr.level : "";
+    $("bestChip").classList.toggle("has-career", !!(nft && chog));
+    // A clear Career button under the mode line (phones show no "CAREER" in the small chip)
+    const pill = $("careerPill");
+    pill.style.display = nft && chog ? "" : "none";
+    if (nft && chog) pill.innerHTML = (cr ? '<span class="chip-lv">LV ' + cr.level + "</span>" : "") + "<span>" + esc(cr && cr.title ? cr.title : chog.name) + "</span><b>CAREER &rsaquo;</b>";
     $("bestValue").textContent = (nft && chog ? readNum(bestKey(chog)) : readNum(PRACTICE_BEST)).toLocaleString() + " m";
     $("walletChipText").textContent = S.account ? (S.username || short(S.account)) : "Connect wallet";
     $("walletDot").classList.toggle("on", !!S.account && S.chainId === cfg.collection.chainId);
@@ -712,7 +726,10 @@
     show("demoPanel");
     renderDemoAccount();
     const list = $("demoList");
-    const mark = () => list.querySelectorAll(".demo-card").forEach(el => el.classList.toggle("sel", !!S.demoChog && el.dataset.token === S.demoChog.tokenId));
+    const mark = () => list.querySelectorAll(".demo-card").forEach(el => {
+      el.classList.toggle("sel", !!S.demoChog && el.dataset.token === S.demoChog.tokenId);
+      el.querySelector(".dlv").textContent = "Lv " + Career.levelFor(demoCareer(el.dataset.token).xp);   // levels change after runs
+    });
     if (list.childElementCount) { mark(); return; }
     Demo.CHOGS.forEach(d => {
       const meta = d.metadata, gp = T.resolveGameplay(meta);
@@ -728,10 +745,12 @@
       card.className = "demo-card t-" + String(gp.tier || "").toLowerCase();
       card.dataset.token = d.tokenId;
       card.innerHTML = '<div class="dimg"><span class="dload">Loading art...</span></div><div class="dbody"><div class="dname">' + esc(meta.name) +
-        '</div><div class="dtier">' + esc(gp.tier) + " &middot; x" + gp.multiplier.toFixed(2) + " &middot; Lv " + Career.levelFor(demoCareer(d.tokenId).xp) + "</div><div class=\"dchips\">" + chips.join("") +
-        '</div><div class="dblurb">' + esc(d.blurb) + '</div><span class="dfly">FLY</span></div>';
+        '</div><div class="dtier">' + esc(gp.tier) + " &middot; x" + gp.multiplier.toFixed(2) + ' &middot; <span class="dlv"></span></div><div class="dchips">' + chips.join("") +
+        '</div><div class="dblurb">' + esc(d.blurb) + '</div><div class="drow"><span class="dfly">FLY</span><span class="dcareer" role="button" tabindex="0">Career</span></div></div>';
       card.onclick = () => pickDemo(d, card);
+      card.querySelector(".dcareer").onclick = e => { e.stopPropagation(); openCareer(d.tokenId, { demo: true }); };
       list.appendChild(card);
+      card.querySelector(".dlv").textContent = "Lv " + Career.levelFor(demoCareer(d.tokenId).xp);
       Meta.loadImage(meta.image).then(art => {
         d._art = art;
         const img = document.createElement("img"); img.alt = ""; img.src = art.url;
@@ -807,6 +826,17 @@
     if (!c) return null;
     if (c.demo) { const d = demoCareer(c.tokenId); return { level: Career.levelFor(d.xp), title: Career.topTitle(d) }; }
     return S.careerInfo && S.careerInfo.tokenId === c.tokenId ? S.careerInfo : null;
+  }
+
+  // A Chog's level from the server, for the home screen chip (once per Chog until a run updates it)
+  async function loadCareerInfo(id) {
+    if (S.careerLoading === id) return;
+    S.careerLoading = id;
+    try {
+      const v = await apiCall("/career?token=" + encodeURIComponent(id));
+      S.careerInfo = { tokenId: id, level: v.level, title: v.title };
+      if ($("menuPanel").classList.contains("show")) refreshHome();
+    } catch (e) { /* offline or unknown: the chip just shows no level */ }
   }
 
   // Game over: the Chog's level, the XP this run earned, a level-up and any new titles

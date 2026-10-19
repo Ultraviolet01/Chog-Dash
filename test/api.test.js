@@ -236,7 +236,7 @@ test("quests: holders only, progress from validated runs, badges and streaks", a
     return h.runFinish({ body: Object.assign({ runId: s.runId }, body, { durationMs: secs * 1000 }), token: ta });
   };
   // A short first run can't make the day count (under 5 minutes); more runs finish the dailies and the minutes
-  const r0 = await run(Object.assign({}, big, { meters: 7000 }), 140);
+  const r0 = await run(Object.assign({}, big, { meters: 6000 }), 140);
   assert.strictEqual(r0.quests.streakDay, null, "only 2:20 flown");
   const earned = r0.quests.badges.slice(), completed = r0.quests.completed.slice();
   let r1;
@@ -361,7 +361,7 @@ test("streak lives: 7 days in a row bank 1 life, runs spend it, a broken streak 
   assert.strictEqual((await h.questsGet({ token: ta })).bankLives, 1);
 
   // The next run may spend it; using more than the bank holds is cut down
-  const { start, r } = await run({ meters: 2000, bankLivesUsed: 5, livesUsed: 6 }, 60);
+  const { start, r } = await run({ meters: 1800, bankLivesUsed: 5, livesUsed: 6 }, 60);
   assert.strictEqual(start.bankLives, 1, "run start hands out the banked life");
   assert.strictEqual(r.status, "validated");
   assert.strictEqual((await h.questsGet({ token: ta })).bankLives, 0, "spent");

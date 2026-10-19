@@ -87,9 +87,9 @@
       baseSpeed: 40,
       // Speed rises quickly to rampSpeed, then keeps rising for the rest of the run, more slowly the
       // further you go: speed = rampSpeed + lateGrowth * sqrt(meters past the ramp). See traits.speedAt.
-      speedPerMeter: 0.03,   // a gentle ramp: about 1 minute to reach rampSpeed
-      rampSpeed: 100,
-      lateGrowth: 0.25,
+      speedPerMeter: 0.015,  // a gentle ramp: about 2 minutes to reach rampSpeed
+      rampSpeed: 90,
+      lateGrowth: 0.15,
       laserRange: 140,
       laserRadius: 0.9,
       // The run is split into zones that repeat in this order (loop after Milky Way).

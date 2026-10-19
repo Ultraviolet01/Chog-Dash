@@ -125,7 +125,7 @@ test("full game flow on the Supabase schema: sign in, username, runs, leaderboar
     return h.runFinish({ body: { runId: s.runId, meters, durationMs: 29000 }, token: who.token });
   };
   assert.strictEqual((await run(a, "1", 650)).finalScore, 910);   // Legendary x1.4
-  const fb = await run(b, "2", 800);                              // Common x1.0
+  const fb = await run(b, "2", 750);                              // Common x1.0
   assert.deepStrictEqual([fb.status, fb.rank], ["validated", 2]);
   const s = await h.runStart({ body: { tokenId: "1" }, token: a.token });
   t += 30000;
@@ -133,12 +133,12 @@ test("full game flow on the Supabase schema: sign in, username, runs, leaderboar
   await assert.rejects(h.runFinish({ body: { runId: s.runId, meters: 10, durationMs: 29000 }, token: a.token }), /already submitted/);
 
   const lb = await h.leaderboard();
-  assert.deepStrictEqual(lb.entries.map(e => [e.rank, e.username, e.totalMeters, e.meters]), [[1, "Alice", 910, 650], [2, "Bob", 800, 800]]);
+  assert.deepStrictEqual(lb.entries.map(e => [e.rank, e.username, e.totalMeters, e.meters]), [[1, "Alice", 910, 650], [2, "Bob", 750, 750]]);
   // A demo run goes to the separate DEMO board table, not the Chog NFT board
   const ds = await h.runStart({ body: { tokenId: "1798", demo: true }, token: b.token });
   t += 30000;
-  assert.strictEqual((await h.runFinish({ body: { runId: ds.runId, meters: 800, durationMs: 29000 }, token: b.token })).finalScore, 1120);
-  assert.deepStrictEqual((await h.demoLeaderboard({ token: b.token })).entries.map(e => [e.rank, e.username, e.totalMeters]), [[1, "Bob", 1120]]);
+  assert.strictEqual((await h.runFinish({ body: { runId: ds.runId, meters: 700, durationMs: 29000 }, token: b.token })).finalScore, 980);
+  assert.deepStrictEqual((await h.demoLeaderboard({ token: b.token })).entries.map(e => [e.rank, e.username, e.totalMeters]), [[1, "Bob", 980]]);
   assert.strictEqual((await h.leaderboard()).entries.length, 2);
   // Quest progress and badges are stored in chog_kv too
   const q = await h.questsGet({ token: a.token });

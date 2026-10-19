@@ -1174,3 +1174,23 @@ body.game-over #dist, body.game-over #score { visibility: hidden; }   /* the car
 .hc-week b { font-size: 13px; color: var(--ink); }
 .hc-week i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--accent2); }
 @media (prefers-reduced-motion: reduce) { .cr-chip.new { animation: none; } }
+/* Home: the selected Chog's level in the BEST chip, which opens its career */
+.best-chip { cursor: default; }
+.best-chip.has-career { cursor: pointer; }
+.best-chip.has-career:hover { border-color: var(--accent2); }
+.chip-lv { font: 11px 'Bungee', Impact, sans-serif; color: #1a1205; background: var(--accent); border-radius: 6px; padding: 2px 6px; }
+.chip-lv:empty { display: none; }
+/* Demo cards: FLY and Career */
+.drow { display: flex; align-items: center; gap: 8px; margin-top: auto; }
+.drow .dfly { margin-top: 0; }
+.dcareer { font-size: 12px; font-weight: 700; color: var(--accent2); padding: 4px 10px; border-radius: 8px; border: 1px solid rgba(79,209,197,0.5); cursor: pointer; }
+.dcareer:hover { background: rgba(79,209,197,0.12); }
+/* Home: the selected Chog's career, under the mode line */
+.career-pill { display: flex; width: fit-content; align-items: center; gap: 8px; max-width: 100%; margin: -4px 0 12px; padding: 6px 12px; border-radius: 999px;
+  background: rgba(5,8,18,0.72); border: 1px solid rgba(79,209,197,0.55); color: var(--ink); font: 700 13px 'Chakra Petch', Arial, sans-serif; cursor: pointer;
+  pointer-events: auto; box-shadow: none; }
+.career-pill span:not(.chip-lv) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.career-pill b { flex: none; color: var(--accent2); font-size: 12px; letter-spacing: 1px; }
+.career-pill:hover { border-color: var(--accent2); background: rgba(79,209,197,0.12); }
+@media (max-aspect-ratio: 1/1) { .career-pill { margin-left: auto; margin-right: auto; } }
+@media (max-height: 500px) and (min-aspect-ratio: 1/1) { .career-pill { margin: 0 0 6px; padding: 4px 10px; font-size: 12px; } }

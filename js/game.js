@@ -23,7 +23,7 @@
   const NEAR_MISS_MARGIN = 1.3;       // extra distance that still counts as a near miss
 
   const SPAWN_Z = -260, DESPAWN_Z = 12;
-  const START_SPACING = 30, MIN_SPACING = 11, SPACING_SHRINK = 0.006;   // obstacles close up gradually: tightest after about 3,200 m
+  const START_SPACING = 30, MIN_SPACING = 11, SPACING_SHRINK = 0.003;   // obstacles close up gradually: tightest after about 6,300 m
   const CLUSTER_START = 120, TRIPLE_START = 400;
   const SAFE_MARGIN = 1.2;
 

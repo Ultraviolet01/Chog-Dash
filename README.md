@@ -197,9 +197,9 @@ The run passes through five zones that repeat in order. Each zone lasts longer t
 ## Gameplay rules
 
 - A hit uses a life if you have one (Stardust lives first, then streak lives in Chog NFT runs); with no lives left, it ends the run. Touching the screen edges does not.
-- Speed rises with distance for the whole run: gently to x2.5 over the first minute, then it keeps climbing, more slowly the further you go (about x2.9 in Zone 2, x4.7 in Zone 5, x5.7 on loop 2).
-- To keep it fair at high speed, obstacles appear further ahead (about 2.4 s of warning), steering gets faster, and obstacle groups never come closer together in time than at x2.5.
-- Obstacles get denser with distance (groups of 1, then 2, then 3), and closer together until about 3,200 m.
+- Speed rises with distance for the whole run: gently to x2.25 over the first two minutes (x1.6 after one minute), then it keeps climbing, more slowly the further you go (about x2.3 in Zone 2, x3.4 in Zone 5, x3.9 on loop 2).
+- To keep it fair at high speed, obstacles appear further ahead (about 2.4 s of warning), steering gets faster, and obstacle groups never come closer together in time than at x2.25.
+- Obstacles get denser with distance (groups of 1, then 2, then 3), and closer together until about 6,300 m (about 3 minutes in).
 - Every obstacle group leaves a reachable safe path.
 - Near misses flash on screen. They are feedback only and do not change the distance.
 - **Laser Eyes** (Chogs whose Eyes trait maps to it):

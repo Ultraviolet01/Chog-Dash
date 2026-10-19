@@ -57,7 +57,7 @@ function setup({ registered = true } = {}) {
     chainState.receipts[hash] = { failed: false, blockTime: at, events: [{ player: low(acct), week: Quests.weekNumber(at), amount, ref: ref.toLowerCase() }] };
   };
   // A run: start, take off, fly `ms`, finish with `meters`
-  async function run(token, tokenId, meters, ms = 30000) {
+  async function run(token, tokenId, meters, ms = 40000) {
     const s = await h.runStart({ body: { tokenId }, token });
     const fly = await h.runFly({ body: { runId: s.runId }, token });
     t += ms;
