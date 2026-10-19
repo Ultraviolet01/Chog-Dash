@@ -71,7 +71,7 @@ Play it at https://chog-dash.vercel.app (desktop and phone browsers, nothing to 
 
 ## Chog careers
 
-- Every Chog token builds its own career from the runs flown with it. It belongs to the token, not the wallet: when the NFT is sold or traded, its level, titles and run history go with it.
+- Every Chog token builds its own career from the runs flown with it. It belongs to the NFT, not the wallet: when the NFT is sold or traded, its level, titles and run history go with it.
 - **XP and levels:** each valid run earns XP: 1 per 20 m flown, +50 for every zone reached past the first, +10 per run. Level L needs 50 x L x (L - 1) XP (100, 300, 600, 1,000 ...), up to level 50.
 - **Titles (14):** First Flight; zone titles (Asteroid Belt Veteran, Galactic Drifter, Deep Cosmic Diver, Milky Way Voyager, Second Lap); Frequent Flyer and Space Veteran (25 and 100 runs); 100 km Flown and Million Meter Chog; Passed Down (flown by more than one pilot); Weekly Top 10, Weekly Podium and Weekly Champion.
 - **Weekly honors:** finishing a week in the top 10 is recorded on the Chog's career when the week is over.
@@ -117,21 +117,6 @@ Play it at https://chog-dash.vercel.app (desktop and phone browsers, nothing to 
 - Laser Eyes: E (only for Chogs with that trait).
 - Touch screens: drag to fly the rocket in any direction; tap the round LASER button (bottom right, under the right thumb) to fire Laser Eyes. It fires on touch-down and never starts a drag or a zoom (no two-finger gesture, which phones read as pinch-zoom).
 - There is no boost. Speed rises on its own as you travel further.
-
-## Sound
-
-- Background music: the track "Beyond the Outer Rim" (`audio/beyond-the-outer-rim.mp3`, 2:52, MP3 128 kbps, about 2.7 MB).
-  - Streamed through two audio players, so it never sits fully decoded in memory; near the end, the other player starts from the top and the two crossfade, so it loops without a gap.
-  - It only downloads while Music is on, and pauses when Music is switched off.
-  - If it can't load (offline, or `index.html` opened straight from disk), a synthesised space tune plays instead.
-  - The local dev server serves `/audio/` with byte ranges, like Vercel, so the browser can seek in the track.
-- Sound effects are synthesised in the browser (`js/audio.js`, Web Audio API): no effect files. In a run, an engine hum rises with speed (it roars while Dash is active).
-- Each pickup has its own tone: Stardust chimes climb in pitch along a streak; Golden Horn fanfare; Dash boost whoosh; Magnet wobble; Slow-Mo downward sweep; Nova screen-clear blast with a shockwave and crackling rocks; Radar sonar ping; Mystery Box roll, then the revealed power's tone.
-- Also: launch, crash, near miss, warp gate, extra life, life used, smash crunch, button clicks.
-- Laser Eyes: a zap with a short buzzing beam, then a blast when it destroys something. The beam pierces everything in its path, huge asteroids included.
-- Sound button (top right) opens a panel with separate switches for Music and Sound effects (the engine hum counts as an effect).
-- M turns all sound off or back on. Choices are remembered on the device.
-- Browsers start sound after the first click, tap or key.
 
 ## Run card
 
