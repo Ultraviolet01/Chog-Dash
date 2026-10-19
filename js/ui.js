@@ -594,7 +594,7 @@
       // the run is checked by the server and ranked on the separate DEMO leaderboard.
       const q = Demo.finish(result);
       if (result.meters > 0) {   // the demo Chog's career, kept on this device
-        const out = Career.applyRun(demoCareer(c.tokenId), { meters: result.meters, total: result.score, at: Date.now(), pilot: S.username || null, ranked: false });
+        const out = Career.applyRun(demoCareer(c.tokenId), { meters: result.meters, total: result.score, at: Date.now(), pilot: S.username || null, ranked: !!(S.activeRunId || S.activeWait) });
         saveDemoCareer(out.career);
         renderGoCareer(Object.assign(Career.progress(out.career.xp), { gained: out.gained, levelUp: out.levelUp, newTitles: out.newTitles }), c);
       }
@@ -945,7 +945,7 @@
       (v.honors.length ? '<h3 class="cr-h">WEEKLY HONORS</h3><div class="cr-list">' + v.honors.map(h =>
         '<div class="cr-row"><span>Week of ' + when((h.week * 7 - 3) * 864e5) + "</span><b>#" + h.rank + "</b></div>").join("") + "</div>" : "") +
       '<h3 class="cr-h">RECENT RUNS</h3><div class="cr-list">' + (v.recent.length ? v.recent.map(r =>
-        '<div class="cr-row"><span>' + when(r.at) + (r.pilot ? " · " + esc(r.pilot) : "") + (r.ranked ? "" : ' <i class="cr-muted">unranked</i>') + "</span><b>" +
+        '<div class="cr-row"><span>' + when(r.at) + (r.pilot ? " · " + esc(r.pilot) : "") + (r.ranked || v.demo ? "" : ' <i class="cr-muted">unranked</i>') + "</span><b>" +
         r.total.toLocaleString() + ' m</b><span class="cr-muted">' + r.meters.toLocaleString() + " m flown · zone " + r.zone + "</span></div>").join("")
         : '<div class="cr-muted">No runs yet. The first run starts this Chog\'s career.</div>') + "</div>" +
       '<p class="lb-rule">' + (v.demo ? "A demo Chog's career is kept on this device only. Real Chogs keep theirs on the server, and anyone can see them."
