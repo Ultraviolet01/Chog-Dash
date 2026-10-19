@@ -744,6 +744,10 @@
       el.classList.toggle("sel", !!S.demoChog && el.dataset.token === S.demoChog.tokenId);
       el.querySelector(".dlv").textContent = "Lv " + Career.levelFor(demoCareer(el.dataset.token).xp);   // levels change after runs
     });
+    // This week's trait, and which demo Chogs have it
+    const tw = T.weeklyTrait(thisWeek()), withIt = Demo.CHOGS.filter(d => T.weeklyTraitFor(d.metadata, tw.week).has).map(d => d.metadata.name);
+    $("demoWeek").innerHTML = "Trait of the week: <b>" + esc(tw.label) + " " + pctBonus(tw.bonus) + "</b> total distance until Monday 00:00 UTC. " +
+      (withIt.length ? "Demo Chog" + (withIt.length > 1 ? "s" : "") + " with it: <b>" + withIt.map(esc).join(", ") + "</b>." : "No demo Chog has it this week.");
     if (list.childElementCount) { mark(); return; }
     Demo.CHOGS.forEach(d => {
       const meta = d.metadata, gp = T.resolveGameplay(meta);
@@ -751,7 +755,7 @@
       const look = root.ChogLooks.rocketLook(gp.attributes, meta, null);
       const legendary = look.id.indexOf("legendary:") === 0;
       const wk = T.weeklyTraitFor(meta, thisWeek());
-      const chips = (wk.has ? ['<span class="dchip week">Trait of the week ' + pctBonus(wk.bonus) + "</span>"] : [])
+      const chips = (wk.has ? ['<span class="dchip week">' + esc(wk.featured.label) + " week " + pctBonus(wk.bonus) + "</span>"] : [])
         .concat(laser ? ['<span class="dchip laser">Laser Eyes &middot; ' + esc(laser.fromValue) + "</span>"] : [])
         .concat(look.id !== "standard" ? ['<span class="dchip rocket">' + esc(legendary ? "One-of-one rocket" : look.name) + "</span>"] : [])
         .concat(look.trail ? ['<span class="dchip trail">' + esc(legendary ? look.trail.style.charAt(0).toUpperCase() + look.trail.style.slice(1) : look.trail.name) + " trail</span>"] : []);

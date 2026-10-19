@@ -1201,3 +1201,8 @@ body.game-over #dist, body.game-over #score { visibility: hidden; }   /* the car
 .cr-find input:focus { outline: none; border-color: var(--accent2); }
 /* The career can open from the game over card, which sits above the other panels: it goes on top, and Back returns to the card */
 #careerPanel { z-index: 20; }
+/* Demo picker: this week's trait */
+.demo-week { max-width: 760px; margin: 0 auto 12px; padding: 8px 14px; border-radius: 12px; text-align: center; font-size: 13px; color: var(--accent2);
+  border: 1px solid rgba(79,209,197,0.5); background: rgba(79,209,197,0.07); }
+.demo-week b { color: var(--ink); }
+.demo-week:empty { display: none; }
