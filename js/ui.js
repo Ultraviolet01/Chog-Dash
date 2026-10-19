@@ -32,7 +32,7 @@
   const short = a => (a ? a.slice(0, 6) + "..." + a.slice(-4) : "");
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function show(panelId) {
-    ["menuPanel", "nftPanel", "lbPanel", "howPanel", "questPanel", "demoPanel", "ticketPanel"].forEach(id => $(id).classList.toggle("show", id === panelId));
+    ["menuPanel", "nftPanel", "lbPanel", "howPanel", "questPanel", "demoPanel", "ticketPanel", "careerPanel"].forEach(id => $(id).classList.toggle("show", id === panelId));
     if (panelId !== "questPanel") clearInterval(questTimer);
     if (panelId === "menuPanel") { refreshHome(); $("questStrip").classList.remove("show"); stopReveal(); }
   }
@@ -86,11 +86,14 @@
   function start() {
     game = root.ChogGame.init({ onReady, onStart, onEnd, onRetry: playAgain });
     loadPool();   // shows the Tickets button once the pool contract is live
+    // A shared career link: ?chog=<token id> opens that Chog's career
+    const deepChog = new URLSearchParams(location.search).get("chog");
+    if (deepChog && /^\d{1,6}$/.test(deepChog)) setTimeout(() => openCareer(deepChog, { back: "menuPanel" }), 0);
     $("modePractice").onclick = () => setHomeMode("practice");
     $("modeNft").onclick = () => setHomeMode("nft");
     $("modeDemo").onclick = () => setHomeMode("demo");
     $("demoBack").onclick = () => show("menuPanel");
-    $("demoReset").onclick = () => { Demo.reset(); setStatus($("demoStatus"), "Demo progress reset: quests, badges and the streak start from zero."); $("demoStatus").className = "lb-status good"; };
+    $("demoReset").onclick = () => { Demo.reset(); clearDemoCareers(); setStatus($("demoStatus"), "Demo progress reset: quests, badges and the streak start from zero."); $("demoStatus").className = "lb-status good"; };
     $("playBtn").onclick = play;
     $("walletChip").onclick = openNft;
     $("lbBtn").onclick = () => openLeaderboard();
@@ -133,6 +136,14 @@
     $("pilotSave").onclick = savePilot;
     $("pilotInput").addEventListener("keydown", e => { if (e.key === "Enter") savePilot(); });
     $("rideBtn").onclick = () => rideChog();
+    $("chosenCareerBtn").onclick = () => S.chog && openCareer(S.chog.tokenId);
+    $("careerBack").onclick = closeCareer;
+    $("careerShare").onclick = () => {
+      if (!careerShown) return;
+      const url = location.origin + location.pathname + "?chog=" + careerShown.id, st = $("careerStatus");
+      (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject(new Error("no clipboard")))
+        .then(() => { st.className = "lb-status good"; st.textContent = "Link copied: " + url; }, () => { st.className = "lb-status"; st.textContent = url; });
+    };
     $("ntBuy").onclick = () => { closeNoTicket(); openTickets(); };
     $("ntPlay").onclick = () => { closeNoTicket(); rideChog({ unranked: true }); };
     $("ntClose").onclick = closeNoTicket;
@@ -158,7 +169,7 @@
 
   // ---------- How to play: five swipeable pages ----------
   let howPage = 0, howBuilt = false;
-  const HOW_PAGES = 7;
+  const HOW_PAGES = 8;
   function openHow() {
     if (!howBuilt) { buildHow(); howBuilt = true; }
     // Page 5 shows your own Chog once you've picked one
@@ -250,6 +261,20 @@
       "<b>Used at take-off:</b> a ticket is spent when your rocket takes off. Your best ticketed run of the week counts.",
       "<b>Weekly prizes:</b> the board resets every Monday 00:00 UTC. The top 10 share the pool (shares above), paid to their wallets after a " + TK.reviewHours + "-hour check. Unearned shares roll over.",
       "<b>No ticket?</b> You can still fly and do quests, but the run isn't ranked. Practice and Demo are always free.",
+    ].map(t => "<li>" + t + "</li>").join("");
+    // Page 8: a sample career, and the trait of the week with the next ones
+    const wk0 = thisWeek(), wb = pctBonus(cfg.weeklyTrait.bonus);
+    $("howCareerViz").innerHTML =
+      '<div class="hc-card"><div class="cr-lvtop"><span class="gc-lv big">LV<b>4</b></span><div><b>Level 4</b><span>780 / 1,000 XP</span></div></div>' +
+        '<div class="go-bar"><i style="width:45%"></i></div><div class="cr-titles"><span class="cr-chip on">First Flight</span><span class="cr-chip on">Asteroid Belt Veteran</span><span class="cr-chip">Galactic Drifter</span></div></div>' +
+      '<div class="hc-weeks">' + [0, 1, 2].map(k => { const w = T.weeklyTrait(wk0 + k); return '<div class="hc-week' + (k ? "" : " now") + '"><span>' +
+        (k ? "From " + new Date(w.startsAt).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : "THIS WEEK") + "</span><b>" + esc(w.label) + "</b><i>" + wb + "</i></div>"; }).join("") + "</div>";
+    $("howCareerText").innerHTML = [
+      "<b>Every Chog has a career:</b> each run earns its Chog XP (1 per 20 m flown, +50 for every zone reached past the first). Chogs level up and earn titles like Asteroid Belt Veteran, Frequent Flyer and Weekly Champion.",
+      "<b>It belongs to the Chog, not the wallet:</b> sell or trade the NFT and its level, titles and run history go with it. A well-flown Chog has a story.",
+      "<b>Anyone can look:</b> tap a pilot on Ranks, or Career on your Chog, to see its level, titles, weekly honors and recent runs. Each career has its own link.",
+      "<b>Trait of the week:</b> every Monday a different trait is featured (" + cfg.weeklyTrait.rotation.length + " in rotation). Chogs with it get " + wb + " total distance that week, so different Chogs get their moment.",
+      "<b>Demo Chogs</b> have careers and the trait of the week too, kept on your device.",
     ].map(t => "<li>" + t + "</li>").join("");
     // Dots, buttons, keys and swipe
     $("howDots").innerHTML = Array.from({ length: HOW_PAGES }, (_, k) => '<button class="how-dot" role="tab" aria-label="Page ' + (k + 1) + '"></button>').join("");
@@ -540,6 +565,11 @@
       // Demo: quests, badges, the streak and streak lives use the same rules, kept on this device. Signed in,
       // the run is checked by the server and ranked on the separate DEMO leaderboard.
       const q = Demo.finish(result);
+      if (result.meters > 0) {   // the demo Chog's career, kept on this device
+        const out = Career.applyRun(demoCareer(c.tokenId), { meters: result.meters, total: result.score, at: Date.now(), pilot: S.username || null, ranked: false });
+        saveDemoCareer(out.career);
+        renderGoCareer(Object.assign(Career.progress(out.career.xp), { gained: out.gained, levelUp: out.levelUp, newTitles: out.newTitles }), c);
+      }
       if (q.badges.length) revealBadges(q.badges);
       if (q.livesEarned) revealBadges([{ lives: q.livesEarned, day: q.streakDay }]);
       S.quests = Demo.view();
@@ -583,6 +613,7 @@
             ? ["Not ranked: no ticket for this run. Buy tickets to compete for the weekly pool", "warn"]
             : ["Not validated: " + (r.reason || r.status), "warn"]);
         goNotes(questLines(r.quests));
+        if (r.career) { S.careerInfo = { tokenId: c.tokenId, level: r.career.level, title: r.career.title }; renderGoCareer(r.career, c); }
         if (r.quests && r.quests.badges.length) revealBadges(r.quests.badges);
         if (r.quests && r.quests.livesEarned) revealBadges([{ lives: r.quests.livesEarned, day: r.quests.streakDay }]);
         if (r.status === "validated") loadQuests();
@@ -605,7 +636,10 @@
     el.classList.toggle("best", newBest);
     $("goMode").textContent = practice ? "PRACTICE" : S.mode === "demo" ? "DEMO · " + c.name : c.name + " · " + (g.tier || "");
     $("goLabel").textContent = practice ? "DISTANCE" : "TOTAL DISTANCE";
-    $("goFormula").textContent = practice ? "" : result.meters.toLocaleString() + " m flown x " + g.multiplier.toFixed(2) + " (Tier " + (g.tier || "unknown") + ")";
+    const wk = practice ? null : weekTrait(c);
+    $("goFormula").textContent = practice ? "" : result.meters.toLocaleString() + " m flown x " + g.multiplier.toFixed(2) + " (Tier " + (g.tier || "unknown") + ")" +
+      (wk && wk.has ? " x " + wk.bonus.toFixed(2) + " (" + wk.featured.label + ")" : "");
+    renderGoCareer(null);
     $("goFace").style.display = c ? "" : "none";
     if (c) $("goFace").src = c.imageUrl;
     // Best: a NEW BEST burst, the first run, or how far short of it
@@ -685,14 +719,16 @@
       const laser = gp.abilities.find(a => a.id === "laserEyes");
       const look = root.ChogLooks.rocketLook(gp.attributes, meta, null);
       const legendary = look.id.indexOf("legendary:") === 0;
-      const chips = (laser ? ['<span class="dchip laser">Laser Eyes &middot; ' + esc(laser.fromValue) + "</span>"] : [])
+      const wk = T.weeklyTraitFor(meta, thisWeek());
+      const chips = (wk.has ? ['<span class="dchip week">Trait of the week ' + pctBonus(wk.bonus) + "</span>"] : [])
+        .concat(laser ? ['<span class="dchip laser">Laser Eyes &middot; ' + esc(laser.fromValue) + "</span>"] : [])
         .concat(look.id !== "standard" ? ['<span class="dchip rocket">' + esc(legendary ? "One-of-one rocket" : look.name) + "</span>"] : [])
         .concat(look.trail ? ['<span class="dchip trail">' + esc(legendary ? look.trail.style.charAt(0).toUpperCase() + look.trail.style.slice(1) : look.trail.name) + " trail</span>"] : []);
       const card = document.createElement("button");
       card.className = "demo-card t-" + String(gp.tier || "").toLowerCase();
       card.dataset.token = d.tokenId;
       card.innerHTML = '<div class="dimg"><span class="dload">Loading art...</span></div><div class="dbody"><div class="dname">' + esc(meta.name) +
-        '</div><div class="dtier">' + esc(gp.tier) + " &middot; x" + gp.multiplier.toFixed(2) + "</div><div class=\"dchips\">" + chips.join("") +
+        '</div><div class="dtier">' + esc(gp.tier) + " &middot; x" + gp.multiplier.toFixed(2) + " &middot; Lv " + Career.levelFor(demoCareer(d.tokenId).xp) + "</div><div class=\"dchips\">" + chips.join("") +
         '</div><div class="dblurb">' + esc(d.blurb) + '</div><span class="dfly">FLY</span></div>';
       card.onclick = () => pickDemo(d, card);
       list.appendChild(card);
@@ -738,13 +774,130 @@
     S.mode = "demo";
     game.configure({
       riderCanvas: c.riderCanvas, riderPoses: c.riderPoses, look: c.look, laserCharges: laser ? laser.charges : 0,
-      multiplier: c.gameplay.multiplier, showScore: true,
+      multiplier: effMult(c), showScore: true,
       modeLabel: "DEMO · " + c.name + " · Tier " + (c.gameplay.tier || "unknown"),
     });
     $("modeBadge").className = "demo";
     $("riderCard").src = c.imageUrl;
     $("riderCard").style.display = "block";
     enterGame();
+  }
+
+  // ---------- Trait of the week and Chog careers ----------
+  const Career = root.ChogCareer;
+  const thisWeek = () => T.weekOf(Date.now());
+  // This week's featured trait for a Chog: { has, bonus, value, featured }
+  const weekTrait = c => (c && c.metadata ? T.weeklyTraitFor(c.metadata, thisWeek()) : null);
+  // The run's multiplier: tier x the weekly bonus when the Chog has the trait (the server works it out the same way)
+  const effMult = c => { const w = weekTrait(c); return T.effectiveMultiplier(c.gameplay.multiplier, w && w.has ? w.bonus : 1); };
+  const pctBonus = b => "+" + Math.round((b - 1) * 100) + "%";
+  function traitLine(c) {
+    const w = weekTrait(c);
+    if (!w) return "";
+    return w.has ? ["Trait of the week: " + w.featured.label + " (" + pctBonus(w.bonus) + "). This Chog has it: total x" + effMult(c), "good"]
+      : "Trait of the week: " + w.featured.label + " (" + pctBonus(w.featured.bonus) + "). Not on this Chog";
+  }
+  // Demo Chogs keep their careers on this device, with the same rules
+  const DEMO_CAREER = "chogDashDemoCareer:";
+  function demoCareer(id) { try { return JSON.parse(localStorage.getItem(DEMO_CAREER + id)) || Career.empty(id); } catch (e) { return Career.empty(id); } }
+  function saveDemoCareer(c) { try { localStorage.setItem(DEMO_CAREER + c.tokenId, JSON.stringify(c)); } catch (e) {} }
+  function clearDemoCareers() { try { Object.keys(localStorage).filter(k => k.indexOf(DEMO_CAREER) === 0).forEach(k => localStorage.removeItem(k)); } catch (e) {} }
+  // A Chog's level and latest title, when known: { level, title }
+  function careerOf(c) {
+    if (!c) return null;
+    if (c.demo) { const d = demoCareer(c.tokenId); return { level: Career.levelFor(d.xp), title: Career.topTitle(d) }; }
+    return S.careerInfo && S.careerInfo.tokenId === c.tokenId ? S.careerInfo : null;
+  }
+
+  // Game over: the Chog's level, the XP this run earned, a level-up and any new titles
+  function renderGoCareer(info, c) {
+    const box = $("goCareer");
+    if (!info) { box.className = "go-career empty"; box.innerHTML = ""; return; }
+    box.className = "go-career" + (info.levelUp ? " up" : "");
+    box.innerHTML = '<div class="gc-row"><span class="gc-lv">LV<b>' + info.level + '</b></span><div class="gc-mid"><div class="gc-top"><b>' +
+      (info.levelUp ? "LEVEL UP!" : "Chog level " + info.level) + "</b><span>+" + Number(info.gained || 0).toLocaleString() + ' XP</span></div><div class="go-bar gc-bar"><i style="width:' +
+      info.pct + '%"></i></div></div><button class="ghost gc-btn">Career</button></div>' +
+      (info.newTitles && info.newTitles.length ? '<div class="gc-titles">' + info.newTitles.map(t => '<span class="cr-chip on new">' + esc(t.label) + "</span>").join("") + "</div>" : "");
+    box.querySelector(".gc-btn").onclick = () => openCareer(c.tokenId, { demo: !!c.demo, back: "game" });
+  }
+
+  // The chosen Chog in the picker: its level, latest title and a Career button
+  async function loadChosenCareer(idStr, req) {
+    try {
+      const v = await apiCall("/career?token=" + encodeURIComponent(idStr));
+      if (req !== S.selectReq) return;
+      S.careerInfo = { tokenId: idStr, level: v.level, title: v.title };
+      $("chosenCareer").innerHTML = '<span class="gc-lv">LV<b>' + v.level + "</b></span><span>" + (v.title ? "<b>" + esc(v.title) + "</b> · " : "") +
+        (v.runs ? v.runs.toLocaleString() + " run" + (v.runs === 1 ? "" : "s") + " · " + v.flown.toLocaleString() + " m flown" : "No runs yet: its career starts with the first one") + "</span>";
+      $("chosenCareerBtn").style.display = "";
+    } catch (e) { /* the career is extra: the Chog can still be ridden */ }
+  }
+
+  // Leaderboard entries open their Chog's career (Chog NFT board; demo careers live on each player's device)
+  function careerLink(el, e, demo) {
+    if (demo || !e.tokenId) return;
+    el.classList.add("linked");
+    el.title = "See this Chog's career";
+    el.onclick = () => openCareer(e.tokenId);
+  }
+
+  let careerReturn = null, careerShown = null;
+  async function openCareer(tokenId, opts) {
+    opts = opts || {};
+    const id = String(tokenId);
+    careerReturn = opts.back || ["lbPanel", "nftPanel", "demoPanel", "menuPanel"].find(p => $(p).classList.contains("show")) || "menuPanel";
+    careerShown = { id, demo: !!opts.demo };
+    show("careerPanel");
+    $("careerBody").innerHTML = "";
+    $("careerShare").style.display = opts.demo ? "none" : "";
+    const st = $("careerStatus");
+    st.className = "lb-status"; st.textContent = "Loading this Chog's career...";
+    try {
+      let v;
+      if (opts.demo) {
+        const d = Demo.CHOGS.find(x => x.tokenId === id), gp = T.resolveGameplay(d.metadata), wk = T.weeklyTraitFor(d.metadata, thisWeek()), c = demoCareer(id);
+        v = Object.assign(Career.view(c), { name: d.metadata.name, image: d.metadata.image, tier: gp.tier, multiplier: gp.multiplier, title: Career.topTitle(c), demo: true,
+          weeklyTrait: { id: wk.featured.id, label: wk.featured.label, has: wk.has, bonus: wk.bonus, featuredBonus: wk.featured.bonus } });
+      } else v = await apiCall("/career?token=" + encodeURIComponent(id));
+      if (!careerShown || careerShown.id !== id) return;
+      st.textContent = "";
+      renderCareer(v);
+    } catch (e) {
+      st.className = "lb-status err"; st.textContent = "Couldn't load this Chog's career: " + e.message;
+    }
+  }
+  function closeCareer() {
+    const back = careerReturn; careerReturn = careerShown = null;
+    if (back === "game") show(null); else show(back || "menuPanel");
+  }
+  function renderCareer(v) {
+    $("careerSub").textContent = v.demo ? "DEMO CHOG · ON THIS DEVICE" : "CHOG GENESIS #" + v.tokenId;
+    const body = $("careerBody");
+    const when = ms => new Date(ms).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+    const earned = v.titles.filter(t => t.earnedAt).length;
+    const wt = v.weeklyTrait;
+    body.innerHTML =
+      '<div class="cr-head"><div class="cr-facebox"></div><div class="cr-id"><div class="cr-name">' + esc(v.name || "Chog #" + v.tokenId) + '</div><div class="cr-tier">' +
+        esc((v.tier ? v.tier + (v.multiplier ? " x" + Number(v.multiplier).toFixed(2) : "") + " · " : "") + "token " + v.tokenId) + '</div><div class="cr-best">' +
+        (v.title ? '<span class="cr-chip on">' + esc(v.title) + "</span>" : '<span class="cr-muted">No titles yet</span>') + "</div></div></div>" +
+      '<div class="cr-level"><div class="cr-lvtop"><span class="gc-lv big">LV<b>' + v.level + "</b></span><div><b>" + (v.nextAt ? "Level " + v.level : "Max level") + "</b><span>" +
+        v.xp.toLocaleString() + (v.nextAt ? " / " + v.nextAt.toLocaleString() + " XP" : " XP") + '</span></div></div><div class="go-bar"><i style="width:' + v.pct + '%"></i></div>' +
+        '<div class="cr-muted">XP: 1 per 20 m flown, +50 for every zone reached past the first, +10 per run.</div></div>' +
+      (wt ? '<div class="cr-trait' + (wt.has ? " has" : "") + '">Trait of the week: <b>' + esc(wt.label) + "</b> · " +
+        (wt.has ? "this Chog has it: " + pctBonus(wt.bonus) + " total distance this week" : "not on this Chog this week") + "</div>" : "") +
+      '<div class="cr-stats">' + [["RUNS", v.runs.toLocaleString()], ["FLOWN", v.flown.toLocaleString() + " m"], ["BEST TOTAL", v.bestTotal.toLocaleString() + " m"],
+        ["FURTHEST", v.furthestZoneName || "-"], ["PILOTS", String(v.pilots)]].map(([k, x]) => '<div class="go-tile' + (k === "FURTHEST" ? " zone" : "") + '"><span>' + k + "</span><b>" + esc(x) + "</b></div>").join("") + "</div>" +
+      '<h3 class="cr-h">TITLES <span>' + earned + " / " + v.titles.length + '</span></h3><div class="cr-titles">' +
+        v.titles.map(t => '<span class="cr-chip' + (t.earnedAt ? " on" : "") + '" title="' + esc(t.desc) + '">' + esc(t.label) + "</span>").join("") + "</div>" +
+      (v.honors.length ? '<h3 class="cr-h">WEEKLY HONORS</h3><div class="cr-list">' + v.honors.map(h =>
+        '<div class="cr-row"><span>Week of ' + when((h.week * 7 - 3) * 864e5) + "</span><b>#" + h.rank + "</b></div>").join("") + "</div>" : "") +
+      '<h3 class="cr-h">RECENT RUNS</h3><div class="cr-list">' + (v.recent.length ? v.recent.map(r =>
+        '<div class="cr-row"><span>' + when(r.at) + (r.pilot ? " · " + esc(r.pilot) : "") + (r.ranked ? "" : ' <i class="cr-muted">unranked</i>') + "</span><b>" +
+        r.total.toLocaleString() + ' m</b><span class="cr-muted">' + r.meters.toLocaleString() + " m flown · zone " + r.zone + "</span></div>").join("")
+        : '<div class="cr-muted">No runs yet. The first run starts this Chog\'s career.</div>') + "</div>" +
+      '<p class="lb-rule">' + (v.demo ? "A demo Chog's career is kept on this device only. Real Chogs keep theirs on the server, and anyone can see them."
+        : "A career belongs to the Chog itself, not the wallet: when the NFT changes hands, its level, titles and history go with it.") + "</p>";
+    body.querySelector(".cr-facebox").appendChild(chogImg(v.image, "cr-face"));
   }
 
   // ---------- Run card ----------
@@ -760,7 +913,9 @@
       username: demo ? "Demo pilot" : S.username || (nft ? short(S.account) : "Practice pilot"),
       chogName: nft ? c.name : null,
       tier: nft ? c.gameplay.tier : null,
-      multiplier: nft ? c.gameplay.multiplier : 1,
+      multiplier: nft ? effMult(c) : 1,
+      weekTrait: nft && weekTrait(c) && weekTrait(c).has ? weekTrait(c).featured.label : null,
+      level: nft ? (careerOf(c) || {}).level || null : null,
       meters: result.meters, total: result.score,
       zoneIndex: z.index, zoneName: z.zone.name, loop: z.loop,
       durationMs: result.durationMs, stardust: result.stardust || 0, nearMisses: result.nearMisses || 0,
@@ -883,9 +1038,11 @@
   function renderNftReady() {
     const c = activeChog(), g = c.gameplay, demo = S.mode === "demo";
     const laser = g.abilities.find(a => a.id === "laserEyes");
+    const lv = careerOf(c);
     setMsg(demo ? "DEMO MODE" : "CHOG NFT MODE", [
-      c.name + " (token " + c.tokenId + ")",
+      c.name + " (token " + c.tokenId + ")" + (lv ? " · Level " + lv.level + (lv.title ? " · " + lv.title : "") : ""),
       "Tier " + (g.tier || "unknown") + ": distance multiplier x" + g.multiplier.toFixed(2),
+      traitLine(c),
       laser ? "Laser Eyes: " + laser.charges + " charges this run" : "No ability from this Chog's traits",
       lookLines(c.look)[0],
       S.bankLives ? ["Streak lives: " + S.bankLives + " banked. Used after your Stardust lives run out", "good"] : "",
@@ -943,6 +1100,7 @@
       if (req !== S.sessionReq) return;
       if (S.startedReq !== req) S.runId = r.runId;   // (already flying: that run takes this session, see onStart)
       S.ticketsOn = !!r.ticketsOn; S.tickets = r.tickets;
+      if (r.career) S.careerInfo = { tokenId: S.chog.tokenId, level: r.career.level, title: r.career.title };
       S.runStatus = !S.ticketsOn
         ? { text: "Eligible: this run will be submitted (server-verified Tier " + r.tier + ", x" + r.multiplier + ")", kind: "good" }
         : S.tickets > 0
@@ -1171,6 +1329,8 @@
     grid.appendChild(b);
     getMetadata(tokenId).then(m => {
       if (m.name) b.querySelector("div").textContent = m.name + " (token " + tokenId + ")";
+      const wk = T.weeklyTraitFor(m, thisWeek());
+      if (wk.has) b.insertAdjacentHTML("beforeend", '<span class="tok-week" title="Trait of the week: ' + esc(wk.featured.label) + '">' + pctBonus(wk.bonus) + " this week</span>");
       const urls = Meta.candidateUrls(m.image);
       const img = b.querySelector("img");
       let i = 0;
@@ -1195,6 +1355,7 @@
     $("traitRows").innerHTML = "";
     $("chosenImg").removeAttribute("src");
     $("chosenName").textContent = "Token " + idStr;
+    $("chosenCareer").innerHTML = ""; $("chosenCareerBtn").style.display = "none";
     document.querySelectorAll(".tok").forEach(t => t.classList.toggle("sel", t.dataset.token === idStr));
     if (!/^\d+$/.test(idStr)) { setStatus(info, "Enter a whole-number token ID.", "err"); return; }
     const req = ++S.selectReq;
@@ -1217,9 +1378,12 @@
     $("chosenName").textContent = name;
     $("traitRows").innerHTML = gp.attributes.map(a => "<tr><td>" + esc(a.trait_type) + "</td><td>" + esc(a.value) + "</td></tr>").join("");
     const laser = gp.abilities.find(a => a.id === "laserEyes");
+    const wk = T.weeklyTraitFor(meta, thisWeek());
+    loadChosenCareer(idStr, req);
     const lines = [
       "Owned by this wallet (checked on-chain).",
       "Tier: " + (gp.tier || "missing") + " -> distance multiplier x" + gp.multiplier.toFixed(2) + (gp.tierStatus === "mapped" ? "" : " (default)"),
+      "Trait of the week: " + wk.featured.label + (wk.has ? " (this Chog has it: " + pctBonus(wk.bonus) + " total distance this week)" : " (not on this Chog)"),
       laser ? "Ability: Laser Eyes, " + laser.charges + " charges per run (from " + laser.fromTrait + ": " + laser.fromValue + ")"
         : "Ability: none. This Chog's Eyes trait has no ability mapped.",
     ].concat(gp.problems.map(p => "Metadata problem: " + p), gp.notes.map(n => "Note: " + n));
@@ -1293,7 +1457,7 @@
     S.mode = "nft";
     game.configure({
       riderCanvas: c.riderCanvas, riderPoses: c.riderPoses, look: c.look, laserCharges: laser ? laser.charges : 0,
-      multiplier: c.gameplay.multiplier, showScore: true,
+      multiplier: effMult(c), showScore: true,
       modeLabel: "CHOG NFT · " + c.name + " · Tier " + (c.gameplay.tier || "unknown"),
     });
     $("modeBadge").className = "nft";
@@ -1328,8 +1492,10 @@
   function entryNames(e) {
     const pin = e.pin && Q.badgeFor(e.pin.id) ? badgeIcon(Q.badgeFor(e.pin.id), e.pin.tier, "mini lb-pin") : "";
     const badges = e.badges ? '<span class="lb-badges" title="Quest badges">' + GLYPHS.star + e.badges + "</span>" : "";
-    return '<div class="who"><span class="nm">' + esc(e.username || short(e.wallet)) + "</span>" + pin + badges + '</div><div class="chog">' +
-      esc((e.name || "Token " + e.tokenId) + (e.tier ? " · " + e.tier + " x" + Number(e.multiplier).toFixed(2) : "")) + "</div>";
+    const lv = e.level ? '<span class="lb-lv" title="Chog level">LV ' + e.level + "</span>" : "";
+    const tierMult = Number(e.tierMultiplier || e.multiplier);
+    return '<div class="who"><span class="nm">' + esc(e.username || short(e.wallet)) + "</span>" + pin + badges + '</div><div class="chog">' + lv +
+      esc((e.name || "Token " + e.tokenId) + (e.tier ? " · " + e.tier + " x" + tierMult.toFixed(2) : "") + (e.traitBonus ? " · " + (e.weeklyTrait || "Trait") + " " + pctBonus(e.traitBonus) : "")) + "</div>";
   }
 
   // Two real leaderboards: Chog NFT runs, and demo runs (the 5 demo Chogs, any signed-in wallet)
@@ -1357,6 +1523,7 @@
       d.innerHTML = '<div class="medal">' + e.rank + "</div>";
       d.appendChild(chogImg(e.image, "face"));
       d.insertAdjacentHTML("beforeend", entryNames(e) + '<div class="big">' + fmtM(e.totalMeters) + "</div>" + prize(e));
+      careerLink(d, e, demo);
       podium.appendChild(d);
     });
     r.entries.slice(3).forEach(e => {
@@ -1365,6 +1532,7 @@
       d.innerHTML = '<div class="rk">' + e.rank + "</div>";
       d.appendChild(chogImg(e.image, "face"));
       d.insertAdjacentHTML("beforeend", '<div class="names">' + entryNames(e) + "</div>" + prize(e) + '<div class="big">' + fmtM(e.totalMeters) + "</div>");
+      careerLink(d, e, demo);
       list.appendChild(d);
     });
   }
@@ -1408,7 +1576,7 @@
     $("lbSub").textContent = demo ? "ALL TIME · DEMO RUNS" : "WEEKLY · CHOG NFT RUNS";
     $("lbRule").textContent = demo
       ? "The DEMO leaderboard: runs with the 5 demo Chogs by any signed-in wallet, checked by the server like Chog NFT runs (run time, distance and Laser Eyes limits). Total distance = distance flown x the demo Chog's tier. Separate from the Chog NFT leaderboard."
-      : "Weekly: resets every Monday 00:00 UTC. Total distance = distance flown x the Chog's tier multiplier; each player's best ticketed run of the week counts. The top 10 share the week's prize pool (" + cfg.tickets.split.join("/") + "%); shares nobody earns roll over. Practice and demo runs never appear here.";
+      : "Weekly: resets every Monday 00:00 UTC. Total distance = distance flown x the Chog's tier multiplier (" + pctBonus(cfg.weeklyTrait.bonus) + " more for Chogs with the trait of the week); each player's best ticketed run of the week counts. The top 10 share the week's prize pool (" + cfg.tickets.split.join("/") + "%); shares nobody earns roll over. Practice and demo runs never appear here.";
     $("lbRefresh").onclick = () => openLeaderboard(lbBoard, lbBoard === "nft" ? lbWeek : null);
     const st = $("lbStatus");
     $("lbPodium").innerHTML = "";
@@ -1424,6 +1592,8 @@
       if (!demo) {
         lbWeek = r.week;
         $("lbWeekLabel").textContent = r.current ? "THIS WEEK" : "WEEK OF " + weekLabel(r.startsAt).toUpperCase();
+        const tw = T.weeklyTrait(r.week);
+        $("lbTrait").textContent = (r.current ? "Trait of the week: " : "Trait that week: ") + tw.label + " " + pctBonus(tw.bonus);
         $("lbNext").style.visibility = r.current ? "hidden" : "visible";
         $("lbWeekInfo").textContent = "";
         // The prize: this week's pool and each rank's share, or what a finished week pays

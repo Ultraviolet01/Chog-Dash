@@ -37,6 +37,7 @@
   }
 
   function matchesRule(valueNorm, match) {
+    if (match.any) return valueNorm !== "";
     if ((match.exact || []).some(v => norm(v) === valueNorm)) return true;
     return (match.contains || []).some(s => valueNorm.includes(norm(s)));
   }
@@ -74,6 +75,26 @@
 
     return { attributes, abilities, tier, tierStatus, multiplier, problems, notes };
   }
+
+  // ---------- Trait of the week ----------
+  // Weeks start on Monday 00:00 UTC (1970-01-01 was a Thursday): the same weeks as the leaderboard and quests.
+  const weekOf = t => Math.floor((Math.floor(t / 864e5) + 3) / 7);
+  const weekStartsAt = w => (w * 7 - 3) * 864e5;
+  // The featured trait group of a week: { id, label, trait, bonus, week, startsAt, endsAt }
+  function weeklyTrait(week, cfg) {
+    const wt = (cfg || config).weeklyTrait, r = wt.rotation[((week % wt.rotation.length) + wt.rotation.length) % wt.rotation.length];
+    return { id: r.id, label: r.label, trait: r.trait, bonus: wt.bonus, week, startsAt: weekStartsAt(week), endsAt: weekStartsAt(week + 1) };
+  }
+  // Does this Chog have the week's trait? -> { has, bonus (1 when not), value (the matching trait value), featured }
+  function weeklyTraitFor(metadata, week, cfg) {
+    cfg = cfg || config;
+    const featured = weeklyTrait(week, cfg), rule = cfg.weeklyTrait.rotation.find(r => r.id === featured.id);
+    const { attr } = findTrait(normalizeAttributes(metadata).attributes, rule.trait);
+    const has = !!attr && matchesRule(attr.norm, rule.match);
+    return { has, bonus: has ? featured.bonus : 1, value: has ? attr.value : null, featured };
+  }
+  // Tier multiplier x the weekly bonus, kept to 4 decimals (1.15 x 1.1 = 1.265)
+  const effectiveMultiplier = (multiplier, bonus) => Math.round(multiplier * (bonus || 1) * 1e4) / 1e4;
 
   // Total distance = distance x tier multiplier, rounded down. The tiny epsilon stops floating-point
   // error rounding exact products down (650 x 1.4 is 909.9999... in floating point, but should be 910).
@@ -143,5 +164,5 @@
       number: k + 1, intoZone: m - start, startMeters: start, endMeters: zoneStartMeters(k + 1, cfg) };
   }
 
-  return { normalizeAttributes, resolveGameplay, computeScore, maxPossibleMeters, matchesRule, zoneAt, zoneMinutes, zoneStartSeconds, zoneStartMeters, metersAtSeconds, speedAt };
+  return { normalizeAttributes, resolveGameplay, computeScore, weekOf, weeklyTrait, weeklyTraitFor, effectiveMultiplier, maxPossibleMeters, matchesRule, zoneAt, zoneMinutes, zoneStartSeconds, zoneStartMeters, metersAtSeconds, speedAt };
 });

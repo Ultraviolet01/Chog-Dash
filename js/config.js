@@ -60,15 +60,36 @@
       unknownMultiplier: 1.0, // safe default for a missing or unrecognised Tier value
     },
 
+    // GAME-DESIGN: trait of the week. Each week (Monday 00:00 UTC, the same weeks as the leaderboard) one group of
+    // traits is featured, in this order, and Chogs with it get `bonus` on top of their tier multiplier. Counts are
+    // tokens out of 1,969 (docs/TRAIT-AUDIT.md). Matching works like the abilities above; `any: true` matches any value.
+    weeklyTrait: {
+      bonus: 1.1,
+      rotation: [
+        { id: "fire", label: "Fire Auras", trait: "Aura", match: { exact: ["Burning Aura", "Fiery Aura", "Fire"] } },            // 202
+        { id: "laser", label: "Laser Eyes", trait: "Eyes", match: { exact: ["Purple laser", "fire laser", "Green laser", "cyan laser"] } },   // 277
+        { id: "pink", label: "Pink Skin", trait: "Skin", match: { exact: ["Pink"] } },                                         // 557
+        { id: "skull", label: "Skull & Radioactive", trait: "Base", match: { exact: ["Skull", "Radioactive"] } },              // 90
+        { id: "purple", label: "Purple Skies", trait: "Background", match: { contains: ["purple", "lavender", "magenta"] } },   // 369
+        { id: "red", label: "Red Skin", trait: "Skin", match: { exact: ["Red"] } },                                            // 299
+        { id: "elements", label: "Water, Wind & Smoke", trait: "Aura", match: { exact: ["Aqua Aura", "Wind", "Smoke"] } },      // 184
+        { id: "accessory", label: "Accessories", trait: "Accessory", match: { any: true } },                                  // 195
+        { id: "black", label: "Black Skin", trait: "Skin", match: { exact: ["Black"] } },                                      // 263
+        { id: "blue", label: "Blue Skies", trait: "Background", match: { contains: ["aqua", "blue"] } },                       // 382
+        { id: "yellow", label: "Yellow Skin", trait: "Skin", match: { exact: ["Yellow"] } },                                   // 246
+        { id: "left", label: "Left-Facing Chogs", trait: "Side", match: { exact: ["Left"] } },                                 // 650
+      ],
+    },
+
     // Shared game tuning. The server uses the speed values to bound what distance is possible.
     game: {
       unitsPerMeter: 2,
       baseSpeed: 40,
       // Speed rises quickly to rampSpeed, then keeps rising for the rest of the run, more slowly the
       // further you go: speed = rampSpeed + lateGrowth * sqrt(meters past the ramp). See traits.speedAt.
-      speedPerMeter: 0.06,
-      rampSpeed: 110,
-      lateGrowth: 0.4,
+      speedPerMeter: 0.03,   // a gentle ramp: about 1 minute to reach rampSpeed
+      rampSpeed: 100,
+      lateGrowth: 0.25,
       laserRange: 140,
       laserRadius: 0.9,
       // The run is split into zones that repeat in this order (loop after Milky Way).
@@ -118,7 +139,7 @@
       size: 50,
     },
 
-    // Total distance = floor(raw distance in meters x tier multiplier). This is what the leaderboard ranks.
-    scoreFormula: "Total distance = distance flown (m) x tier multiplier, rounded down. The leaderboard ranks this",
+    // Total distance = floor(raw distance in meters x tier multiplier x trait-of-the-week bonus). This is what the leaderboard ranks.
+    scoreFormula: "Total distance = distance flown (m) x tier multiplier (x the trait-of-the-week bonus when the Chog has it), rounded down. The leaderboard ranks this",
   };
 });

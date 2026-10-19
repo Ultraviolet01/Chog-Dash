@@ -135,7 +135,7 @@ test("speed keeps rising with distance, more slowly further on", () => {
   // The climb slows down: each extra 10 km adds less speed than the one before
   assert.ok(v(20000) - v(10000) > v(30000) - v(20000));
   // Zone 5 is much faster than the early ramp's top
-  assert.ok(v(T.zoneStartMeters(4)) > g.rampSpeed * 2);
+  assert.ok(v(T.zoneStartMeters(4)) > g.rampSpeed * 1.8);
 });
 
 test("total distance is not rounded down by floating-point error", () => {

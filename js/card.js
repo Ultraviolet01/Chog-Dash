@@ -171,7 +171,7 @@
     g.fillText(run.username, nx, y);
     // The player's pinned quest badge, right after their name
     if (pinSize) drawBadge(g, run.pin, (align === "center" ? nx + nw / 2 : nx + nw) + gap + pinSize / 2, y - ns * 0.36, pinSize);
-    const sub = run.practice ? "Rookie, the practice pilot" : (run.chogName || "") + (run.tier ? "  ·  " + run.tier : "");
+    const sub = run.practice ? "Rookie, the practice pilot" : (run.chogName || "") + (run.tier ? "  ·  " + run.tier : "") + (run.level ? "  ·  LV " + run.level : "");
     g.fillStyle = MUTED; fitText(g, sub, CHAKRA, Math.round(24 * scale), w, "700"); g.fillText(sub, at, y + 38 * scale);
     g.fillStyle = TEAL; g.font = "700 " + Math.round(20 * scale) + "px " + CHAKRA;
     g.fillText(run.practice ? "DISTANCE" : "TOTAL DISTANCE", at, y + 92 * scale);
@@ -187,7 +187,7 @@
     let yy = bigY;
     if (!run.practice) {
       g.fillStyle = MUTED; g.font = "700 " + Math.round(22 * scale) + "px " + CHAKRA;
-      g.fillText(Number(run.meters).toLocaleString() + " m flown  x" + Number(run.multiplier).toFixed(2) + " tier", at, bigY + 36 * scale);
+      g.fillText(Number(run.meters).toLocaleString() + " m flown  x" + Number(run.multiplier).toFixed(run.weekTrait ? 3 : 2).replace(/0$/, "") + (run.weekTrait ? " tier + trait of the week" : " tier"), at, bigY + 36 * scale);
       yy = bigY + 36 * scale;
     }
     g.textAlign = "left";

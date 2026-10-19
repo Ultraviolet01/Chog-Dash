@@ -10,6 +10,7 @@
 <link rel="preload" as="script" href="js/config.js">
 <link rel="preload" as="script" href="js/traits.js">
 <link rel="preload" as="script" href="js/quests.js">
+<link rel="preload" as="script" href="js/career.js">
 <link rel="preload" as="script" href="js/demo-chogs.js">
 <link rel="preload" as="script" href="js/demo.js">
 <link rel="preload" as="script" href="js/chain.js">
@@ -86,6 +87,7 @@
     <div class="go-right">
     <div id="goStats" class="go-stats"></div>
     <div id="goRank" class="go-rank empty"></div>
+    <div id="goCareer" class="go-career empty"></div>
     <div id="goNotes" class="go-notes"></div>
     <div id="goQuests" class="go-quests"></div>
     <div id="endBar">
@@ -211,6 +213,11 @@
           <div id="howTicketViz" class="how-visual how-tk"></div>
           <ul id="howTicketText" class="how-points"></ul>
         </section>
+        <section class="how-page">
+          <div class="how-kicker">8 · CHOG CAREERS &amp; TRAIT OF THE WEEK</div>
+          <div id="howCareerViz" class="how-visual how-cr"></div>
+          <ul id="howCareerText" class="how-points"></ul>
+        </section>
       </div>
     </div>
     <div class="how-nav">
@@ -256,7 +263,8 @@
         <div>
           <h2 id="chosenName"></h2>
           <div id="chosenInfo" class="status"></div>
-          <div class="row"><button id="rideBtn" disabled>Ride this Chog</button></div>
+          <div id="chosenCareer" class="chosen-career"></div>
+          <div class="row"><button id="rideBtn" disabled>Ride this Chog</button><button id="chosenCareerBtn" class="ghost" style="display:none">Career</button></div>
           <div id="rideStatus" class="status"></div>
         </div>
       </div>
@@ -264,6 +272,20 @@
         <table><thead><tr><th>Trait (original)</th><th>Value (original)</th></tr></thead><tbody id="traitRows"></tbody></table>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- A Chog's career: level, XP, stats, titles, weekly honors and recent runs. It belongs to the token, so it stays with
+     the Chog when it changes hands. Public: anyone can open any Chog's career (also as a link: ?chog=<token id>). -->
+<div id="careerPanel" class="panel lb career">
+  <div class="lb-wrap">
+    <div class="lb-head">
+      <button id="careerBack" class="ghost">Back</button>
+      <div class="lb-title"><h2>CAREER</h2><div class="lb-sub" id="careerSub">CHOG GENESIS</div></div>
+      <button id="careerShare" class="ghost" title="Copy a link to this Chog's career">Copy link</button>
+    </div>
+    <div id="careerBody" class="cr-body"></div>
+    <div id="careerStatus" class="lb-status"></div>
   </div>
 </div>
 
@@ -338,7 +360,7 @@
     </div>
     <div id="lbWeek" class="lb-week">
       <button id="lbPrev" class="ghost">&lsaquo; Earlier</button>
-      <div class="lbw-mid"><b id="lbWeekLabel">THIS WEEK</b><span id="lbWeekInfo"></span></div>
+      <div class="lbw-mid"><b id="lbWeekLabel">THIS WEEK</b><span id="lbWeekInfo"></span><span id="lbTrait" class="lb-trait"></span></div>
       <button id="lbNext" class="ghost">Later &rsaquo;</button>
     </div>
     <!-- Only this part scrolls: the header above and the YOU bar below stay put -->
@@ -427,7 +449,7 @@ function loadAll(list, done) {
   loadScript(list[0], function () { loadAll(list.slice(1), done); }, function () { showError("Could not load " + list[0]); });
 }
 function boot() {
-  loadAll(["js/config.js", "js/traits.js", "js/quests.js", "js/demo-chogs.js", "js/demo.js", "js/chain.js", "js/tickets.js", "js/metadata.js", "js/audio.js", "js/art.js", "js/looks.js", "js/card.js", "js/scenery.js", "js/pickups.js", "js/game.js", "js/ui.js"], function () {
+  loadAll(["js/config.js", "js/traits.js", "js/quests.js", "js/career.js", "js/demo-chogs.js", "js/demo.js", "js/chain.js", "js/tickets.js", "js/metadata.js", "js/audio.js", "js/art.js", "js/looks.js", "js/card.js", "js/scenery.js", "js/pickups.js", "js/game.js", "js/ui.js"], function () {
     try { ChogUI.start(); } catch (e) { showError("Game failed to start: " + e.message); }
   });
 }

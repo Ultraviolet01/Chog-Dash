@@ -20,6 +20,8 @@ Play it at https://chog-dash.vercel.app (desktop and phone browsers, nothing to 
 | Rider | Rookie, the practice pilot | Your own Chog | One of 5 real Chogs |
 | Traits, abilities, tier scoring | No | Yes | Yes |
 | Quests, badges, streak | No | Yes (saved on the server) | Yes (saved on the device) |
+| Chog career (levels, titles) | No | Yes (saved per Chog, public) | Yes (saved on the device) |
+| Trait of the week bonus | No | Yes | Yes |
 | Leaderboard | None | Weekly Chog NFT board | DEMO board |
 | Cost | Free | $0.50 in $CHOG per ranked run | Free |
 | Prizes | No | Weekly $CHOG prize pool (top 10) | No |
@@ -66,6 +68,43 @@ Play it at https://chog-dash.vercel.app (desktop and phone browsers, nothing to 
   - The run card carries a DEMO stamp (and the DEMO rank). "Reset demo progress" in the demo picker starts the local quests and streak over.
   - Storage: the `chog_demo_leaderboard` table in supabase/schema.sql (run it again to add it).
   - Metadata for the 5 Chogs is embedded in js/demo.js (no chain calls); their artwork loads from IPFS.
+
+## Chog careers
+
+- Every Chog token builds its own career from the runs flown with it. It belongs to the token, not the wallet: when the NFT is sold or traded, its level, titles and run history go with it.
+- **XP and levels:** each valid run earns XP: 1 per 20 m flown, +50 for every zone reached past the first, +10 per run. Level L needs 50 x L x (L - 1) XP (100, 300, 600, 1,000 ...), up to level 50.
+- **Titles (14):** First Flight; zone titles (Asteroid Belt Veteran, Galactic Drifter, Deep Cosmic Diver, Milky Way Voyager, Second Lap); Frequent Flyer and Space Veteran (25 and 100 runs); 100 km Flown and Million Meter Chog; Passed Down (flown by more than one pilot); Weekly Top 10, Weekly Podium and Weekly Champion.
+- **Weekly honors:** finishing a week in the top 10 is recorded on the Chog's career when the week is over.
+- **What counts:** every server-validated Chog NFT run, ranked or unranked. Rejected runs don't count.
+- **Where it shows:** the level and headline title on the Chog picker, the ready screen, the game over card (XP gained, level up, new titles), the run card and the leaderboard. Tapping a Chog NFT leaderboard entry or the Career button opens its full career: level, XP, stats, titles, weekly honors and the last 10 runs.
+- **Public:** anyone can open any Chog's career, also as a link (`?chog=<token id>`). `GET /api/career?token=<id>`.
+- **Demo Chogs** have careers too, with the same rules, kept on the device ("Reset demo progress" clears them).
+- Rules: js/career.js (shared by the browser and the server). Storage: one `career:<token id>` record in the existing key-value table, so no database change is needed.
+
+## Trait of the week
+
+- Every week (Monday 00:00 UTC, the same weeks as the leaderboard) one trait group is featured. Chogs with it get **+10% total distance** that week, on top of their tier multiplier (for example Rare x1.15 x 1.10 = x1.265).
+- 12 groups rotate in a fixed order, so players can plan ahead. They cover different parts of the collection, so different Chogs get their moment:
+
+| # | Trait group | Chogs |
+|---|---|---:|
+| 1 | Fire Auras (Burning Aura, Fiery Aura, Fire) | 202 |
+| 2 | Laser Eyes | 277 |
+| 3 | Pink Skin | 557 |
+| 4 | Skull & Radioactive | 90 |
+| 5 | Purple Skies (purple, lavender and magenta backgrounds) | 369 |
+| 6 | Red Skin | 299 |
+| 7 | Water, Wind & Smoke (Aqua Aura, Wind, Smoke) | 184 |
+| 8 | Accessories (any) | 195 |
+| 9 | Black Skin | 263 |
+| 10 | Blue Skies (aqua and blue backgrounds) | 382 |
+| 11 | Yellow Skin | 246 |
+| 12 | Left-Facing Chogs | 650 |
+
+- The week of 19 October 2026 is Fire Auras; the order then continues as listed and repeats.
+- The bonus uses the week the rocket takes off in, and the server applies it from the Chog's own metadata. The leaderboard shows which runs had it.
+- Where it shows: the ready screen, the Chog picker (a "+10% this week" tag), demo cards, the career page, Ranks and How to play (with the next weeks).
+- Rules: `weeklyTrait` in js/config.js, worked out in js/traits.js.
 
 ## Controls
 
@@ -157,10 +196,10 @@ The run passes through five zones that repeat in order. Each zone lasts longer t
 
 ## Gameplay rules
 
-- One hit ends the run. Touching the screen edges does not.
-- Speed rises with distance for the whole run: quickly to x2.8 in the first 35 seconds, then it keeps climbing, more slowly the further you go (about x3.5 in Zone 2, x7 in Zone 5, x9 on loop 2).
-- To keep it fair at high speed, obstacles appear further ahead (about 2.4 s of warning), steering gets faster, and obstacle groups never come closer together in time than at x2.8.
-- Obstacles get denser with distance (groups of 1, then 2, then 3).
+- A hit uses a life if you have one (Stardust lives first, then streak lives in Chog NFT runs); with no lives left, it ends the run. Touching the screen edges does not.
+- Speed rises with distance for the whole run: gently to x2.5 over the first minute, then it keeps climbing, more slowly the further you go (about x2.9 in Zone 2, x4.7 in Zone 5, x5.7 on loop 2).
+- To keep it fair at high speed, obstacles appear further ahead (about 2.4 s of warning), steering gets faster, and obstacle groups never come closer together in time than at x2.5.
+- Obstacles get denser with distance (groups of 1, then 2, then 3), and closer together until about 3,200 m.
 - Every obstacle group leaves a reachable safe path.
 - Near misses flash on screen. They are feedback only and do not change the distance.
 - **Laser Eyes** (Chogs whose Eyes trait maps to it):
@@ -168,7 +207,7 @@ The run passes through five zones that repeat in order. Each zone lasts longer t
   - One charge per shot. A shot destroys every eligible obstacle in the beam path.
   - Huge asteroids are not eligible: they block the beam, protecting anything behind them.
   - Tier never changes the number of charges.
-- **Total distance (NFT mode)**: distance flown (m) x tier multiplier, rounded down. The leaderboard ranks total distance. The distance actually flown is always shown too.
+- **Total distance (NFT mode)**: distance flown (m) x tier multiplier (x 1.10 when the Chog has the trait of the week), rounded down. The leaderboard ranks total distance. The distance actually flown is always shown too.
 
 ## Running it
 
@@ -212,6 +251,8 @@ The run passes through five zones that repeat in order. Each zone lasts longer t
   - Practice, Chog NFT and Demo modes, with 8 pickups, 5 zones and Laser Eyes.
   - Tickets ($0.50 in $CHOG) and the weekly $CHOG prize pool, shared by the top 10 every Monday. Public pool contract, no fee.
   - Weekly Chog NFT and DEMO leaderboards.
+  - Chog careers: levels, titles and run history that belong to each Chog token and follow it to new owners.
+  - Trait of the week: a rotating +10% bonus for a different group of Chogs every week.
   - Daily and weekly quests, tiered badges with rarity, streaks and streak lives.
   - Shareable run cards (X 16:9 or square) with one-tap share to X.
 - **Next**

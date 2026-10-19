@@ -137,8 +137,8 @@ test("full game flow on the Supabase schema: sign in, username, runs, leaderboar
   // A demo run goes to the separate DEMO board table, not the Chog NFT board
   const ds = await h.runStart({ body: { tokenId: "1798", demo: true }, token: b.token });
   t += 30000;
-  assert.strictEqual((await h.runFinish({ body: { runId: ds.runId, meters: 1000, durationMs: 29000 }, token: b.token })).finalScore, 1400);
-  assert.deepStrictEqual((await h.demoLeaderboard({ token: b.token })).entries.map(e => [e.rank, e.username, e.totalMeters]), [[1, "Bob", 1400]]);
+  assert.strictEqual((await h.runFinish({ body: { runId: ds.runId, meters: 800, durationMs: 29000 }, token: b.token })).finalScore, 1120);
+  assert.deepStrictEqual((await h.demoLeaderboard({ token: b.token })).entries.map(e => [e.rank, e.username, e.totalMeters]), [[1, "Bob", 1120]]);
   assert.strictEqual((await h.leaderboard()).entries.length, 2);
   // Quest progress and badges are stored in chog_kv too
   const q = await h.questsGet({ token: a.token });

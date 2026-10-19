@@ -1093,3 +1093,84 @@ body.game-over #dist, body.game-over #score { visibility: hidden; }   /* the car
   border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
 .pod .prize { display: inline-block; margin-top: 4px; }
 .lb-row .prize { flex: none; margin-right: 8px; }
+
+/* ---------- Chog careers and the trait of the week ---------- */
+/* The level badge: "LV" over the number */
+.gc-lv { flex: none; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; min-width: 40px; height: 40px; padding: 0 6px;
+  border-radius: 10px; background: #1a1205; border: 2px solid var(--accent); color: var(--accent); font: 9px 'Bungee', Impact, sans-serif; letter-spacing: 1px; line-height: 1; }
+.gc-lv b { font: 17px 'Bungee', Impact, sans-serif; color: var(--accent); letter-spacing: 0; font-weight: normal; }
+.gc-lv.big { min-width: 58px; height: 58px; border-radius: 14px; font-size: 11px; }
+.gc-lv.big b { font-size: 26px; }
+/* Titles */
+.cr-chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px dashed var(--line); color: var(--muted); }
+.cr-chip.on { color: #ffcf4d; border: 1px solid rgba(255,207,77,0.55); background: rgba(255,207,77,0.08); }
+.cr-chip.new { animation: goSlam 0.5s cubic-bezier(.2,1.6,.4,1) 0.9s both; }
+.cr-muted { font-size: 12px; color: var(--muted); font-style: normal; }
+/* Game over: level, XP gained, new titles */
+.go-career { margin-top: 8px; padding: 8px 10px; border-radius: 12px; background: #0b1020; border: 1px solid #1d2740; text-align: left; }
+.go-career.empty { display: none; }
+.go-career.up { border-color: rgba(255,184,77,0.7); box-shadow: 0 0 16px rgba(255,184,77,0.25); }
+.gc-row { display: flex; align-items: center; gap: 10px; }
+.gc-mid { flex: 1; min-width: 0; }
+.gc-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; font-weight: 700; }
+.gc-top b { font: 13px 'Bungee', Impact, sans-serif; color: var(--ink); font-weight: normal; }
+.go-career.up .gc-top b { color: var(--accent); }
+.gc-top span { color: var(--ok); }
+.gc-bar { margin: 4px 0 0; height: 6px; }
+.gc-btn { flex: none; padding: 6px 10px; font-size: 12px; }
+.gc-titles { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+/* Picker: the chosen Chog's level, and the weekly trait on Chogs that have it */
+.chosen-career { display: flex; align-items: center; gap: 10px; margin: 8px 0 2px; font-size: 13px; color: var(--muted); }
+.chosen-career:empty { display: none; }
+.chosen-career b { color: var(--ink); }
+.tok { position: relative; }
+.tok-week { position: absolute; top: 10px; left: 10px; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 999px; color: #062320; background: var(--accent2); }
+.dchip.week { color: #062320; border-color: var(--accent2); background: var(--accent2); }
+/* Ranks: the Chog's level, the week's trait, and entries that open a career */
+.lb-lv { display: inline-block; margin-right: 6px; padding: 0 5px; border-radius: 5px; font: 10px 'Bungee', Impact, sans-serif; color: #1a1205; background: var(--accent); vertical-align: 1px; }
+.lb-entry.linked { cursor: pointer; }
+.lb-entry.linked:hover { border-color: var(--accent2); }
+.lbw-mid .lb-trait { color: var(--accent2); }
+.lb-trait:empty { display: none; }
+/* The career panel */
+.career .lb-wrap { max-width: 640px; }
+.cr-body { display: grid; gap: 14px; }
+.cr-head { display: flex; align-items: center; gap: 14px; }
+.cr-face { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent); background: #0b1020; display: block; }
+.cr-id { min-width: 0; }
+.cr-name { font: 22px 'Bungee', Impact, sans-serif; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-tier { font-size: 13px; color: var(--muted); font-weight: 700; margin: 2px 0 6px; }
+.cr-level { background: rgba(13,19,34,0.92); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+.cr-lvtop { display: flex; align-items: center; gap: 12px; }
+.cr-lvtop b { display: block; font: 18px 'Bungee', Impact, sans-serif; color: var(--ink); font-weight: normal; }
+.cr-lvtop span:not(.gc-lv) { font-size: 13px; font-weight: 700; color: var(--muted); }
+.cr-level .go-bar { margin: 0; height: 10px; }
+.cr-trait { font-size: 13px; color: var(--muted); padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(13,19,34,0.92); }
+.cr-trait b { color: var(--ink); }
+.cr-trait.has { color: var(--accent2); border-color: rgba(79,209,197,0.55); }
+.cr-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.cr-h { margin: 4px 0 -4px; font: 13px 'Bungee', Impact, sans-serif; letter-spacing: 2px; color: var(--accent2); font-weight: normal; }
+.cr-h span { color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+.cr-titles { display: flex; flex-wrap: wrap; gap: 6px; }
+.cr-list { display: grid; gap: 6px; }
+.cr-row { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: baseline; padding: 8px 12px; border-radius: 10px;
+  background: rgba(13,19,34,0.92); border: 1px solid var(--line); font-size: 13px; color: var(--ink); }
+.cr-row b { font: 15px 'Bungee', Impact, sans-serif; color: var(--accent); font-weight: normal; }
+.cr-row .cr-muted { grid-column: 1 / -1; }
+@media (max-width: 520px) {
+  .cr-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cr-face { width: 64px; height: 64px; }
+  .cr-name { font-size: 18px; }
+}
+/* How to play, page 8 */
+.how-cr { flex-direction: column; gap: 10px; }
+.hc-card { width: 100%; max-width: 420px; display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; background: rgba(13,19,34,0.92); border: 1px solid rgba(255,184,77,0.45); }
+.hc-card .go-bar { margin: 0; }
+.hc-weeks { display: flex; gap: 8px; width: 100%; max-width: 560px; }
+.hc-week { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px; border-radius: 12px; text-align: center;
+  background: rgba(13,19,34,0.9); border: 1px solid var(--line); }
+.hc-week.now { border-color: var(--accent2); }
+.hc-week span { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--muted); }
+.hc-week b { font-size: 13px; color: var(--ink); }
+.hc-week i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--accent2); }
+@media (prefers-reduced-motion: reduce) { .cr-chip.new { animation: none; } }

@@ -17,7 +17,7 @@
   - Unique regardless of letter case. Changing your name frees the old one.
   - The leaderboard looks names up when it's shown, so a rename applies to past entries too.
   - A pilot name is required before a ranked run (the server refuses to start one without it).
-- Ranked by total distance: distance flown x the Chog's tier multiplier (Common 1.00, Uncommon 1.05, Rare 1.15, Epic 1.25, Legendary 1.40), rounded down. Computed on the server.
+- Ranked by total distance: distance flown x the Chog's tier multiplier (Common 1.00, Uncommon 1.05, Rare 1.15, Epic 1.25, Legendary 1.40), x 1.10 more when the Chog has the trait of the week (README, "Trait of the week"), rounded down. Computed on the server from the Chog's metadata, for the week the rocket took off in.
 - The table shows rank, username and total distance. The distance actually flown and the Chog used are stored and returned by the API.
 - Practice runs are never submitted.
 
