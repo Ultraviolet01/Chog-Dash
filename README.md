@@ -1,6 +1,6 @@
 # Chog Dash
 
-A 3D space dodge game in the spirit of Dookey Dash, built for the [Chog Genesis](https://opensea.io/collection/chog-genesis) NFT collection on Monad. You ride a rocket through open space and dodge asteroids and debris for as long as you can.
+A 3D space dodge game built for the [Chog Genesis](https://opensea.io/collection/chog-genesis) NFT collection on Monad. You ride a rocket through open space and dodge asteroids and debris for as long as you can.
 
 Play it at https://chog-dash.vercel.app (desktop and phone browsers, nothing to install).
 
