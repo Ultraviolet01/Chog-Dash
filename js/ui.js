@@ -136,7 +136,18 @@
     $("pilotSave").onclick = savePilot;
     $("pilotInput").addEventListener("keydown", e => { if (e.key === "Enter") savePilot(); });
     $("rideBtn").onclick = () => rideChog();
-    $("careerPill").onclick = () => $("bestChip").onclick();
+    $("careerPill").onclick = () => {
+      const demo = homeMode === "demo", chog = demo ? S.demoChog : S.chog;
+      if (chog) openCareer(chog.tokenId, { demo });
+      else if (demo) openDemo();
+      else openCareer(null);
+    };
+    $("careerFind").onsubmit = e => {
+      e.preventDefault();
+      const id = $("careerFindId").value.trim();
+      if (/^\d{1,6}$/.test(id)) openCareer(id, { back: careerReturn || "menuPanel" });
+      else { $("careerStatus").className = "lb-status err"; $("careerStatus").textContent = "Enter a token ID (a whole number)."; }
+    };
     $("bestChip").onclick = () => {
       const demo = homeMode === "demo", chog = demo ? S.demoChog : homeMode === "nft" ? S.chog : null;
       if (chog) openCareer(chog.tokenId, { demo });
@@ -426,9 +437,12 @@
     $("bestLv").textContent = cr ? "LV " + cr.level : "";
     $("bestChip").classList.toggle("has-career", !!(nft && chog));
     // A clear Career button under the mode line (phones show no "CAREER" in the small chip)
+    // With no Chog picked yet: Chog NFT opens the career lookup, Demo opens the demo Chogs (each has a Career button)
     const pill = $("careerPill");
-    pill.style.display = nft && chog ? "" : "none";
+    pill.style.display = "";
+    pill.style.visibility = nft ? "" : "hidden";   // keeps its space in practice, so PLAY never moves between modes
     if (nft && chog) pill.innerHTML = (cr ? '<span class="chip-lv">LV ' + cr.level + "</span>" : "") + "<span>" + esc(cr && cr.title ? cr.title : chog.name) + "</span><b>CAREER &rsaquo;</b>";
+    else if (nft) pill.innerHTML = "<span>Every Chog has a career</span><b>" + (demo ? "DEMO CAREERS" : "CHOG CAREERS") + " &rsaquo;</b>";
     $("bestValue").textContent = (nft && chog ? readNum(bestKey(chog)) : readNum(PRACTICE_BEST)).toLocaleString() + " m";
     $("walletChipText").textContent = S.account ? (S.username || short(S.account)) : "Connect wallet";
     $("walletDot").classList.toggle("on", !!S.account && S.chainId === cfg.collection.chainId);
@@ -876,11 +890,20 @@
     opts = opts || {};
     const id = String(tokenId);
     careerReturn = opts.back || ["lbPanel", "nftPanel", "demoPanel", "menuPanel"].find(p => $(p).classList.contains("show")) || "menuPanel";
-    careerShown = { id, demo: !!opts.demo };
     show("careerPanel");
     $("careerBody").innerHTML = "";
-    $("careerShare").style.display = opts.demo ? "none" : "";
+    $("careerFind").style.display = opts.demo ? "none" : "";
+    $("careerFindId").value = tokenId == null ? "" : id;
     const st = $("careerStatus");
+    if (tokenId == null) {   // the lookup: any Chog's career by token ID
+      careerShown = null;
+      $("careerSub").textContent = "CHOG GENESIS";
+      $("careerShare").style.display = "none";
+      st.className = "lb-status"; st.textContent = "Every Chog builds a career from its runs: level, titles, weekly honors and history. It stays with the NFT when it changes hands. Look up any Chog by its token ID, or tap a pilot on Ranks.";
+      return;
+    }
+    careerShown = { id, demo: !!opts.demo };
+    $("careerShare").style.display = opts.demo ? "none" : "";
     st.className = "lb-status"; st.textContent = "Loading this Chog's career...";
     try {
       let v;

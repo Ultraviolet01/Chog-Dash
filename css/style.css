@@ -386,7 +386,8 @@ th { color: var(--muted); font-weight: normal; }
 /* Touch screens: comfortable tap targets (at least 44px) */
 @media (pointer: coarse) {
   .mode { min-height: 44px; }
-  .chip-btn, .icon-btn, .panel button, #hudMenuBtn, #hudFsBtn, .card-actions button, .lb-me button { min-height: 44px; }
+  .chip-btn, .icon-btn, .panel button, #hudMenuBtn, #hudFsBtn, .card-actions button, .lb-me button, .career-pill, .dcareer { min-height: 44px; }
+  .dcareer { display: inline-flex; align-items: center; }
   #hudFsBtn { min-width: 44px; }
 }
 .card-formats { display: inline-flex; padding: 4px; border-radius: 999px; background: rgba(10,15,30,0.8); border: 1px solid var(--line); margin-bottom: 12px; }
@@ -1194,3 +1195,9 @@ body.game-over #dist, body.game-over #score { visibility: hidden; }   /* the car
 .career-pill:hover { border-color: var(--accent2); background: rgba(79,209,197,0.12); }
 @media (max-aspect-ratio: 1/1) { .career-pill { margin-left: auto; margin-right: auto; } }
 @media (max-height: 500px) and (min-aspect-ratio: 1/1) { .career-pill { margin: 0 0 6px; padding: 4px 10px; font-size: 12px; } }
+/* Career lookup by token ID */
+.cr-find { display: flex; gap: 8px; margin: 0 0 12px; }
+.cr-find input { flex: 1; min-width: 0; font: 15px 'Chakra Petch', Arial, sans-serif; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: #070b16; color: var(--ink); }
+.cr-find input:focus { outline: none; border-color: var(--accent2); }
+/* The career can open from the game over card, which sits above the other panels: it goes on top, and Back returns to the card */
+#careerPanel { z-index: 20; }
