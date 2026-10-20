@@ -76,7 +76,9 @@
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x04050f);
     scene.fog = new THREE.Fog(0x05061a, 90, 250);
-    const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 1200);
+    // Far plane well past the backdrop (about 960 away): when the camera turns toward the rocket at the edges of a
+    // wide screen, the backdrop's far corners get deeper than that, and a closer far plane cut them off (black corners)
+    const camera = new THREE.PerspectiveCamera(70, 16 / 9, 0.1, 3000);
     let baseCamZ = 7, camFollowX = 0.6;
     const PORTRAIT_VIEW = 3.8;   // tall screens: half-width of the view at the rocket, in world units
 
