@@ -36,12 +36,7 @@ Checked with `npm run verify-contract` (`data/contract-report.json`), `npm run a
 
 ## Still not verified
 
-- **Wallets:** real wallets (MetaMask, Rabby and others) connecting to Monad, including the "add network" request. The explorer URL in `js/config.js` has not been checked.
 - **Real ownership:** signing in and submitting a ranked run with a real wallet that owns a Chog (the scan itself was tested on the real chain, read-only).
-- **Server deployment:** the Vercel deployment and a full game run against the live database.
-  - The live Supabase project was checked on 2026-10-13 after the schema was run: every function answers, a test record was written, read and deleted, and the leaderboard is empty.
-  - The public (publishable) key is refused: it can't call the functions, can't write to the leaderboard, and reads return nothing.
-- **Mobile:** real phones. Emulated phones are tested (see below), but not a physical device, and not the system share sheet for run cards.
 
 ## How to re-check
 
