@@ -40,6 +40,17 @@
   <div id="modeBadge"></div>
   <img id="riderCard" alt="Your Chog">
   <button id="hudMenuBtn" class="ghost">Menu</button>
+  <button id="hudPauseBtn" class="ghost" title="Pause (P)" aria-label="Pause"><span></span><span></span></button>
+  <div id="pauseBox" role="dialog" aria-label="Paused">
+    <div class="pz-card">
+      <div class="pz-title">PAUSED</div>
+      <div id="pauseDist" class="pz-dist"></div>
+      <button id="pauseResume">Resume</button>
+      <button id="pauseEnd" class="ghost">End run</button>
+      <div class="pz-note">Ending the run keeps the distance you've flown, like a crash.</div>
+    </div>
+  </div>
+  <div id="countdown" aria-live="assertive"></div>
   <button id="hudMuteBtn" class="ghost mute-btn" title="Sound (M)"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="spk" d="M4 9h4l5-4v14l-5-4H4z"/><path class="on" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path class="off" d="M16 9l5 6M21 9l-5 6"/></svg></button>
   <button id="hudFsBtn" class="ghost fs-btn" title="Full screen (F)"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="fs-open" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><path class="fs-close" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
   <div id="nearMiss">NEAR MISS</div>

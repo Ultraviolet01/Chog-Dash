@@ -112,6 +112,30 @@ body.dashing::after { box-shadow: inset 0 0 140px rgba(255,184,77,0.4); }
 #msg .warn { color: var(--danger); }
 #msg .good { color: var(--ok); }
 #hudMenuBtn { position: absolute; left: 16px; top: 72px; pointer-events: auto; padding: 6px 12px; font-size: 13px; }
+/* Pause: a two-bar button in the Menu button's spot (Menu is hidden while flying) */
+#hudPauseBtn { position: absolute; left: 16px; top: 72px; pointer-events: auto; width: 44px; height: 44px; padding: 0; display: none;
+  align-items: center; justify-content: center; gap: 6px; background: rgba(5,8,18,0.55); border-color: rgba(255,255,255,0.25); border-radius: 12px; }
+#hudPauseBtn span { width: 5px; height: 16px; border-radius: 2px; background: var(--ink); }
+body.flying #hudPauseBtn { display: flex; }
+body.flying.paused, body.flying.paused #gameCanvas { cursor: auto; }
+#pauseBox { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; pointer-events: auto;
+  background: rgba(3,5,12,0.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 15; }
+#pauseBox.show { display: flex; animation: fadeIn 0.2s ease-out; }
+.pz-card { width: min(320px, calc(100vw - 32px)); padding: 24px 22px 18px; border-radius: 18px; text-align: center;
+  background: rgba(10,15,30,0.94); border: 1px solid var(--line); box-shadow: 0 18px 50px rgba(0,0,0,0.5); }
+.pz-title { font: 28px 'Bungee', Impact, sans-serif; color: var(--ink); letter-spacing: 2px; }
+.pz-dist { margin: 4px 0 18px; font-weight: 700; color: var(--accent); font-size: 16px; }
+.pz-card button { display: block; width: 100%; min-height: 48px; margin-top: 10px; font-size: 17px; letter-spacing: 1px; }
+#pauseResume { font-family: 'Bungee', Impact, sans-serif; font-weight: 400; box-shadow: 0 4px 0 #b9761d; }
+.pz-note { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.4; }
+/* Resume countdown: 3, 2, 1 */
+#countdown { position: fixed; left: 50%; top: 30%; transform: translate(-50%, -50%); pointer-events: none; z-index: 16;   /* above the rocket, so you can line up */
+  font: clamp(80px, 18vh, 150px) 'Bungee', Impact, sans-serif; color: var(--accent); text-shadow: 0 6px 0 #8a4f12, 0 10px 30px rgba(0,0,0,0.6);
+  opacity: 0; }
+#countdown.show { animation: countPop 0.95s ease-out forwards; }
+@keyframes countPop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(1.7); } 10% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  82% { opacity: 1; transform: translate(-50%, -50%) scale(0.96); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.75); } }
+@media (prefers-reduced-motion: reduce) { #countdown.show { animation: none; opacity: 1; } }
 
 /* ---------- Panels (modal cards over the live scene) ---------- */
 .panel { position: fixed; inset: 0; display: none; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;

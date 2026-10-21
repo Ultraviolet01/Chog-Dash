@@ -63,6 +63,7 @@
       root: $("hud"), dist: $("dist"), score: $("score"), speed: $("speed"), mode: $("modeBadge"),
       laser: $("laserCount"), laserBox: $("laserBox"), near: $("nearMiss"),
       laserFlash: $("laserFlash"), newBest: $("newBest"), zoneLabel: $("zoneLabel"), zoneBanner: $("zoneBanner"), flash: $("flash"), zoneFlash: $("zoneFlash"),
+      pauseBtn: $("hudPauseBtn"), pauseBox: $("pauseBox"), pauseDist: $("pauseDist"), countdown: $("countdown"),
     };
 
     // ---------- Renderer, scene, camera ----------
@@ -480,11 +481,14 @@
       keys[e.code] = true;
       if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyA", "KeyD", "KeyW", "KeyS"].includes(e.code)) steerMode = "keys";
       if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
+      if ((e.code === "KeyP" || e.code === "Escape") && !e.repeat) { if (paused && !counting) resume(); else pause(); return; }
       if ((e.code === "Space" || e.code === "Enter") && !e.repeat) onPress();
       if ((e.code === "KeyE" || e.code === "KeyL") && !e.repeat) fireLaser();
     });
     window.addEventListener("keyup", e => { keys[e.code] = false; });
-    window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
+    // Leaving the game (another window, another tab, the phone's home screen) pauses the run
+    window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; pause(); });
+    document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
 
     // Touch: a finger drags the rocket. Laser Eyes has its own button (bottom right, under the right thumb), so no
     // multi-finger gesture is needed (phones read two fingers as pinch-zoom)
@@ -510,7 +514,7 @@
       const t = performance.now(), kind = e.type === "touchstart" ? "touch" : "pointer";
       const same = kind !== lastLaserPress.type && t - lastLaserPress.t < 80;
       lastLaserPress = { type: kind, t };
-      if (!same && state === "playing") fireLaser();
+      if (!same) fireLaser();
     };
     hud.laserBox.addEventListener("pointerdown", pressLaser);
     hud.laserBox.addEventListener("touchstart", pressLaser, { passive: false });
@@ -554,6 +558,8 @@
     const safe = { x: 0, y: 0 };
     let shake = 0, idleY = 0, runTime = 0, newBestShown = false;
     let laserCharges = 0, laserUsed = 0, nearMisses = 0, nearTimer = 0;
+    // Pause: the world freezes; Resume counts down 3, 2, 1 before the run goes on. Paused time doesn't count as run time.
+    let paused = false, counting = false, pausedAt = 0, countTimer = null;
     let setup = { laserCharges: 0, multiplier: 1, modeLabel: "", showScore: false };
 
     const meters = () => Math.floor(distance / G.unitsPerMeter);
@@ -574,6 +580,7 @@
     }
 
     function toReady() {
+      if (paused || counting) finishPause();
       clearField();
       distance = 0; sinceSpawn = 0; nextSpacing = START_SPACING;
       vel.x = vel.y = 0; safe.x = safe.y = 0; pointerTarget.x = pointerTarget.y = 0;
@@ -594,6 +601,7 @@
     }
 
     function toMenu() {
+      if (paused || counting) finishPause();
       if (root.ChogAudio) { root.ChogAudio.setEngine(false, 0, false); root.ChogAudio.setZone(0); }
       clearField();
       pickups.reset();
@@ -613,7 +621,55 @@
       if (hooks.onStart) hooks.onStart();
     }
 
+    function pause() {
+      if (state !== "playing") return;
+      if (counting) { clearTimeout(countTimer); counting = false; hud.countdown.className = ""; }   // paused again mid-countdown
+      else if (paused) return;
+      else pausedAt = performance.now();
+      paused = true;
+      for (const k in keys) keys[k] = false;
+      if (root.ChogAudio) root.ChogAudio.setEngine(false, 0, false);
+      hud.pauseDist.textContent = meters().toLocaleString() + " m";
+      hud.pauseBox.classList.add("show");
+      document.body.classList.add("paused");
+      if (hooks.onPause) hooks.onPause(true);
+    }
+    // Resume: 3, 2, 1, then the world moves again
+    function resume() {
+      if (!paused || counting) return;
+      counting = true;
+      hud.pauseBox.classList.remove("show");
+      const tick = n => {
+        if (n === 0) { finishPause(); return; }
+        hud.countdown.textContent = n;
+        hud.countdown.className = ""; void hud.countdown.offsetWidth; hud.countdown.className = "show";
+        sfx("click");
+        countTimer = setTimeout(() => tick(n - 1), 1000);
+      };
+      tick(3);
+    }
+    function finishPause() {
+      clearTimeout(countTimer);
+      if (paused) runStartedAt += performance.now() - pausedAt;   // paused time isn't run time
+      paused = counting = false;
+      hud.countdown.className = "";
+      hud.pauseBox.classList.remove("show");
+      document.body.classList.remove("paused");
+      clock.getDelta();                                           // no jump in the first frame back
+      if (hooks.onPause) hooks.onPause(false);
+    }
+    // End run (from the pause screen): the run ends here, the same as a crash
+    function endRun() {
+      if (state !== "playing") return;
+      finishPause();
+      die();
+    }
+    hud.pauseBtn.addEventListener("click", e => { e.stopPropagation(); if (paused && !counting) resume(); else pause(); });
+    $("pauseResume").addEventListener("click", e => { e.stopPropagation(); resume(); });
+    $("pauseEnd").addEventListener("click", e => { e.stopPropagation(); endRun(); });
+
     function onPress() {
+      if (paused) { if (!counting) resume(); return; }
       if (state === "ready") start();
       // Retry (Space, Enter, click or tap after a crash): the UI restarts straight away if it can
       else if (state === "dead" && performance.now() > deadAt + 600) { if (hooks.onRetry) hooks.onRetry(); else toReady(); }
@@ -653,7 +709,7 @@
 
     // ---------- Laser Eyes ----------
     function fireLaser() {
-      if (state !== "playing" || laserCharges <= 0) return;
+      if (state !== "playing" || paused || laserCharges <= 0) return;
       sfx("laser");
       laserCharges--;
       laserUsed++;
@@ -1087,6 +1143,7 @@
     function frame() {
       requestAnimationFrame(frame);
       const raw = clock.getDelta();
+      if (paused) { renderer.render(scene, camera); return; }   // frozen while paused and during the countdown
       trackPerformance(raw);
       update(Math.min(raw, 0.05));
       renderer.render(scene, camera);
@@ -1111,8 +1168,10 @@
       live() {
         if (state !== "playing") return null;
         const p = pickups.stats();
-        return { meters: meters(), durationMs: performance.now() - runStartedAt, nearMisses, stardust: p.stardust, powerups: p.powerups, horns: p.horns, livesUsed: p.livesUsed };
+        return { meters: meters(), durationMs: (paused ? pausedAt : performance.now()) - runStartedAt, nearMisses, stardust: p.stardust, powerups: p.powerups, horns: p.horns, livesUsed: p.livesUsed };
       },
+      pause, resume, endRun,
+      get paused() { return paused; },
       // Test hooks, used by the automated browser tests only
       _debug: { camera, rider, look: () => look, trailLive: () => Array.from(trailLife).filter(l => l > 0).length, extras, gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, beamOn: () => beams.visible, pickups, runTime: () => runTime,
         speed: () => (state === "playing" ? baseSpeed() * pickups.speedFactor() : 0), newBestShown: () => newBestShown,

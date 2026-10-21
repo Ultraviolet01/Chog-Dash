@@ -54,7 +54,7 @@
   function controlsText(laser) {
     const base = isTouch
       ? "Drag to fly the rocket up, down, left and right."
-      : "Move the mouse to fly the rocket. Or use the keyboard: W/A/S/D or the arrow keys. The rocket stays put when you let go. F for full screen.";
+      : "Move the mouse to fly the rocket. Or use the keyboard: W/A/S/D or the arrow keys. The rocket stays put when you let go. F for full screen. P to pause.";
     return base + (laser ? (isTouch ? " Tap the LASER button (bottom right) to fire Laser Eyes." : " Press E to fire Laser Eyes.") : "");
   }
   const startText = () => (isTouch ? "Tap to start" : "Press Space or click to start");
@@ -216,14 +216,15 @@
     if (isTouch) {
       $("howControls").innerHTML = '<div class="ctl-touch">' + fingerSvg + "</div>";
       $("howControlsText").innerHTML = "<li><b>Drag anywhere</b> to fly up, down, left and right. Your finger never covers the rocket.</li>" +
-        "<li><b>Tap</b> to start a run.</li><li><b>Laser Eyes</b> (Chogs with that trait): fly with one thumb, tap the <b>LASER button</b> (bottom right) with the other.</li><li>Turn your phone sideways for a bigger view.</li>";
+        "<li><b>Tap</b> to start a run.</li><li><b>Laser Eyes</b> (Chogs with that trait): fly with one thumb, tap the <b>LASER button</b> (bottom right) with the other.</li><li><b>Pause</b> with the button top left. Resume counts down 3, 2, 1 so you can get ready.</li><li>Turn your phone sideways for a bigger view.</li>";
     } else {
       $("howControls").innerHTML = '<div class="ctl-row"><div class="ctl-keys"><div>' + keycap("W") + '</div><div>' + keycap("A") + keycap("S") + keycap("D") +
         '</div></div><span class="ctl-or">or</span><div class="ctl-keys"><div>' + keycap("&uarr;") + '</div><div>' + keycap("&larr;") + keycap("&darr;") + keycap("&rarr;") +
         '</div></div><span class="ctl-or">or</span>' + mouseSvg + "</div>";
       $("howControlsText").innerHTML = "<li><b>Mouse:</b> the rocket follows it. <b>Keys:</b> it stays where you leave it.</li>" +
         "<li>" + keycap("Space", true) + " or click to start. " + keycap("R") + " to play again after a crash.</li>" +
-        "<li>" + keycap("E") + " fires <b>Laser Eyes</b> (Chogs with that trait). The counter bottom left shows your shots. " + keycap("F") + " full screen.</li>";
+        "<li>" + keycap("E") + " fires <b>Laser Eyes</b> (Chogs with that trait). The counter bottom left shows your shots. " + keycap("F") + " full screen.</li>" +
+        "<li>" + keycap("P") + " or " + keycap("Esc") + " pauses. Resume counts down 3, 2, 1 so you can get ready.</li>";
     }
     // Page 3: the real in-game pickup icons
     const I = root.ChogPickups.icons, P = cfg.game.pickups, TYPES = root.ChogPickups.TYPES;
