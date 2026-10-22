@@ -5,6 +5,7 @@
  *   node test/browser/mobile.e2e.js
  */
 const { chromium, devices } = require('playwright-core');
+const { skipHighScore } = require('./high-score.js');
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
@@ -16,6 +17,7 @@ const launchOpts = { executablePath: process.env.CHROME_PATH || '/opt/pw-browser
   for (const name of ['iPhone 13', 'iPhone 13 landscape']) {
     const ctx = await b.newContext(devices[name]);
     const p = await ctx.newPage();
+    await skipHighScore(p);   // the first crash sets a new best: tap through its screen
     const errs = []; p.on('pageerror', e => errs.push(e.message));
     await p.route('**/three.min.js', r => r.fulfill({ body: fs.readFileSync(R + 'node_modules/three/build/three.min.js'), contentType: 'application/javascript' }));
     await p.goto('file://' + R + 'index.html');
@@ -66,7 +68,8 @@ const launchOpts = { executablePath: process.env.CHROME_PATH || '/opt/pw-browser
 
     await p.evaluate(() => { clearInterval(window.__keep); const d = ChogUI._game()._debug, q = d.player.position; d.spawnAt(q.x, q.y + 0.35, -1, true); });
     await p.waitForFunction(() => ChogUI._game().state === 'dead', null, { timeout: 8000 });
-    await p.waitForTimeout(800);
+    await p.waitForFunction(() => document.getElementById('gameOver').classList.contains('show'), null, { timeout: 10000 });
+    await p.waitForTimeout(300);
     assert.ok(await p.isVisible('#cardBtn'), name + ': share button after crash');
     await p.tap('#cardBtn');
     await p.waitForFunction(() => document.getElementById('cardImg').naturalWidth === 1200 && ChogUI._state.lastRun.practice, null, { timeout: 5000 });

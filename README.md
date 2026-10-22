@@ -8,7 +8,7 @@ Play it at https://chog-dash.vercel.app (desktop and phone browsers, nothing to 
 
 - Live 3D scene with the rider on its rocket as the hero, a big PLAY button and a Practice / Chog NFT / Demo switch.
 - The line under the switch explains the mode. In Chog NFT mode it also shows your tickets and this week's prize pool.
-- Top: your best distance (or the selected Chog's best total distance) and a wallet chip.
+- Top: your best distance (in Chog NFT and Demo modes, your account's best total distance with any Chog) and a wallet chip.
 - Bottom: Ranks (leaderboard), Tickets (Chog NFT mode, once the pool contract is live), Quests and How to play. Space or Enter also plays.
 
 ## Three modes

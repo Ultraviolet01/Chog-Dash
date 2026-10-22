@@ -6,6 +6,7 @@
  * ride, validated run, leaderboard shows the pilot name.
  */
 const { chromium } = require('playwright-core');
+const { skipHighScore } = require('./high-score.js');
 const fs = require('fs');
 const path = require('path');
 const R = path.join(__dirname, '../../') + '/';
@@ -41,6 +42,7 @@ const chain = {
   const server = await startServer({ port: 3456, handlers: createHandlers({ store, chain, secret: 's' }) });
   const b = await chromium.launch(launchOpts);
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
+  await skipHighScore(p);   // the first crash sets a new best: tap through its screen
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   const three = fs.readFileSync(R + 'node_modules/three/build/three.min.js');
   await p.route('**/three.min.js', r => r.fulfill({ body: three, contentType: 'application/javascript' }));

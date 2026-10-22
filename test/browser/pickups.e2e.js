@@ -4,6 +4,7 @@
  * types on screen, Stardust -> lives, crash with a life, and the lifetime Stardust total.
  */
 const { chromium } = require('playwright-core');
+const { skipHighScore } = require('./high-score.js');
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
@@ -18,6 +19,7 @@ function ok(name, cond, detail) {
 (async () => {
   const b = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
+  await skipHighScore(p);   // the first crash sets a new best: tap through its screen
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.route('**/three.min.js', r => r.fulfill({ body: fs.readFileSync(path.join(R, 'node_modules/three/build/three.min.js')), contentType: 'application/javascript' }));
   await p.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));

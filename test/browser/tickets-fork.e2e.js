@@ -12,6 +12,7 @@
  * Chog NFT ownership and metadata are mocked (the test wallets don't own a Chog); everything else is real.
  */
 const { chromium } = require('playwright-core');
+const { skipHighScore } = require('./high-score.js');
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
@@ -91,6 +92,7 @@ const installWallet = (page, name) => page.addInitScript(fn => {
   try {
     // ---------- The pool owner deploys and registers the pool from admin.html ----------
     const a = await b.newPage({ viewport: process.env.SHOTS ? { width: 1920, height: 900 } : { width: 1100, height: 900 } });
+    await skipHighScore(a);   // the first crash sets a new best: tap through its screen
     a.on('pageerror', e => errs.push('admin: ' + e.message));
     await walletShim(a, admin, 'adminWallet'); await installWallet(a, 'adminWallet');
     if (!process.env.SHOTS) await a.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));   // screenshots use the real fonts
@@ -110,6 +112,7 @@ const installWallet = (page, name) => page.addInitScript(fn => {
 
     // ---------- A player buys 2 tickets in the game ----------
     const p = await b.newPage({ viewport: process.env.SHOTS ? { width: 1920, height: 900 } : { width: 1280, height: 760 } });
+    await skipHighScore(p);   // the first crash sets a new best: tap through its screen
     p.on('pageerror', e => errs.push('game: ' + e.message));
     await walletShim(p, player, 'playerWallet'); await installWallet(p, 'playerWallet');
     await p.route('**/three.min.js', r => r.fulfill({ body: fs.readFileSync(R + 'node_modules/three/build/three.min.js'), contentType: 'application/javascript' }));

@@ -6,6 +6,7 @@
  * Dynamic buttons: wallet connect buttons and Chog tiles.
  */
 const { chromium } = require('playwright-core');
+const { skipHighScore } = require('./high-score.js');
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
@@ -43,6 +44,7 @@ function ok(name, cond, detail) {
   const server = await startServer({ port: 3457, handlers: createHandlers({ store: memoryStore(), chain, secret: 's' }) });
   const b = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const p = await b.newPage({ viewport: { width: 1366, height: 768 } });
+  await skipHighScore(p);   // the first crash sets a new best: tap through its screen
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.route('**/three.min.js', r => r.fulfill({ body: fs.readFileSync(R + 'node_modules/three/build/three.min.js'), contentType: 'application/javascript' }));
   await p.route('**/fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));

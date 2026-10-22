@@ -477,8 +477,19 @@
     else if (S.chog) rideChog();
     else openNft();
   }
-  // Best total distance on this device for a Chog (demo Chogs are kept apart from real runs)
-  const bestKey = c => (c.demo ? "chogDashDemoBest:" : "chogDashNftBest:") + c.tokenId;
+  // Best total distance for the account (any of its Chogs), kept on this device: per wallet in Chog NFT mode, and in
+  // Demo per signed-in wallet or per device ("guest"). Demo runs are kept apart from real runs. The first time an
+  // account's best is read, it starts from the highest per-Chog best this device kept before bests were per account.
+  function bestKey(c) {
+    const prefix = c.demo ? "chogDashDemoBest:" : "chogDashNftBest:", key = prefix + (S.account || "guest");
+    try {
+      if (localStorage.getItem(key) === null) {
+        const old = Object.keys(localStorage).filter(k => k.startsWith(prefix) && /^\d+$/.test(k.slice(prefix.length))).map(readNum);
+        if (old.length) writeNum(key, Math.max(...old));
+      }
+    } catch (e) {}
+    return key;
+  }
   // The Chog being flown: a demo Chog in demo mode, else the wallet's chosen Chog
   const activeChog = () => (S.mode === "demo" ? S.demoChog : S.mode === "nft" ? S.chog : null);
 
@@ -521,7 +532,7 @@
   }
 
   function onReady() {
-    // The best to beat this run (the same number as the BEST chip): distance in practice, total distance for this Chog
+    // The best to beat this run (the same number as the BEST chip): distance in practice, the account's best total otherwise
     const chog = activeChog();
     S.bankLives = S.mode === "demo" ? Demo.lives() : 0;   // Chog NFT mode gets its streak lives from the server's run session
     game.configure({ bestToBeat: chog ? readNum(bestKey(chog)) : readNum(PRACTICE_BEST), bankLives: S.bankLives });
@@ -664,7 +675,7 @@
   function gameOver(result, c, value, prevBest) {
     const z = T.zoneAt(result.meters), practice = !c, g = c && c.gameplay;
     const laser = g && g.abilities.find(a => a.id === "laserEyes");
-    const newBest = value > prevBest && prevBest > 0;
+    const newBest = value > prevBest && value > 0;   // the very first run counts too: it sets the first best
     const tierColor = practice ? "var(--accent)" : ({ common: "#cfd6e3", uncommon: "#6ee7a8", rare: "#4fa8ff", epic: "#b6ff3a", legendary: "#ffcf4d" })[String(g.tier || "").toLowerCase()] || "var(--accent)";
     const el = $("gameOver");
     el.style.setProperty("--tc", newBest ? "#ffcf4d" : tierColor);   // the card glows in the tier colour, gold for a new best
@@ -681,9 +692,10 @@
     const bestBox = $("goBest");
     bestBox.className = "go-best" + (newBest ? " new" : "");
     bestBox.innerHTML = newBest
-      ? '<div class="nb">NEW BEST!</div><div class="go-small">Previous best ' + prevBest.toLocaleString() + " m</div>"
+      ? '<div class="nb">NEW BEST!</div><div class="go-small">' + (prevBest > 0 ? "Previous best " + prevBest.toLocaleString() + " m"
+        : "Your first run: the one to beat next time") + "</div>"
       : prevBest <= 0
-      ? '<div class="go-small">First run' + (practice ? "" : " with this Chog") + ": " + value.toLocaleString() + " m is the one to beat</div>"
+      ? '<div class="go-small">No distance yet</div>'
       : '<div class="go-bestrow"><span>BEST</span><b>' + Math.max(prevBest, value).toLocaleString() + ' m</b></div><div class="go-bar"><i style="width:' +
         Math.min(100, Math.round((value / prevBest) * 100)) + '%"></i></div><div class="go-small">' + (value === prevBest ? "Equal to your best!" : (prevBest - value).toLocaleString() + " m short of your best") + "</div>";
     // Stats tiles
@@ -746,7 +758,7 @@
       $("hsStreaks").innerHTML = html;
     }
     $("hsScore").textContent = value.toLocaleString() + " m";
-    $("hsSub").textContent = "Previous best " + prevBest.toLocaleString() + " m";
+    $("hsSub").textContent = prevBest > 0 ? "Previous best " + prevBest.toLocaleString() + " m" : "Your first best!";
     hsDone = done;
     el.classList.remove("ready", "gone");
     el.classList.add("show");
@@ -1038,7 +1050,7 @@
       pin: nft ? myPin() : null,
     };
     $("cardBtn").style.display = result.meters > 0 ? "" : "none";
-    const hot = S.lastRun.newBest && prevBest > 0;   // beat a previous best (as the high score screen): the moment to share
+    const hot = S.lastRun.newBest;   // a new best (the first run's too, as the high score screen): the moment to share
     $("cardBtn").classList.toggle("hot", hot);
     $("cardBtnLabel").innerHTML = hot ? '<span class="sb-long">Share your new best</span><span class="sb-short">Share best</span>' : "Share run";
     showEndBar(true);

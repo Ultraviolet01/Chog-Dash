@@ -4,6 +4,7 @@
  * MOCK wallet, contract and IPFS; real handlers and in-memory store.
  */
 const { chromium } = require('playwright-core');
+const { skipHighScore } = require('./high-score.js');
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
@@ -31,6 +32,7 @@ const svg = n => `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="40
   const server = await startServer({ port: 3457, handlers: createHandlers({ store, chain, secret: 's' }) });
   const b = await chromium.launch({ executablePath: process.env.CHROME_PATH || '/opt/pw-browsers/chromium', args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
+  await skipHighScore(p);   // the first crash sets a new best: tap through its screen
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.route('**/three.min.js', r => r.fulfill({ body: fs.readFileSync(R + 'node_modules/three/build/three.min.js'), contentType: 'application/javascript' }));
   await p.route('**/ipfs/**', r => r.fulfill({ body: svg(r.request().url().split('/').pop()), contentType: 'image/svg+xml', headers: { 'access-control-allow-origin': '*' } }));
