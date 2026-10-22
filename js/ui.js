@@ -170,6 +170,12 @@
     window.addEventListener("keydown", e => {
       if (e.code === "KeyR" && !e.repeat && game.state === "dead" && !document.querySelector(".panel.show") && e.target.tagName !== "INPUT") playAgain();
     });
+    // On click (not pointer down), so the tap ends on this screen and can't land on the game over card's buttons below
+    $("hsScreen").addEventListener("click", hsContinue);
+    window.addEventListener("keydown", e => {
+      if (!$("hsScreen").classList.contains("show") || e.repeat) return;
+      if (["Space", "Enter", "Escape", "NumpadEnter"].includes(e.code)) { e.preventDefault(); hsContinue(); }
+    });
     $("cardClose").onclick = closeCard;
     $("cardSave").onclick = saveCard;
     $("cardShare").onclick = shareCard;
@@ -710,11 +716,60 @@
     el.classList.remove("show");
     S.goTimer = setTimeout(() => {   // a short beat to see the crash first
       if (game.state !== "dead") return;
-      el.classList.add("show");
-      document.body.classList.add("game-over");
-      goAnim = requestAnimationFrame(tick);
+      const showCard = () => {
+        el.classList.add("show");
+        document.body.classList.add("game-over");
+        goAnim = requestAnimationFrame(tick);
+      };
+      if (newBest) showHighScore(value, prevBest, showCard);   // a new best gets its own moment first
+      else showCard();
     }, 550);
   }
+
+  // ---------- New high score: full screen, the Chog's rocket flies in, tap to go on to the game over card ----------
+  let hsDone = null, hsReadyTimer = 0;
+  function showHighScore(value, prevBest, done) {
+    const el = $("hsScreen");
+    if (!$("hsStreaks").children.length) {
+      // Speed streaks fly out from the vanishing point, all around, past the rocket (a warp jump)
+      let html = "";
+      for (let i = 0; i < 28; i++) {
+        const a = Math.random() * 360, d = 0.55 + Math.random() * 0.5;
+        html += '<i class="hs-streak" style="--a:' + a.toFixed(1) + "deg;--w:" + Math.round(70 + Math.random() * 150) + "px;--h:" + (2 + Math.random() * 3).toFixed(1) +
+          "px;--d:" + d.toFixed(2) + "s;--dl:" + (-Math.random() * d).toFixed(2) + 's"></i>';
+      }
+      // Teal sparkles around where the rocket flies (kept clear of the score at the top)
+      for (let i = 0; i < 9; i++) {
+        html += '<i class="hs-spark" style="left:' + (22 + Math.random() * 60).toFixed(1) + "%;top:" + (30 + Math.random() * 45).toFixed(1) + "%;--s:" +
+          Math.round(10 + Math.random() * 14) + "px;--d:" + (1.2 + Math.random() * 1.2).toFixed(2) + "s;--dl:" + (-Math.random() * 2).toFixed(2) + 's"></i>';
+      }
+      $("hsStreaks").innerHTML = html;
+    }
+    $("hsScore").textContent = value.toLocaleString() + " m";
+    $("hsSub").textContent = "Previous best " + prevBest.toLocaleString() + " m";
+    hsDone = done;
+    el.classList.remove("ready", "gone");
+    el.classList.add("show");
+    sfx("highScore");
+    game.celebrate($("hsCanvas"), {
+      onVanishPoint: (x, y) => { el.style.setProperty("--vx", x.toFixed(1) + "%"); el.style.setProperty("--vy", y.toFixed(1) + "%"); },
+      onFlyAway: () => sfx("hsFlyAway"),
+      onGone: () => { el.classList.add("gone"); sfx("hsVanish"); },   // a sparkle where it disappears into the light
+    });
+    clearTimeout(hsReadyTimer);
+    hsReadyTimer = setTimeout(() => el.classList.add("ready"), 1200);   // "Tap to continue" once the rocket has landed
+  }
+  function closeHighScore(instant) {
+    const el = $("hsScreen");
+    if (!el.classList.contains("show") || el.classList.contains("closing")) return;
+    clearTimeout(hsReadyTimer);
+    const done = hsDone; hsDone = null;
+    if (game.state === "dead" && done) done();   // the game over card comes in underneath while this fades out
+    const finish = () => { el.classList.remove("show", "ready", "closing", "gone"); game.stopCelebrate(); };
+    if (instant) finish();
+    else { el.classList.add("closing"); setTimeout(finish, 280); }
+  }
+  function hsContinue() { if ($("hsScreen").classList.contains("ready")) closeHighScore(); }
   // [text, kind ("good" | "warn" | "wait" | ""), rank]
   function goStatus([text, kind, rank]) {
     const el = $("goRank");
@@ -983,13 +1038,16 @@
       pin: nft ? myPin() : null,
     };
     $("cardBtn").style.display = result.meters > 0 ? "" : "none";
+    const hot = S.lastRun.newBest && prevBest > 0;   // beat a previous best (as the high score screen): the moment to share
+    $("cardBtn").classList.toggle("hot", hot);
+    $("cardBtnLabel").innerHTML = hot ? '<span class="sb-long">Share your new best</span><span class="sb-short">Share best</span>' : "Share run";
     showEndBar(true);
   }
 
   // ---------- Game over: PLAY AGAIN restarts straight away ----------
   function showEndBar(on) {
     $("endBar").classList.toggle("show", on);
-    if (!on) { clearTimeout(S.goTimer); cancelAnimationFrame(goAnim); $("gameOver").classList.remove("show"); document.body.classList.remove("game-over"); }
+    if (!on) { clearTimeout(S.goTimer); cancelAnimationFrame(goAnim); $("gameOver").classList.remove("show"); document.body.classList.remove("game-over"); hsDone = null; closeHighScore(true); }
     $("hudMenuBtn").style.display = on || document.body.classList.contains("flying") ? "none" : "block";   // Home in the bar replaces it
     if (on) {
       S.crashedAt = performance.now();
@@ -1945,6 +2003,7 @@
     if (!revealTimer) nextReveal();
   }
   function nextReveal() {
+    if ($("hsScreen").classList.contains("show")) { revealTimer = setTimeout(nextReveal, 300); return; }   // after the high score screen
     const el = $("badgeReveal"), u = revealQueue.shift();
     if (!u || game.state !== "dead") { el.classList.remove("show"); revealTimer = null; revealQueue = []; return; }
     if (u.lives) {   // streak lives milestone: a big heart

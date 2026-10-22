@@ -560,6 +560,8 @@
     let laserCharges = 0, laserUsed = 0, nearMisses = 0, nearTimer = 0;
     // Pause: the world freezes; Resume counts down 3, 2, 1 before the run goes on. Paused time doesn't count as run time.
     let paused = false, counting = false, pausedAt = 0, countTimer = null;
+    // New high score: the rocket is drawn on its own into the celebration screen (see celebrate)
+    let celebrating = false;
     let setup = { laserCharges: 0, multiplier: 1, modeLabel: "", showScore: false };
 
     const meters = () => Math.floor(distance / G.unitsPerMeter);
@@ -581,6 +583,7 @@
 
     function toReady() {
       if (paused || counting) finishPause();
+      stopCelebrate();
       clearField();
       distance = 0; sinceSpawn = 0; nextSpacing = START_SPACING;
       vel.x = vel.y = 0; safe.x = safe.y = 0; pointerTarget.x = pointerTarget.y = 0;
@@ -602,6 +605,7 @@
 
     function toMenu() {
       if (paused || counting) finishPause();
+      stopCelebrate();
       if (root.ChogAudio) { root.ChogAudio.setEngine(false, 0, false); root.ChogAudio.setZone(0); }
       clearField();
       pickups.reset();
@@ -705,6 +709,74 @@
         powerups: pickups.stats().powerups, horns: pickups.stats().horns, livesUsed: pickups.stats().livesUsed,
         bankLivesUsed: pickups.stats().bankUsed,
       });
+    }
+
+    // ---------- New high score: the rocket and its Chog fly off into the light on the celebration screen ----------
+    // The player is moved into a small scene of its own and drawn into the screen's own canvas (transparent, so the
+    // page's background shows behind it), then put back when the screen closes. Seen from behind, as in flight: it rises
+    // in from the bottom, holds for a moment, then flies away north into the distance until it's gone.
+    // opts: { onVanishPoint(xPercent, yPercent): where it disappears (for the light burst), onFlyAway(), onGone() }
+    let hs = null, hsLoop = 0;
+    const HS_START = new THREE.Vector3(), HS_END = new THREE.Vector3(0, 7, -95);
+    function celebrate(canvas, opts) {
+      stopCelebrate();
+      const o = opts || {};
+      if (!hs || hs.canvas !== canvas) {
+        const r = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+        r.setClearColor(0x000000, 0);
+        const s = new THREE.Scene();
+        s.add(new THREE.HemisphereLight(0xeef8ff, 0x2a4590, 0.95));
+        const key = new THREE.DirectionalLight(0xffffff, 1.0); key.position.set(3, 6, 8); s.add(key);
+        const glow = new THREE.DirectionalLight(0x7fd8ff, 0.7); glow.position.set(-2, 4, -6); s.add(glow);   // the blue light ahead
+        hs = { canvas, r, s, cam: new THREE.PerspectiveCamera(30, 1, 0.1, 200) };
+      }
+      celebrating = true;
+      hs.w = hs.h = 0;
+      hs.s.add(player);   // (leaves the game scene while shown)
+      player.visible = true;
+      const t0 = performance.now();
+      let gone = false, flying = false;
+      const loop = () => {
+        hsLoop = requestAnimationFrame(loop);
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        if (!w || !h) return;
+        if (hs.w !== w || hs.h !== h) {
+          hs.w = w; hs.h = h;
+          hs.r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+          hs.r.setSize(w, h, false);
+          hs.cam.aspect = w / h;
+          hs.cam.position.set(0, 0.6, w / h < 1 ? 15 : 10);   // tall screens: step back so the rocket fits the width
+          // Where it hovers: low in the middle, clear of the score at the top and "Tap to continue" at the bottom
+          if (w / h < 1) HS_START.set(0, -0.9, 2.5); else HS_START.set(0, -0.35, 1.5);
+          hs.cam.lookAt(0, 1.4, -20);
+          hs.cam.updateProjectionMatrix();
+          hs.cam.updateMatrixWorld();
+          const v = HS_END.clone().project(hs.cam);   // the light sits where the rocket disappears
+          if (o.onVanishPoint) o.onVanishPoint((v.x + 1) * 50, (1 - v.y) * 50);
+        }
+        const t = (performance.now() - t0) / 1000;
+        const rise = Math.min(1, t / 0.7), up = 1 - Math.pow(1 - rise, 3);     // 0 - 0.7 s: rise in from the bottom
+        const fly = Math.max(0, Math.min(1, (t - 1.4) / 3.2)), away = Math.pow(fly, 2.2);   // 1.4 - 4.6 s: away into the light
+        const bob = Math.sin(t * 5) * 0.12 * (1 - fly);
+        player.position.set(
+          Math.sin(t * 1.6) * 0.25 * (1 - fly),
+          (1 - up) * -7 + HS_START.y + (HS_END.y - HS_START.y) * away + bob,
+          HS_START.z + (HS_END.z - HS_START.z) * away);
+        // From behind, nose ahead; tilted up while it climbs away, with a little banking as it sways
+        player.rotation.set(0.08 + 0.14 * Math.min(1, fly * 3), 0, Math.cos(t * 1.6) * 0.1 * (1 - fly));
+        if (fly > 0 && !flying) { flying = true; if (o.onFlyAway) o.onFlyAway(); }
+        if (fly >= 1 && !gone) { gone = true; player.visible = false; if (o.onGone) o.onGone(); }
+        hs.r.render(hs.s, hs.cam);
+      };
+      loop();
+    }
+    function stopCelebrate() {
+      if (!celebrating) return;
+      cancelAnimationFrame(hsLoop);
+      celebrating = false;
+      scene.add(player);
+      player.position.set(0, 0, 0); player.rotation.set(0, 0, 0);
+      player.visible = state !== "dead";
     }
 
     // ---------- Laser Eyes ----------
@@ -910,7 +982,7 @@
     function update(dt) {
       const now = performance.now();
       const playing = state === "playing";
-      useRiderPose(state === "menu" ? "side" : "back");
+      useRiderPose(state === "menu" && !celebrating ? "side" : "back");
       // Bigger flame while the rocket climbs (keyboard: holding rise; mouse/touch: moving up)
       const thrusting = playing && vel.y > 1;
 
@@ -938,7 +1010,7 @@
       });
 
       // Flame and exhaust: bigger while thrusting
-      const power = state === "dead" ? 0 : (playing ? 0.55 + (thrusting ? 0.45 : 0) + (dashing ? 1.2 : 0) : 0.5);
+      const power = celebrating ? 0.85 : state === "dead" ? 0 : (playing ? 0.55 + (thrusting ? 0.45 : 0) + (dashing ? 1.2 : 0) : 0.5);
       flameMat.color.setHex(dashing ? 0x4fd1c5 : look.flame);
       ramGlow.visible = dashing;
       if (dashing) ramGlow.material.opacity = 0.25 + Math.random() * 0.15;
@@ -947,7 +1019,7 @@
       const flameLen = power * rand(0.85, 1.15);
       flame.scale.set(0.7 + power * 0.4, flameLen * 1.4, 0.7 + power * 0.4);
       flame.position.z = 1.42 + 0.35 * flameLen * 1.4;
-      flame.visible = state !== "dead";
+      flame.visible = state !== "dead" || celebrating;
       if (state !== "dead") {
         player.updateMatrixWorld();
         emitAcc += dt * (playing ? 45 + (thrusting ? 35 : 0) : 25);
@@ -1170,7 +1242,7 @@
         const p = pickups.stats();
         return { meters: meters(), durationMs: (paused ? pausedAt : performance.now()) - runStartedAt, nearMisses, stardust: p.stardust, powerups: p.powerups, horns: p.horns, livesUsed: p.livesUsed };
       },
-      pause, resume, endRun,
+      pause, resume, endRun, celebrate, stopCelebrate,
       get paused() { return paused; },
       // Test hooks, used by the automated browser tests only
       _debug: { camera, rider, look: () => look, trailLive: () => Array.from(trailLife).filter(l => l > 0).length, extras, gates: () => gates, obstacles: () => obstacles, player, fireLaser, laserCharges: () => laserCharges, beamOn: () => beams.visible, pickups, runTime: () => runTime,

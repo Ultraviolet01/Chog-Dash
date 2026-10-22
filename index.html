@@ -76,6 +76,21 @@
 <div id="flash"></div>
 <div id="laserFlash"></div>
 <div id="badgeReveal" aria-live="polite"></div>
+<!-- New high score: a full-screen moment before the game over card (a panel, so the game's keys and taps wait) -->
+<div id="hsScreen" class="panel" role="dialog" aria-label="New high score">
+ <div class="hs-stage">
+  <div class="hs-rays"></div>
+  <div id="hsStreaks" class="hs-streaks"></div>
+  <div class="hs-twinkle"></div>
+  <canvas id="hsCanvas"></canvas>
+  <div class="hs-top">
+    <div class="hs-title">NEW HIGH SCORE!</div>
+    <div id="hsScore" class="hs-score"></div>
+    <div id="hsSub" class="hs-sub"></div>
+  </div>
+  <div class="hs-tap">TAP TO CONTINUE</div>
+ </div>
+</div>
 <div id="zoneFlash"></div>
 <!-- Game over actions: one big PLAY AGAIN, with Share, Ranks and Home beside it -->
 <!-- Game over: shown a moment after a crash -->
@@ -111,7 +126,7 @@
     <div id="endBar">
       <button id="againBtn" class="again"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>PLAY AGAIN</button>
       <div class="end-row">
-        <button id="cardBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v12M7 8l5-5 5 5"/></svg>Share run</button>
+        <button id="cardBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v12M7 8l5-5 5 5"/></svg><span id="cardBtnLabel">Share run</span></button>
         <button id="endLbBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v3a5 5 0 0 1-10 0V4z"/><path d="M12 12v4M8 20h8M9 16h6v4H9z"/></svg>Ranks</button>
         <button id="endHomeBtn" class="end-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</button>
       </div>
