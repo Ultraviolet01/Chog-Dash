@@ -169,3 +169,29 @@ test("demo runs get the weekly bonus but never write a career", async () => {
   assert.strictEqual(fin.finalScore, Traits.computeScore(1000, Traits.effectiveMultiplier(s.multiplier, 1.1)));
   assert.strictEqual(await store.get("career:" + demo.tokenId), null);
 });
+
+test("account bests: the wallet's best follows it (at sign-in and with every run) and only goes up", async () => {
+  const { h, alice, signIn, run, advance } = setup();
+  const { message } = await h.authNonce({ body: { wallet: alice.address } });
+  const v = await h.authVerify({ body: { wallet: alice.address, message, signature: await alice.signMessage({ message }) } });
+  assert.deepStrictEqual(v.bests, { nft: 0, demo: 0 });
+  const token = await signIn(alice, "Alice");
+  const a = await run(token, "1", 2000);                       // Fire Chog x1.265 this week: 2,530
+  assert.strictEqual(a.fin.bests.nft, a.fin.finalScore);
+  const low = await run(token, "2", 1500);                     // a lower run with another Chog doesn't replace it
+  assert.strictEqual(low.fin.bests.nft, a.fin.finalScore);
+  const b = await run(token, "2", 3000);                       // a higher run with any of the wallet's Chogs does
+  assert.strictEqual(b.fin.bests.nft, b.fin.finalScore);
+  // Demo runs have their own best
+  const demo = require("../js/demo-chogs.js")[0];
+  const s = await h.runStart({ body: { tokenId: demo.tokenId, demo: true }, token });
+  await h.runFly({ body: { runId: s.runId }, token });
+  advance(45000);
+  const d = await h.runFinish({ body: { runId: s.runId, meters: 1000, durationMs: 44000 }, token });
+  assert.strictEqual(d.bests.demo, d.finalScore);
+  assert.strictEqual(d.bests.nft, b.fin.finalScore);
+  // Signing in again (say on another device) hands back both bests
+  const n2 = await h.authNonce({ body: { wallet: alice.address } });
+  const v2 = await h.authVerify({ body: { wallet: alice.address, message: n2.message, signature: await alice.signMessage({ message: n2.message }) } });
+  assert.deepStrictEqual(v2.bests, { nft: b.fin.finalScore, demo: d.finalScore });
+});

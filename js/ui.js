@@ -437,7 +437,7 @@
     if ($("modeHint").textContent !== hint) { $("modeHint").textContent = hint; if (animate) swapIn($("modeHint")); }
     if (lab.textContent !== label) { lab.textContent = label; if (animate) swapIn(lab); }
     $("playBtn").classList.toggle("pick", label !== "PLAY");
-    $("bestLabel").textContent = nft && chog ? "BEST TOTAL" : "BEST";
+    $("bestLabel").textContent = nft ? "BEST TOTAL" : "BEST";
     // The selected Chog's level; the chip opens its career
     const cr = nft && chog ? careerOf(chog) : null;
     if (nft && chog && !chog.demo && !cr) loadCareerInfo(chog.tokenId);
@@ -450,7 +450,9 @@
     pill.style.visibility = nft ? "" : "hidden";   // keeps its space in practice, so PLAY never moves between modes
     if (nft && chog) pill.innerHTML = (cr ? '<span class="chip-lv">LV ' + cr.level + "</span>" : "") + "<span>" + esc(cr && cr.title ? cr.title : chog.name) + "</span><b>CAREER &rsaquo;</b>";
     else if (nft) pill.innerHTML = "<span>Every Chog has a career</span><b>" + (demo ? "DEMO CAREERS" : "CHOG CAREERS") + " &rsaquo;</b>";
-    $("bestValue").textContent = (nft && chog ? readNum(bestKey(chog)) : readNum(PRACTICE_BEST)).toLocaleString() + " m";
+    // The account's best for this mode, Chog picked or not (Chog NFT mode has none until a wallet is connected)
+    const homeKey = demo ? modeBestKey(true) : nft ? (S.account ? modeBestKey(false) : null) : PRACTICE_BEST;
+    $("bestValue").textContent = homeKey ? readNum(homeKey).toLocaleString() + " m" : "\u2014";
     $("walletChipText").textContent = S.account ? (S.username || short(S.account)) : "Connect wallet";
     $("walletDot").classList.toggle("on", !!S.account && S.chainId === cfg.collection.chainId);
     $("keyHint").textContent = "Press SPACE to " + (label === "PICK CHOG" ? "pick a Chog" : "play") + "  ·  F for full screen";
@@ -480,8 +482,9 @@
   // Best total distance for the account (any of its Chogs), kept on this device: per wallet in Chog NFT mode, and in
   // Demo per signed-in wallet or per device ("guest"). Demo runs are kept apart from real runs. The first time an
   // account's best is read, it starts from the highest per-Chog best this device kept before bests were per account.
-  function bestKey(c) {
-    const prefix = c.demo ? "chogDashDemoBest:" : "chogDashNftBest:", key = prefix + (S.account || "guest");
+  const bestKey = c => modeBestKey(!!c.demo);
+  function modeBestKey(demo) {
+    const prefix = demo ? "chogDashDemoBest:" : "chogDashNftBest:", key = prefix + (S.account || "guest");
     try {
       if (localStorage.getItem(key) === null) {
         const old = Object.keys(localStorage).filter(k => k.startsWith(prefix) && /^\d+$/.test(k.slice(prefix.length))).map(readNum);
@@ -489,6 +492,14 @@
       }
     } catch (e) {}
     return key;
+  }
+  // The server keeps the wallet's bests too (sent at sign-in and with every run), so a best set on another
+  // device shows here: this device keeps the higher of the two
+  function mergeBests(b, account) {
+    if (!b || !account || account !== S.account) return;
+    if (b.nft > 0) writeNum(modeBestKey(false), Math.max(readNum(modeBestKey(false)), b.nft));
+    if (b.demo > 0) writeNum(modeBestKey(true), Math.max(readNum(modeBestKey(true)), b.demo));
+    refreshHome();
   }
   // The Chog being flown: a demo Chog in demo mode, else the wallet's chosen Chog
   const activeChog = () => (S.mode === "demo" ? S.demoChog : S.mode === "nft" ? S.chog : null);
@@ -629,6 +640,7 @@
           return apiCall("/run/finish", { runId, meters: result.meters, durationMs: result.durationMs, laserUsed: result.laserUsed }, S.auth && S.auth.token);
         })
         .then(r => {
+          mergeBests(r.bests, S.account);
           if (!live()) return;
           if (r.status === "validated" && S.lastRun) { S.lastRun.rank = r.rank || null; S.lastRun.total = r.finalScore; }
           goStatus(r.status === "validated"
@@ -651,6 +663,7 @@
           livesUsed: result.livesUsed || 0, bankLivesUsed: result.bankLivesUsed || 0 }, S.auth && S.auth.token);
       })
       .then(r => {
+        mergeBests(r.bests, S.account);
         if (!live()) return;
         if (r.status === "validated" && S.lastRun) { S.lastRun.rank = r.rank || null; S.lastRun.total = r.finalScore; }
         goStatus(r.status === "validated"
@@ -1327,6 +1340,7 @@
     else {
       setStatus($("walletStatus"), "Wallet disconnected.");
       ["holdingsCard", "pilotCard", "signInBtn"].forEach(id => { $(id).style.display = "none"; });
+      refreshHome();
     }
   }
 
@@ -1600,6 +1614,7 @@
     const v = await apiCall("/auth/verify", { wallet: S.account, message: n.message, signature });
     S.auth = { token: v.token, account: S.account, expiresAt: v.expiresAt };
     S.username = v.username || null;
+    mergeBests(v.bests, S.account);
   }
 
   // ---------- Leaderboard view ----------

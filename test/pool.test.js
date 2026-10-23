@@ -138,6 +138,7 @@ test("a ticket is spent when the rocket takes off; no ticket = flies but not ran
   assert.strictEqual(r0.fin.status, "unranked");
   assert.ok(r0.fin.quests, "quests still count without a ticket");
   assert.strictEqual((await h.leaderboard({})).entries.length, 0, "not on the weekly board");
+  assert.strictEqual(r0.fin.bests.nft, r0.fin.finalScore, "an unranked run still counts toward the account's own best");
   // Buy 2, fly 2 ranked runs
   const q = await h.ticketQuote({ body: { count: 2 }, token: ta });
   pay(hash(9), alice, q.ref, BigInt(q.amount));
