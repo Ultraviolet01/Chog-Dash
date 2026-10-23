@@ -1177,6 +1177,8 @@
       }
       lookAt.set(player.position.x * (home ? 0.45 : Math.max(0.8, camFollowX)), player.position.y * (home ? 0.6 : 0.8) + (home ? 0.4 : 0), -10);
       camera.lookAt(lookAt);
+      const restY = home ? 1.9 : 2.7, restLook = home ? 0.4 : 0;
+      scenery.followView(camera, -Math.atan2(restY - restLook, camera.position.z + 10));
       const speedRatio = playing ? Math.min(1.6, (baseSpeed() - G.baseSpeed) / (G.rampSpeed - G.baseSpeed)) : 0;
       const fov = 70 + speedRatio * 12 + (dashing ? 10 : 0) - (playing && pickups.slowed() ? 4 : 0);
       if (Math.abs(camera.fov - fov) > 0.01) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix(); }

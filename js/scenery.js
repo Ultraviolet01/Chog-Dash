@@ -240,19 +240,21 @@
     const rand = (a, b) => a + Math.random() * (b - a);
     const tex = c => new THREE.CanvasTexture(c);
 
-    // Far backdrop and black hole
+    // Far backdrop and black hole, in a group that turns with the camera (see followView)
     const BACK_Z = -950;
+    const far = new THREE.Group();
+    scene.add(far);
     // Sized well past the edges of the view; slightly dimmed so obstacles stand out against it
     const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(4600, 2400),
       new THREE.MeshBasicMaterial({ map: tex(backdropCanvas()), color: 0xc8c8d8, fog: false, depthWrite: false }));
     backdrop.position.set(0, 40, BACK_Z);
     backdrop.renderOrder = -2;
-    scene.add(backdrop);
+    far.add(backdrop);
     const hole = new THREE.Mesh(new THREE.PlaneGeometry(330, 330),
       new THREE.MeshBasicMaterial({ map: tex(blackHoleCanvas()), transparent: true, fog: false, depthWrite: false }));
     hole.position.set(-700, 330, BACK_Z + 5);
     hole.renderOrder = -1;
-    scene.add(hole);
+    far.add(hole);
 
     // Milky Way spiral, seen at an angle; only visible in the Milky Way zone
     const galaxyMat = new THREE.MeshBasicMaterial({ map: tex(galaxyCanvas()), transparent: true, opacity: 0,
@@ -262,7 +264,7 @@
     galaxy.rotation.set(-1.05, 0.25, 0.4);
     galaxy.renderOrder = -1;
     galaxy.visible = false;
-    scene.add(galaxy);
+    far.add(galaxy);
 
     // Streaming stars, a few tinted blue and violet
     const STARS = 1400;
@@ -458,7 +460,17 @@
       }
     }
 
-    return { update, setZone, warp() { warp = 1; }, makeGate, accent: id => ACCENTS[id] || 0xffffff };
+    // The far sky barely shifts when the camera turns to follow the rocket (only FAR_DRIFT of the turn shows), like
+    // a real distant sky. Fixed in the world, it slid sideways a lot at the screen edges and showed its dark bottom
+    // edge in the corners. restPitch: the camera's downward tilt with the rocket in the middle.
+    const FAR_DRIFT = 0.15, farEuler = new THREE.Euler(0, 0, 0, "YXZ");
+    function followView(camera, restPitch) {
+      farEuler.setFromQuaternion(camera.quaternion, "YXZ");
+      const k = 1 - FAR_DRIFT;
+      far.rotation.set((farEuler.x - restPitch) * k, farEuler.y * k, 0, "YXZ");
+      far.position.set(camera.position.x * k, camera.position.y * k, 0);
+    }
+    return { update, followView, setZone, warp() { warp = 1; }, makeGate, accent: id => ACCENTS[id] || 0xffffff };
   }
 
   root.ChogScenery = { create };
